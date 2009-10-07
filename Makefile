@@ -5,11 +5,11 @@ CLASSPATH=$(ASM):$(BIN)
 
 JAVAC=javac
 
-MAIN=oshaj/Instrumentor.java
+MAIN=$(SRC)/oshaj/Instrumentor.java
 
-build:	$(SRC)/$(MAIN)
+build:	$(MAIN)
 	$(JAVAC) -d $(BIN) -classpath $(CLASSPATH) -sourcepath $(SRC) $(MAIN)
 
 clean:
-	rm -r bin/*
+	rm -r $(BIN)/*
 
