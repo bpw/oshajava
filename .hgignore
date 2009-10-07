@@ -1,0 +1,5 @@
+syntax: regexp
+
+^bin/.*
+^test/.*\.class$
+^oshaj\.jar$

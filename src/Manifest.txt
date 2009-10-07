@@ -1,0 +1,3 @@
+Premain-Class: oshaj.Instrumentor
+Agent-Class: oshaj.Instrumentor
+Class-Path: asm-3.2.jar

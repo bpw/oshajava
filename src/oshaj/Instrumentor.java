@@ -5,6 +5,8 @@ import java.lang.instrument.IllegalClassFormatException;
 import java.lang.instrument.Instrumentation;
 import java.security.ProtectionDomain;
 
+import org.objectweb.asm.*;
+
 public class Instrumentor implements ClassFileTransformer {
 	
 	public static void premain(String agentArgs, Instrumentation inst) {
@@ -12,6 +14,7 @@ public class Instrumentor implements ClassFileTransformer {
 		inst.addTransformer(new Instrumentor());
 		// Add the libraries that our instrumentation hooks will call to the classpath.
 //		inst.appendToSystemClassLoaderSearch(jarFileForRunTimeHooksEtc);
+		System.out.println("Oshaj!");
 	}
 
 	@Override
