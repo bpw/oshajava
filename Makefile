@@ -1,8 +1,10 @@
 BIN=bin
 SRC=src
-ASMDIR=asm-3.2/lib
+LIBS=libs
+ASMDIR=$(LIBS)/asm-3.2/lib
 ASMJAR=asm-3.2.jar
-CLASSPATH=$(ASMDIR)/$(ASMJAR):$(BIN)
+ACMEJAR=Acme.jar
+CLASSPATH=$(ASMDIR)/$(ASMJAR):$(LIBS)/$(ACMEJAR):$(BIN)
 CLASSLIST=$(BIN)/classlist.txt
 OSHAJAR=oshaj.jar
 MANIFEST=$(SRC)/Manifest.txt
