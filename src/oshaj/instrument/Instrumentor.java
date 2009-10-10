@@ -4,6 +4,7 @@ import java.lang.instrument.ClassFileTransformer;
 import java.lang.instrument.IllegalClassFormatException;
 import java.lang.instrument.Instrumentation;
 import java.security.ProtectionDomain;
+import java.util.jar.JarFile;
 
 import org.objectweb.asm.ClassAdapter;
 import org.objectweb.asm.ClassReader;
@@ -11,6 +12,7 @@ import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.FieldVisitor;
 import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.Method;
 
@@ -20,9 +22,12 @@ import oshaj.runtime.State;
 public class Instrumentor extends ClassAdapter {
 	
 	public static final String SHADOW_FIELD_SUFFIX = "__osha_state$";
+	public static final String LOCK_STATE_NAME = "__osha_lock_state$";
 	
 	public static final Type STATE_TYPE = Type.getType(oshaj.runtime.State.class);
 	public static final String STATE_TYPE_NAME = STATE_TYPE.getInternalName();
+	public static final Method STATE_CONSTRUCTOR = new Method(STATE_TYPE_NAME + ".\"<init>\"", Type.VOID_TYPE, new Type[0]);
+	
 	private static final Type[] HOOK_ARGS = { Type.LONG_TYPE, Type.INT_TYPE };
 	public static final Method PRIVATE_READ_HOOK = new Method("oshaj.runtime.State.privateRead", Type.VOID_TYPE, HOOK_ARGS);
 	public static final Method SHARED_READ_HOOK = new Method("oshaj.runtime.State.sharedRead", Type.VOID_TYPE, HOOK_ARGS);
@@ -34,9 +39,14 @@ public class Instrumentor extends ClassAdapter {
 	}
 
 	public static void premain(String agentArgs, Instrumentation inst) {
-		System.err.println("Loaded classes:");
-		for (Class<?> c : inst.getAllLoadedClasses()) {
-			System.err.println(c.getName());
+//		System.err.println("Loaded classes:");
+//		java 6+ only: inst.appendToSystemClassLoaderSearch(new JarFile(agentArgs));
+//		for (Class<?> c : inst.getAllLoadedClasses()) {
+//			System.err.println(c.getName());
+//		}
+//		System.exit(0);
+		if (inst.isRedefineClassesSupported()) {
+			System.err.println("Class redinition supported.");
 		}
 		// Register the instrumentor with the jvm as a class file transformer.
 		inst.addTransformer(new ClassFileTransformer() {
@@ -49,8 +59,8 @@ public class Instrumentor extends ClassAdapter {
 				} else {
 					// Use ASM to insert hooks for all the sorts of accesses, acquire, release, maybe fork, join, volatiles, etc.
 					final ClassReader cr = new ClassReader(classFileBuffer);
-					final ClassWriter cw = new ClassWriter(cr, ClassWriter.COMPUTE_FRAMES + ClassWriter.COMPUTE_MAXS);
-					cr.accept(new Instrumentor(cw), ClassReader.SKIP_FRAMES);
+					final ClassWriter cw = new ClassWriter(cr, ClassWriter.COMPUTE_MAXS);
+					cr.accept(new Instrumentor(cw), 0);
 					return cw.toByteArray();
 				}
 			}			
@@ -83,5 +93,15 @@ public class Instrumentor extends ClassAdapter {
 				access, name, desc,
 				id, Spec.inlined(id), Spec.inEdges(id), Spec.outEdges(id));
 	}
+	
+//	@Override
+//	public void visitEnd() {
+//		// insert field to hold lock State.
+//		// nice to make this final, but it's easier to init it outside the constructor for now,
+//		// to avoid making sure I've got exactly one initialization in each...
+//		// TODO how to get a lock state field in every Object?
+//		super.visitField(Opcodes.ACC_PUBLIC, LOCK_STATE_NAME, STATE_TYPE.getDescriptor(), null, null);
+//		super.visitEnd();
+//	}
 
 }

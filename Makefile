@@ -15,7 +15,8 @@ JAVAC=javac
 MAIN=$(SRC)/oshaj/instrument/Instrumentor.java
 
 build:	classes classlist
-	jar cfm $(OSHAJAR) $(MANIFEST) @$(CLASSLIST) -C $(ASMDIR) $(ASMJAR) -C $(ASMDIR) $(ASMCOMMONSJAR) -C $(LIBS) $(ACMEJAR)
+	jar cfm $(OSHAJAR) $(MANIFEST) @$(CLASSLIST)
+	jar i $(OSHAJAR)
 	
 classlist:	classes
 	find $(BIN) -name '*.class' | sed -e 's+$(BIN)/+-C $(BIN) +' > $(CLASSLIST)
