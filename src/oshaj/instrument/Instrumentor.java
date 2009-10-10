@@ -26,12 +26,11 @@ public class Instrumentor extends ClassAdapter {
 
 	public static void premain(String agentArgs, Instrumentation inst) {
 		System.err.println("Loaded classes:");
-		for (Class c : inst.getAllLoadedClasses()) {
+		for (Class<?> c : inst.getAllLoadedClasses()) {
 			System.err.println(c.getName());
 		}
 		// Register the instrumentor with the jvm as a class file transformer.
 		inst.addTransformer(new ClassFileTransformer() {
-			@Override
 			public byte[] transform(ClassLoader loader, String className, Class<?> targetClass,
 					ProtectionDomain protectionDomain, byte[] classFileBuffer)
 					throws IllegalClassFormatException {
