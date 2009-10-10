@@ -36,7 +36,7 @@ public class State {
 	 */
 	public final void privateRead(long readerTid, int readerMethod) {
 		if (readerTid != writerTid) 
-			throw new UnexpectedCommunicationException(writerTid, writerMethod, readerTid, readerMethod);
+			throw new IllegalCommunicationException(writerTid, writerMethod, readerTid, readerMethod);
 	}
 	
 	/**
@@ -53,7 +53,7 @@ public class State {
 	 */
 	public final synchronized void sharedRead(long readerTid, int readerMethod) {
 		if (readerTid != writerTid && (expectedReaders == null || !expectedReaders.contains(readerMethod))) 
-			throw new UnexpectedCommunicationException(writerTid, writerMethod, readerTid, readerMethod);
+			throw new IllegalCommunicationException(writerTid, writerMethod, readerTid, readerMethod);
 	}
 	
 	/**

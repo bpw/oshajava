@@ -98,33 +98,9 @@ public class MethodInstrumentor extends GeneratorAdapter {
 	}
 
 	@Override
-	public void visitLabel(Label arg0) { 
-		// TODO maybe
-		super.visitLabel(arg0);
-	}
-
-	@Override
-	public void visitLineNumber(int arg0, Label arg1) {
-		// TODO This is the line number from the source file from which the
-		// class file was compiled!
-		super.visitLineNumber(arg0, arg1);
-	}
-
-	@Override
-	public void visitLocalVariable(String arg0, String arg1, String arg2,
-			Label arg3, Label arg4, int arg5) { }
-
-	@Override
 	public void visitMultiANewArrayInsn(String arg0, int arg1) {
 		// TODO allocate shadow...?
 		super.visitMultiANewArrayInsn(arg0, arg1);
-	}
-
-	@Override
-	public void visitTryCatchBlock(Label arg0, Label arg1, Label arg2,
-			String arg3) {
-		// TODO Auto-generated method stub
-		super.visitTryCatchBlock(arg0, arg1, arg2, arg3);
 	}
 
 }
