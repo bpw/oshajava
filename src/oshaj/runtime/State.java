@@ -1,6 +1,8 @@
 package oshaj.runtime;
 
-import oshaj.Method;
+import org.objectweb.asm.Type;
+
+import oshaj.Spec;
 import acme.util.identityhash.IdentityHashSet;
 
 /**
@@ -10,26 +12,27 @@ import acme.util.identityhash.IdentityHashSet;
  */
 public class State {
 	
+	public static final String TYPE = Type.getType(oshaj.runtime.State.class).getInternalName();
+	public static final String PRIVATE_READ_NAME = "privateRead";
+	public static final String PRIVATE_READ_DESC = "(JI)V";
+	public static final String SHARED_READ_NAME = "sharedRead";
+	public static final String SHARED_READ_DESC = "(JI)V";
+	public static final String PRIVATE_WRITE_NAME = "privateWrite";
+	public static final String PRIVATE_WRITE_DESC = "(JI)V";
+	public static final String SHARED_WRITE_NAME = "sharedWrite";
+	public static final String SHARED_WRITE_DESC = "(JI)V";
+
 	/**
 	 * Thread id of the last thread to write to the field associated with this state.
 	 */
-	private long writerTid;
+	public long writerTid = -1;
 	
-	private Method writerMethod;
+	public int writerMethod = -1;
 	
 	/**
 	 * Method allowed to read in the current state.
 	 */
-	private IdentityHashSet<Method> expectedReaders;
-	
-	public State(long writerTid, IdentityHashSet<Method> expectedReaders) {
-		this.writerTid = writerTid;
-		this.expectedReaders = expectedReaders;
-	}
-	
-	public State(long ownerTid) {
-		this(ownerTid, null);
-	}
+	private IdentityHashSet<Long> expectedReaders;
 	
 	/**
 	 * Checks a read by a private reading method, i.e. a method that has no
@@ -42,9 +45,8 @@ public class State {
 	 * application did not order these calls. Fine. We're not a race detector.
 	 * 
 	 * @param readerTid
-	 * @throws UnexpectedCommunicationException
 	 */
-	public void privateRead(long readerTid, Method readerMethod) throws UnexpectedCommunicationException {
+	public final void privateRead(long readerTid, int readerMethod) {
 		if (readerTid != writerTid) 
 			throw new UnexpectedCommunicationException(writerTid, writerMethod, readerTid, readerMethod);
 	}
@@ -60,10 +62,9 @@ public class State {
 	 * 
 	 * @param readerTid
 	 * @param readerMethod
-	 * @throws UnexpectedCommunicationException
 	 */
-	public synchronized void sharedRead(long readerTid, Method readerMethod) throws UnexpectedCommunicationException {
-		if (readerTid != writerTid && !expectedReaders.contains(readerMethod)) 
+	public final synchronized void sharedRead(long readerTid, int readerMethod) {
+		if (readerTid != writerTid && (expectedReaders == null || !expectedReaders.contains(readerMethod))) 
 			throw new UnexpectedCommunicationException(writerTid, writerMethod, readerTid, readerMethod);
 	}
 	
@@ -74,9 +75,8 @@ public class State {
 	 * sharedRead or sharedWrite.
 	 *  
 	 * @param writerTid
-	 * @throws UnexpectedCommunicationException
 	 */
-	public synchronized void privateWrite(long writerTid, Method writerMethod) throws UnexpectedCommunicationException {
+	public final synchronized void privateWrite(long writerTid, int writerMethod) {
 		this.writerTid = writerTid;
 		if (this.writerMethod != writerMethod) { 
 			this.writerMethod = writerMethod;
@@ -92,13 +92,12 @@ public class State {
 	 *  
 	 * @param writerTid
 	 * @param expectedReaders
-	 * @throws UnexpectedCommunicationException
 	 */
-	public synchronized void sharedWrite(long writerTid, Method writerMethod) throws UnexpectedCommunicationException {
+	public final synchronized void sharedWrite(long writerTid, int writerMethod) {
 		this.writerTid = writerTid;
 		if (this.writerMethod != writerMethod) {
 			this.writerMethod = writerMethod;
-			this.expectedReaders = writerMethod.getExpectedReaders();
+			this.expectedReaders = Spec.expectedReadersByMethodID[writerMethod];
 		}
 	}
 }

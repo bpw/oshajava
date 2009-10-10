@@ -3,7 +3,7 @@ SRC=src
 LIBS=libs
 ASMDIR=$(LIBS)/asm-3.2/lib
 ASMJAR=asm-3.2.jar
-ACMEJAR=Acme.jar
+ACMEJAR=acme-10-7-09.jar
 CLASSPATH=$(ASMDIR)/$(ASMJAR):$(LIBS)/$(ACMEJAR):$(BIN)
 CLASSLIST=$(BIN)/classlist.txt
 OSHAJAR=oshaj.jar
@@ -11,10 +11,10 @@ MANIFEST=$(SRC)/Manifest.txt
 
 JAVAC=javac
 
-MAIN=$(SRC)/oshaj/Instrumentor.java
+MAIN=$(SRC)/oshaj/instrument/Instrumentor.java
 
 build:	classes classlist
-	jar cfm $(OSHAJAR) $(MANIFEST) @$(CLASSLIST) -C $(ASMDIR) $(ASMJAR)
+	jar cfm $(OSHAJAR) $(MANIFEST) @$(CLASSLIST) -C $(ASMDIR) $(ASMJAR) -C $(LIBS) $(ACMEJAR)
 	
 classlist:	classes
 	find $(BIN) -name '*.class' | sed -e 's+$(BIN)/+-C $(BIN) +' > $(CLASSLIST)
@@ -36,7 +36,7 @@ buildtests:
 	cd test && $(JAVAC) *.java
 	
 runtests:	buildtests build
-	cd test && find . -name '*.class' | sed -e 's+^./++' -e 's/.class//' | xargs java -javaagent:../$(DIST)/$(OSHAJAR) 
+	cd test && find . -name '*.class' | sed -e 's+^./++' -e 's/.class//' | xargs java -javaagent:../$(OSHAJAR) 
 
 cleantests:
 	rm -f test/*.class

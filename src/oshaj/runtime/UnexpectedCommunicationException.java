@@ -1,13 +1,13 @@
 package oshaj.runtime;
 
-import oshaj.Method;
+import oshaj.Spec;
 
-public class UnexpectedCommunicationException extends Exception {
-	// TODO store the reader and the writer.
-	private final Method writerMethod, readerMethod;
-	private final long writerTid, readerTid;
+public class UnexpectedCommunicationException extends RuntimeException {
+
+	protected final int writerMethod, readerMethod;
+	protected final long writerTid, readerTid;
 	
-	protected UnexpectedCommunicationException(long writerTid, Method writerMethod, long readerTid, Method readerMethod) {
+	protected UnexpectedCommunicationException(long writerTid, int writerMethod, long readerTid, int readerMethod) {
 		this.writerMethod = writerMethod;
 		this.readerMethod = readerMethod;
 		this.writerTid = writerTid;

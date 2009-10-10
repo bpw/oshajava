@@ -1,0 +1,78 @@
+package oshaj.instrument;
+
+import java.lang.instrument.ClassFileTransformer;
+import java.lang.instrument.IllegalClassFormatException;
+import java.lang.instrument.Instrumentation;
+import java.security.ProtectionDomain;
+
+import org.objectweb.asm.ClassAdapter;
+import org.objectweb.asm.ClassReader;
+import org.objectweb.asm.ClassVisitor;
+import org.objectweb.asm.ClassWriter;
+import org.objectweb.asm.FieldVisitor;
+import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Type;
+
+import oshaj.*;
+import oshaj.runtime.State;
+
+public class Instrumentor extends ClassAdapter {
+	
+	public static final String SHADOW_FIELD_SUFFIX = "__osha_state$";
+	
+	public Instrumentor(ClassVisitor cv) {
+		super(cv);
+	}
+
+	public static void premain(String agentArgs, Instrumentation inst) {
+		System.err.println("Loaded classes:");
+		for (Class c : inst.getAllLoadedClasses()) {
+			System.err.println(c.getName());
+		}
+		// Register the instrumentor with the jvm as a class file transformer.
+		inst.addTransformer(new ClassFileTransformer() {
+			@Override
+			public byte[] transform(ClassLoader loader, String className, Class<?> targetClass,
+					ProtectionDomain protectionDomain, byte[] classFileBuffer)
+					throws IllegalClassFormatException {
+				if (className.startsWith("oshaj.")) {
+					System.err.println("!! Skipped instrumenting " + className);
+					return classFileBuffer;
+				} else {
+					// Use ASM to insert hooks for all the sorts of accesses, acquire, release, maybe fork, join, volatiles, etc.
+					final ClassReader cr = new ClassReader(classFileBuffer);
+					final ClassWriter cw = new ClassWriter(cr, ClassWriter.COMPUTE_FRAMES + ClassWriter.COMPUTE_MAXS);
+					cr.accept(new Instrumentor(cw), ClassReader.SKIP_FRAMES);
+					return cw.toByteArray();
+				}
+			}			
+		});
+		// Add the libraries that our instrumentation hooks will call to the classpath.
+		// inst.appendToSystemClassLoaderSearch(jarFileForRunTimeHooksEtc);
+		System.err.println("oshaj loaded!");
+	}
+
+	@Override
+	public FieldVisitor visitField(int access, String name, String desc, String signature, Object value) {
+		// TODO We only need to watch non-final fields... maybe.
+		// Technically we should record THE write and then all subsequent reads are communication.
+		// But we might be able to cheat on that for performance.
+//		if ((access & Opcodes.ACC_FINAL) == 0) {
+		// if we're accessing the original, then the private, protected, public whatever will work out.
+		final FieldVisitor fv = super.visitField(access, name + SHADOW_FIELD_SUFFIX, State.TYPE, signature, value);
+		if (fv != null) {
+			fv.visitEnd();
+		}
+//		}
+		// TODO Don't forget to initialize all those shadow fields... statics different than instance.
+		return super.visitField(access, name, desc, signature, value);
+	}
+	
+	@Override
+	public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
+		final int id = Spec.getId(name, desc, signature);
+		return new MethodInstrumentor(cv.visitMethod(access, name, desc, signature, exceptions), 
+				id, Spec.inlined(id), Spec.inEdges(id), Spec.outEdges(id));
+	}
+
+}
