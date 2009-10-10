@@ -1,7 +1,5 @@
 package oshaj.runtime;
 
-import org.objectweb.asm.Type;
-
 import oshaj.Spec;
 import acme.util.identityhash.IdentityHashSet;
 
@@ -12,16 +10,6 @@ import acme.util.identityhash.IdentityHashSet;
  */
 public class State {
 	
-	public static final String TYPE = Type.getType(oshaj.runtime.State.class).getInternalName();
-	public static final String PRIVATE_READ_NAME = "privateRead";
-	public static final String PRIVATE_READ_DESC = "(JI)V";
-	public static final String SHARED_READ_NAME = "sharedRead";
-	public static final String SHARED_READ_DESC = "(JI)V";
-	public static final String PRIVATE_WRITE_NAME = "privateWrite";
-	public static final String PRIVATE_WRITE_DESC = "(JI)V";
-	public static final String SHARED_WRITE_NAME = "sharedWrite";
-	public static final String SHARED_WRITE_DESC = "(JI)V";
-
 	/**
 	 * Thread id of the last thread to write to the field associated with this state.
 	 */

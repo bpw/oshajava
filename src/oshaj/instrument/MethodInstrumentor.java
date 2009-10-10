@@ -5,40 +5,29 @@ import org.objectweb.asm.MethodAdapter;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
+import org.objectweb.asm.commons.GeneratorAdapter;
+import org.objectweb.asm.commons.Method;
 
 import oshaj.runtime.State;
 
 
-public class MethodInstrumentor extends MethodAdapter {
+public class MethodInstrumentor extends GeneratorAdapter {
 	
-	protected static final String THREAD_TYPE = Type.getType(Thread.class).getInternalName();
-	protected static final String CURRENT_THREAD_METHOD = "currentThread";
-	protected static final String THREAD_RET_TYPE = "()" + THREAD_TYPE;
-	protected static final String GET_TID_METHOD = "currentThread";
-	protected static final String LONG_RET_TYPE = "()J";
-	
+	protected static final Type THREAD_TYPE = Type.getType(Thread.class);
+	protected static final Method CURRENT_THREAD_METHOD = new Method("java.lang.Thread.currentThread", THREAD_TYPE, new Type[0]);
+	protected static final Method GET_TID_METHOD = new Method("java.lang.Thread.getTid", Type.LONG_TYPE, new Type[0]);
+		
 	protected final int id;
 	protected final boolean inlined;
-	protected final String readHookName, readHookDesc, writeHookName, writeHookDesc;
+	protected final Method readHook, writeHook;
 	
-	public MethodInstrumentor(MethodVisitor parent, int id, boolean inlined, boolean inEdges, boolean outEdges) {
-		super(parent);
+	public MethodInstrumentor(MethodVisitor parent, int access, String name, String desc,
+			int id, boolean inlined, boolean inEdges, boolean outEdges) {
+		super(parent, access, name, desc);
 		this.id = id;
 		this.inlined = inlined;
-		if (inEdges) {
-			readHookName = State.PRIVATE_READ_NAME;
-			readHookDesc = State.PRIVATE_READ_DESC;
-		} else {
-			readHookName = State.SHARED_READ_NAME;
-			readHookDesc = State.SHARED_READ_DESC;
-		}
-		if (outEdges) {
-			writeHookName = State.PRIVATE_WRITE_NAME;
-			writeHookDesc = State.PRIVATE_WRITE_DESC;
-		} else {
-			writeHookName = State.SHARED_WRITE_NAME;
-			writeHookDesc = State.SHARED_WRITE_DESC;			
-		}
+		readHook = ( inEdges ? Instrumentor.SHARED_READ_HOOK : Instrumentor.PRIVATE_READ_HOOK);
+		writeHook = ( outEdges ? Instrumentor.SHARED_WRITE_HOOK : Instrumentor.PRIVATE_WRITE_HOOK);
 	}
 	
 	/***************************************/
@@ -61,35 +50,35 @@ public class MethodInstrumentor extends MethodAdapter {
 	@Override
 	public void visitFieldInsn(int opcode, String owner, String name, String desc) {
 		// Push the current method id. stack -> mid
-		super.visitLdcInsn(id);
+		super.push(id);
 		// Get the current Thread. stack -> mid thread
-		super.visitMethodInsn(Opcodes.INVOKEVIRTUAL, THREAD_TYPE, CURRENT_THREAD_METHOD, THREAD_RET_TYPE);
+		super.invokeVirtual(THREAD_TYPE, CURRENT_THREAD_METHOD);
 		// Get the current Thread's tid. stack -> mid tid
-		super.visitMethodInsn(Opcodes.INVOKEVIRTUAL, THREAD_TYPE, GET_TID_METHOD, LONG_RET_TYPE);
+		super.invokeVirtual(THREAD_TYPE, GET_TID_METHOD);
 		switch(opcode) {
 		case Opcodes.PUTFIELD:
 			// Get the State for this field. stack -> mid tid state
-			super.visitFieldInsn(Opcodes.GETFIELD, owner, name + Instrumentor.SHADOW_FIELD_SUFFIX, State.TYPE);
+			super.getField(Type.getType(owner), name + Instrumentor.SHADOW_FIELD_SUFFIX, Instrumentor.STATE_TYPE);
 			// Call the write hook.
-			super.visitMethodInsn(Opcodes.INVOKEVIRTUAL, State.TYPE, writeHookName, writeHookDesc);
+			super.invokeVirtual(Instrumentor.STATE_TYPE, writeHook);
 			break;
 		case Opcodes.PUTSTATIC:
 			// Get the State for this field. stack -> mid tid state
-			super.visitFieldInsn(Opcodes.GETSTATIC, owner, name + Instrumentor.SHADOW_FIELD_SUFFIX, State.TYPE);
+			super.getStatic(Type.getType(owner), name + Instrumentor.SHADOW_FIELD_SUFFIX, Instrumentor.STATE_TYPE);
 			// Call the static write hook.
-			super.visitMethodInsn(Opcodes.INVOKEVIRTUAL, State.TYPE, writeHookName, writeHookDesc);
+			super.invokeVirtual(Instrumentor.STATE_TYPE, writeHook);
 			break;
 		case Opcodes.GETFIELD:
 			// Get the State for this field. stack -> mid tid state
-			super.visitFieldInsn(Opcodes.GETFIELD, owner, name + Instrumentor.SHADOW_FIELD_SUFFIX, State.TYPE);
+			super.getField(Type.getType(owner), name + Instrumentor.SHADOW_FIELD_SUFFIX, Instrumentor.STATE_TYPE);
 			// Call the read hook.
-			super.visitMethodInsn(Opcodes.INVOKEVIRTUAL, State.TYPE, readHookName, readHookDesc);
+			super.invokeVirtual(Instrumentor.STATE_TYPE, readHook);
 			break;
 		case Opcodes.GETSTATIC:
 			// Get the State for this field. stack -> mid tid state
-			super.visitFieldInsn(Opcodes.GETSTATIC, owner, name + Instrumentor.SHADOW_FIELD_SUFFIX, State.TYPE);
+			super.getStatic(Type.getType(owner), name + Instrumentor.SHADOW_FIELD_SUFFIX, Instrumentor.STATE_TYPE);
 			// Call the static read hook.
-			super.visitMethodInsn(Opcodes.INVOKEVIRTUAL, State.TYPE, readHookName, readHookDesc);
+			super.invokeVirtual(Instrumentor.STATE_TYPE, readHook);
 			break;
 		}
 		// Do the actual op.

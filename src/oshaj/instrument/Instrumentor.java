@@ -12,6 +12,7 @@ import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.FieldVisitor;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Type;
+import org.objectweb.asm.commons.Method;
 
 import oshaj.*;
 import oshaj.runtime.State;
@@ -19,6 +20,14 @@ import oshaj.runtime.State;
 public class Instrumentor extends ClassAdapter {
 	
 	public static final String SHADOW_FIELD_SUFFIX = "__osha_state$";
+	
+	public static final Type STATE_TYPE = Type.getType(oshaj.runtime.State.class);
+	public static final String STATE_TYPE_NAME = STATE_TYPE.getInternalName();
+	private static final Type[] HOOK_ARGS = { Type.LONG_TYPE, Type.INT_TYPE };
+	public static final Method PRIVATE_READ_HOOK = new Method("oshaj.runtime.State.privateRead", Type.VOID_TYPE, HOOK_ARGS);
+	public static final Method SHARED_READ_HOOK = new Method("oshaj.runtime.State.sharedRead", Type.VOID_TYPE, HOOK_ARGS);
+	public static final Method PRIVATE_WRITE_HOOK = new Method("oshaj.runtime.State.privateWrite", Type.VOID_TYPE, HOOK_ARGS);
+	public static final Method SHARED_WRITE_HOOK = new Method("oshaj.runtime.State.sharedWrite", Type.VOID_TYPE, HOOK_ARGS);
 	
 	public Instrumentor(ClassVisitor cv) {
 		super(cv);
@@ -58,7 +67,7 @@ public class Instrumentor extends ClassAdapter {
 		// But we might be able to cheat on that for performance.
 //		if ((access & Opcodes.ACC_FINAL) == 0) {
 		// if we're accessing the original, then the private, protected, public whatever will work out.
-		final FieldVisitor fv = super.visitField(access, name + SHADOW_FIELD_SUFFIX, State.TYPE, signature, value);
+		final FieldVisitor fv = super.visitField(access, name + SHADOW_FIELD_SUFFIX, STATE_TYPE_NAME, signature, value);
 		if (fv != null) {
 			fv.visitEnd();
 		}
@@ -71,6 +80,7 @@ public class Instrumentor extends ClassAdapter {
 	public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
 		final int id = Spec.getId(name, desc, signature);
 		return new MethodInstrumentor(cv.visitMethod(access, name, desc, signature, exceptions), 
+				access, name, desc,
 				id, Spec.inlined(id), Spec.inEdges(id), Spec.outEdges(id));
 	}
 
