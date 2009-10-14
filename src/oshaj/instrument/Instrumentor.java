@@ -44,6 +44,8 @@ public class Instrumentor extends ClassAdapter {
 //		System.exit(0);
 		if (inst.isRedefineClassesSupported()) {
 			System.err.println("Class redinition supported.");
+		} else {
+			System.err.println("Class redefinition not supported. :-(");
 		}
 		// Register the instrumentor with the jvm as a class file transformer.
 		inst.addTransformer(new ClassFileTransformer() {
