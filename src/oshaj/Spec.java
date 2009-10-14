@@ -1,8 +1,7 @@
 package oshaj;
 
+import oshaj.util.BitVector;
 import java.util.HashMap;
-
-import acme.util.identityhash.IdentityHashSet;
 
 public class Spec {
 	
@@ -12,8 +11,9 @@ public class Spec {
 	// TODO populate from the spec. Size expectedReadersByMethodID to
 	// fit exactly. We then use ID > length as an indicator of inlining
 	// later on.
-	public static final IdentityHashSet<Long>[] expectedReadersByMethodID = new IdentityHashSet[INITIAL_METHOD_LIST_SIZE];
-	private static final int firstInlinedID = expectedReadersByMethodID.length;
+	// FIXME make a local copy of BitSet.
+	public static final BitVector[] communicationTable = new BitVector[INITIAL_METHOD_LIST_SIZE];
+	private static final int firstInlinedID = communicationTable.length;
 	public static String[] methodNameByID = new String[INITIAL_METHOD_LIST_SIZE];
 	private static int nextMethodID = firstInlinedID;
 

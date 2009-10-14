@@ -8,13 +8,6 @@ public class RuntimeMonitor {
 		@Override protected IntStack initialValue() { return new IntStack(); }
 	};
 		
-	// thread, state
-	public static void read(State state) {
-		final Thread thread = Thread.currentThread();
-	}
-	
-	public static void write(State state) {}
-	
 	// thread, array, index, state
 	public static void arrayRead() {}
 	

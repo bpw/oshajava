@@ -1,7 +1,8 @@
 package oshaj.runtime;
 
+import oshaj.util.BitVector;
+
 import oshaj.Spec;
-import acme.util.identityhash.IdentityHashSet;
 
 /**
  * 
@@ -20,7 +21,7 @@ public class State {
 	/**
 	 * Method allowed to read in the current state.
 	 */
-	private IdentityHashSet<Long> expectedReaders;
+	protected BitVector readerList;
 	
 	/**
 	 * Checks a read by a private reading method, i.e. a method that has no
@@ -52,7 +53,7 @@ public class State {
 	 * @param readerMethod
 	 */
 	public final synchronized void sharedRead(long readerTid, int readerMethod) {
-		if (readerTid != writerTid && (expectedReaders == null || !expectedReaders.contains(readerMethod))) 
+		if (readerTid != writerTid && (readerList == null || !readerList.get(readerMethod))) 
 			throw new IllegalCommunicationException(writerTid, writerMethod, readerTid, readerMethod);
 	}
 	
@@ -68,7 +69,7 @@ public class State {
 		this.writerTid = writerTid;
 		if (this.writerMethod != writerMethod) { 
 			this.writerMethod = writerMethod;
-			this.expectedReaders = null;
+			this.readerList = null;
 		}
 	}
 	
@@ -79,13 +80,13 @@ public class State {
 	 * sharedRead or sharedWrite.
 	 *  
 	 * @param writerTid
-	 * @param expectedReaders
+	 * @param readerList
 	 */
 	public final synchronized void sharedWrite(long writerTid, int writerMethod) {
 		this.writerTid = writerTid;
 		if (this.writerMethod != writerMethod) {
 			this.writerMethod = writerMethod;
-			this.expectedReaders = Spec.expectedReadersByMethodID[writerMethod];
+			this.readerList = Spec.communicationTable[writerMethod];
 		}
 	}
 }
