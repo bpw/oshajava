@@ -1,6 +1,7 @@
 package oshaj.runtime;
 
 import oshaj.Spec;
+import oshaj.util.WeakConcurrentIdentityHashMap;
 import acme.util.collections.IntStack;
 
 public class RuntimeMonitor {
@@ -8,6 +9,10 @@ public class RuntimeMonitor {
 	protected static final ThreadLocal<IntStack> stacks = new ThreadLocal<IntStack>() {
 		@Override protected IntStack initialValue() { return new IntStack(); }
 	};
+	
+	// TODO make sure this WeakConcurrentIdentityHashMap actually works.
+	protected static final WeakConcurrentIdentityHashMap<Object,State> lockStates = 
+		new WeakConcurrentIdentityHashMap<Object,State>();
 	
 	/**
 	 * Checks a read by a private reading method, i.e. a method that has no
@@ -21,7 +26,8 @@ public class RuntimeMonitor {
 	 * 
 	 * @param readerTid
 	 */
-	public static void privateRead(State state, long readerTid, int readerMethod) {
+	public static void privateRead(final int readerMethod, final State state) {
+		final long readerTid = Thread.currentThread().getId();
 		if (readerTid != state.writerTid) 
 			throw new IllegalCommunicationException(state.writerTid, state.writerMethod, readerTid, readerMethod);
 	}
@@ -38,7 +44,8 @@ public class RuntimeMonitor {
 	 * @param readerTid
 	 * @param readerMethod
 	 */
-	public static void sharedRead(State state, long readerTid, int readerMethod) {
+	public static void sharedRead(final int readerMethod, final State state) {
+		final long readerTid = Thread.currentThread().getId();
 		synchronized(state) {
 			if (readerTid != state.writerTid && (state.readerList == null || !state.readerList.get(readerMethod))) 
 				throw new IllegalCommunicationException(state.writerTid, state.writerMethod, readerTid, readerMethod);
@@ -53,7 +60,8 @@ public class RuntimeMonitor {
 	 *  
 	 * @param writerTid
 	 */
-	public static void privateWrite(State state, long writerTid, int writerMethod) {
+	public static void privateWrite(final int writerMethod, final State state) {
+		final long writerTid = Thread.currentThread().getId();
 		synchronized(state) {
 			state.writerTid = writerTid;
 			if (state.writerMethod != writerMethod) { 
@@ -63,6 +71,10 @@ public class RuntimeMonitor {
 		}
 	}
 	
+	public static State privateFirstWrite(final int writerMethod) {
+		return new State(Thread.currentThread().getId(), writerMethod);
+	}
+
 	/**
 	 * Updates the state to reflect a write by a method with >0 out-edges.
 	 * 
@@ -72,7 +84,8 @@ public class RuntimeMonitor {
 	 * @param writerTid
 	 * @param readerList
 	 */
-	public static void sharedWrite(State state, long writerTid, int writerMethod) {
+	public static void sharedWrite(final int writerMethod, final State state) {
+		final long writerTid = Thread.currentThread().getId();
 		synchronized(state) {
 			state.writerTid = writerTid;
 			if (state.writerMethod != writerMethod) {
@@ -81,22 +94,42 @@ public class RuntimeMonitor {
 			}
 		}
 	}
+	
+	public static State sharedFirstWrite(final int writerMethod) {
+		return new State(Thread.currentThread().getId(), writerMethod, Spec.communicationTable[writerMethod]);
+	}
 
 	public static void arrayRead() {}
 
 	public static void arrayWrite() {}
 	
-	public static void acquire() {}
+	public static void release(final int mid, final Object lock) {
+		final long tid = Thread.currentThread().getId();
+		State state = lockStates.get(lock);
+		if (state == null) {
+			state = lockStates.putIfAbsent(lock, new State(tid, mid, Spec.syncTable[mid]));
+		} 
+		if (state != null) {
+			state.writerMethod = mid;
+			state.writerTid = tid;
+			state.readerList = Spec.syncTable[mid];
+		}
+	}
 	
-	public static void release() {}
+	public static void acquire(final int mid, final Object lock) {
+		final long tid = Thread.currentThread().getId();
+		State state = lockStates.get(lock);
+		if (state != null && (tid != state.writerTid || ! state.readerList.get(mid))) 
+			throw new IllegalSynchronizationException(state.writerTid, state.writerMethod, tid, mid);
+	}
 	
-	public static void enter(int mid) {
+	public static void enter(final int mid) {
 		stacks.get().push(mid);
 	}
 	
-	public static void exit(int mid) {
+	public static void exit(final int mid) {
 		int emid = stacks.get().pop();
 		assert emid == mid;
 	}
-
+	
 }

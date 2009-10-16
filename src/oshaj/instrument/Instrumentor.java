@@ -15,7 +15,7 @@ import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 import org.objectweb.asm.commons.Method;
 
-import com.sun.xml.internal.ws.org.objectweb.asm.Opcodes;
+import org.objectweb.asm.Opcodes;
 
 import oshaj.Spec;
 
@@ -72,7 +72,7 @@ public class Instrumentor extends ClassAdapter {
 			new Type[] { Type.INT_TYPE }
 	);
 		
-	protected static final Type[] ACCESS_HOOK_ARGS = { Type.LONG_TYPE, Type.INT_TYPE };
+	protected static final Type[] ACCESS_HOOK_ARGS = { Type.INT_TYPE, STATE_TYPE };
 	protected static final Method PRIVATE_READ_HOOK = new Method(
 			"oshaj.runtime.Instrumentor.privateRead", 
 			Type.VOID_TYPE, 
@@ -92,6 +92,18 @@ public class Instrumentor extends ClassAdapter {
 			"oshaj.runtime.Instrumentor.sharedWrite", 
 			Type.VOID_TYPE, 
 			ACCESS_HOOK_ARGS
+	);
+	
+	protected static final Type[] FIRST_WRITE_HOOK_ARGS = { Type.INT_TYPE };
+	protected static final Method PRIVATE_FIRST_WRITE_HOOK = new Method(
+			"oshaj.runtime.Instrumentor.privateFirstWrite", 
+			Instrumentor.STATE_TYPE, 
+			FIRST_WRITE_HOOK_ARGS
+	);
+	protected static final Method SHARED_FIRST_WRITE_HOOK = new Method(
+			"oshaj.runtime.Instrumentor.sharedFirstWrite", 
+			Instrumentor.STATE_TYPE, 
+			FIRST_WRITE_HOOK_ARGS
 	);
 	
 	public static void premain(String agentArgs, Instrumentation inst) {
@@ -114,7 +126,8 @@ public class Instrumentor extends ClassAdapter {
 				if (shouldInstrument(className)) {
 					// Use ASM to insert hooks for all the sorts of accesses, acquire, release, maybe fork, join, volatiles, etc.
 					final ClassReader cr = new ClassReader(classFileBuffer);
-					final ClassWriter cw = new ClassWriter(cr, ClassWriter.COMPUTE_MAXS);
+					final ClassWriter cw = new ClassWriter(cr, ClassWriter.COMPUTE_FRAMES); 
+					// TODO figure out how to do frames manually. COMPUTE_MAXS is a 2x cost!
 					cr.accept(new Instrumentor(cw, className), 0);
 					return cw.toByteArray();
 				} else {
@@ -147,15 +160,30 @@ public class Instrumentor extends ClassAdapter {
 	@Override
 	public FieldVisitor visitField(int access, String name, String desc, String signature, Object value) {
 		// TODO option to ignore final fields.
-		// We make all state fields non-final to be able to set them from outside a constructor.
-		final FieldVisitor fv = super.visitField(access & ~Opcodes.ACC_FINAL, name + SHADOW_FIELD_SUFFIX, STATE_TYPE_NAME, signature, value);
+		// We make all state fields non-final to be able to set them from outside a constructor
+		// and volatile to support safe double-checked locking for lazy initialization.
+		// TODO this is not optimal, as it enforces more ordering than the application does on its
+		// own.
+		final FieldVisitor fv = super.visitField(
+				access & ~Opcodes.ACC_FINAL | Opcodes.ACC_VOLATILE, 
+				name + SHADOW_FIELD_SUFFIX, STATE_TYPE_NAME, signature, value
+			);
 		if (fv != null) {
 			fv.visitEnd();
 		}
 		final String stateFieldName = name + STATE_INIT_METHOD_SUFFIX;
 		// Add a method to initialize the shadow field
-		final MethodVisitor mv = super.visitMethod(access, stateFieldName, "()V", "", new String[0]);
-		final GeneratorAdapter init = new GeneratorAdapter(mv, access, name + STATE_INIT_METHOD_SUFFIX, "()V");
+		// TODO this is currently a safe initializer (synchronized, and the state shadow field is 
+		// volatile, to support safe doule-checked locking), but we might be able to apply the
+		// "it's OK to have races if the app has races argument" as long as this doesn't cause issues
+		// with escaping uninitialized but allocated States.
+		// The volatile may be unnecessary if double-checked locking is not an issue if the double-checking
+		// is across method boundaries.  This would rely on the JIT not inlining/optimizing across method
+		// boundaries... not a safe bet. For now, we play it safe.
+		final MethodVisitor mv = super.visitMethod(
+				access | Opcodes.ACC_SYNCHRONIZED, stateFieldName, "()V", "", new String[0]);
+		final GeneratorAdapter init = new GeneratorAdapter(
+				mv, access | Opcodes.ACC_SYNCHRONIZED, name + STATE_INIT_METHOD_SUFFIX, "()V");
 		init.visitCode();
 		// create a new State. stack -> state
 		init.newInstance(STATE_TYPE);

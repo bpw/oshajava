@@ -14,6 +14,7 @@ public class Spec {
 	// TODO to keep the table small, don't give IDs to inlined methods.
 	// Stack dumps will show the context when IllegalCommunicationExceptions are thrown.
 	public static final BitVector[] communicationTable = new BitVector[INITIAL_METHOD_LIST_SIZE];
+	public static final BitVector[] syncTable = new BitVector[INITIAL_METHOD_LIST_SIZE];
 	private static final int firstInlinedID = communicationTable.length;
 	public static String[] methodNameByID = new String[INITIAL_METHOD_LIST_SIZE];
 	private static int nextMethodID = firstInlinedID;
