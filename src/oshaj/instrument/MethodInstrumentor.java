@@ -1,5 +1,6 @@
 package oshaj.instrument;
 
+import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
@@ -9,22 +10,35 @@ import org.objectweb.asm.commons.Method;
 
 public class MethodInstrumentor extends GeneratorAdapter {
 	
-	protected static final Type THREAD_TYPE = Type.getType(Thread.class);
-	protected static final Method CURRENT_THREAD_METHOD = new Method("java.lang.Thread.currentThread", THREAD_TYPE, new Type[0]);
-	protected static final Method GET_TID_METHOD = new Method("java.lang.Thread.getTid", Type.LONG_TYPE, new Type[0]);
-		
-	protected final int id;
+	protected final int mid;
 	protected final boolean inlined;
+	protected final boolean isMain;
+	protected final boolean isSynchronized;
+//	protected final boolean isConstructor;
+	
 	protected final Method readHook, writeHook;
 	
 	protected static final int TEMP_LOCAL = 1;
 	protected int stackPeak = 0;
 	
-	public MethodInstrumentor(MethodVisitor parent, int access, String name, String desc,
+	protected Label end, handler;
+	
+	public MethodInstrumentor(MethodVisitor parent, int access, String name, String desc, 
 			int id, boolean inlined, boolean inEdges, boolean outEdges) {
 		super(parent, access, name, desc);
-		this.id = id;
+		this.mid = id;
 		this.inlined = inlined;
+		if (inlined) {
+			end = new Label();
+			handler = new Label();
+		}
+		isMain = (
+				(access == (Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC)) 
+				&& name.endsWith(".main") 
+				&& desc.equals("([Ljava/lang/String;)V")
+		);
+		isSynchronized = (access & Opcodes.ACC_SYNCHRONIZED) != 0;
+//		isConstructor = name.endsWith("<init>");
 		readHook = ( inEdges ? Instrumentor.SHARED_READ_HOOK : Instrumentor.PRIVATE_READ_HOOK);
 		writeHook = ( outEdges ? Instrumentor.SHARED_WRITE_HOOK : Instrumentor.PRIVATE_WRITE_HOOK);
 	}
@@ -36,16 +50,28 @@ public class MethodInstrumentor extends GeneratorAdapter {
 
 	@Override
 	public void visitCode() {
-		// TODO if not inlined, insert enter hook.
 		super.visitCode();
+		Label start = new Label();
+		if (!inlined) {
+			super.invokeStatic(Instrumentor.RUNTIMEMONITOR_TYPE, Instrumentor.ENTER_HOOK);
+		}
+		if (isSynchronized) {
+			// TODO call acquire hook.
+		}
+		super.visitTryCatchBlock(start, end, handler, null);
+		super.visitLabel(start);
 	}
 
 	@Override
 	public void visitEnd() {
-		// TODO if not inlined, insert exit hook, also at any other exit point.
-		// Actually, do:
-		// try { enter(id); ... method body ... } finally { exit(id) }
-		// TODO if it's synchronized, add acquire, release.
+		super.visitLabel(end); // TODO use same label for end and handler?
+		super.visitLabel(handler);
+		if (isSynchronized) {
+			// TODO call release hook.
+		}
+		if (!inlined) {
+			super.invokeStatic(Instrumentor.RUNTIMEMONITOR_TYPE, Instrumentor.EXIT_HOOK);
+		}
 		super.visitEnd();
 	}
 	
@@ -62,40 +88,83 @@ public class MethodInstrumentor extends GeneratorAdapter {
 	 */
 	@Override
 	public void visitFieldInsn(int opcode, String owner, String name, String desc) {
+		// stack is initially: obj
 		if (opcode == Opcodes.PUTFIELD || opcode == Opcodes.GETFIELD) {
-			// save the target object.
-			
+			// if instance field, dup the target. stack -> obj obj
+			super.dup();
 		}
-		// Push the current method id. stack -> mid
-		super.push(id);
-		// Get the current Thread. stack -> mid thread
-		super.invokeVirtual(THREAD_TYPE, CURRENT_THREAD_METHOD);
-		// Get the current Thread's tid. stack -> mid tid
-		super.invokeVirtual(THREAD_TYPE, GET_TID_METHOD);
+		
+		
+		// FIXME
+		
+		
+		// NOTE: in the stacks below, <obj> is only there if this is an
+		// instance field op. It was there to start.
+		
+		// Push the current method id. stack -> <obj> mid
+		super.push(mid);
+		// Get the current Thread. stack -> <obj> mid thread
+		super.invokeStatic(Instrumentor.THREAD_TYPE, Instrumentor.CURRENT_THREAD_METHOD);
+		// Get the current Thread's tid. stack -> <obj> mid tid
+		super.invokeVirtual(Instrumentor.THREAD_TYPE, Instrumentor.GET_TID_METHOD);
+		
+		final Type ownerType = Type.getType(owner);
+		final String stateFieldName = name + Instrumentor.SHADOW_FIELD_SUFFIX; 
+		final Label nonNullState = new Label();
+
 		switch(opcode) {
 		case Opcodes.PUTFIELD:
-			// Get the State for this field. stack -> mid tid state
-			super.getField(Type.getType(owner), name + Instrumentor.SHADOW_FIELD_SUFFIX, Instrumentor.STATE_TYPE);
-			// Call the write hook. stack ->
-			super.invokeVirtual(Instrumentor.STATE_TYPE, writeHook);
+			// Get the State for this field. stack -> <obj> mid tid state
+			super.getField(ownerType, stateFieldName, Instrumentor.STATE_TYPE);
+			// If null, create one.
+			// dup the state. stack -> <obj> mid tid state state
+			super.dup();
+			// if non-null, jump ahead. stack -> <obj> mid tid state
+			super.ifNonNull(nonNullState);
+			// if null, pop the null. stack -> <obj> mid tid
+			super.pop();
+			// load this. stack -> <obj> mid tid this
+			super.loadThis();
+			// initialize the state field. stack -> <obj> mid tid state
+			super.invokeVirtual(ownerType, new Method(
+					ownerType.getInternalName()+ "." + name + Instrumentor.STATE_INIT_METHOD_SUFFIX, "()V"));
+			// label for non-null jump target. stack == <obj> mid tid state
+			super.mark(nonNullState);
+			// Call the write hook. stack -> <obj> 
+			super.invokeStatic(Instrumentor.RUNTIMEMONITOR_TYPE, writeHook);
 			break;
 		case Opcodes.PUTSTATIC:
 			// Get the State for this field. stack -> mid tid state
-			super.getStatic(Type.getType(owner), name + Instrumentor.SHADOW_FIELD_SUFFIX, Instrumentor.STATE_TYPE);
+			super.getStatic(ownerType, stateFieldName, Instrumentor.STATE_TYPE);
+			// If null, create one.
+			// dup the state. stack -> mid tid state state
+			super.dup();
+			// if non-null, jump ahead. stack -> mid tid state
+			super.ifNonNull(nonNullState);
+			// if null, pop the null. stack -> mid tid
+			super.pop();
+			// initialize the state field. stack -> mid tid state
+			super.invokeVirtual(ownerType, new Method(
+					ownerType.getInternalName()+ "." + name + Instrumentor.STATE_INIT_METHOD_SUFFIX, "()V"));
+			// label for non-null jump target. stack == mid tid state
+			super.mark(nonNullState);
 			// Call the static write hook. stack ->
-			super.invokeVirtual(Instrumentor.STATE_TYPE, writeHook);
+			super.invokeStatic(Instrumentor.RUNTIMEMONITOR_TYPE, writeHook);
 			break;
 		case Opcodes.GETFIELD:
-			// Get the State for this field. stack -> mid tid state
-			super.getField(Type.getType(owner), name + Instrumentor.SHADOW_FIELD_SUFFIX, Instrumentor.STATE_TYPE);
-			// Call the read hook. stack ->
-			super.invokeVirtual(Instrumentor.STATE_TYPE, readHook);
+			// load this
+			// Get the State for this field. stack -> <obj> mid tid state
+			super.getField(ownerType, stateFieldName, Instrumentor.STATE_TYPE);
+//			super.ifNull(nonNullState);
+			// Call the read hook. stack -> <obj> 
+			super.invokeStatic(Instrumentor.RUNTIMEMONITOR_TYPE, readHook);
 			break;
 		case Opcodes.GETSTATIC:
 			// Get the State for this field. stack -> mid tid state
-			super.getStatic(Type.getType(owner), name + Instrumentor.SHADOW_FIELD_SUFFIX, Instrumentor.STATE_TYPE);
+			super.getStatic(ownerType, stateFieldName, Instrumentor.STATE_TYPE);
+			// TODO we assume it's not null. (watch out for Frame changes if you do otherwise...)
 			// Call the static read hook. stack ->
-			super.invokeVirtual(Instrumentor.STATE_TYPE, readHook);
+			super.invokeStatic(Instrumentor.RUNTIMEMONITOR_TYPE, readHook);
 			break;
 		}
 		// Do the actual op.

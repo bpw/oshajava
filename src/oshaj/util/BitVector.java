@@ -1,7 +1,14 @@
 package oshaj.util;
 
-public class BitVector {
+import java.io.Serializable;
 
+public class BitVector implements Serializable {
+
+	/**
+	 * Auto-generated version ID.
+	 */
+	private static final long serialVersionUID = 2152032957464344617L;
+	
 	protected static final int SLOT_SIZE = 32;
 	protected int[] bits;
 	protected int maxBitIndex;

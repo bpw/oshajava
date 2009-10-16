@@ -1,9 +1,13 @@
 package oshaj.runtime;
 
-import oshaj.Spec;
 
 public class IllegalCommunicationException extends RuntimeException {
 
+	/**
+	 * Auto-generated version ID.
+	 */
+	private static final long serialVersionUID = -8360898879626150853L;
+	
 	protected final int writerMethod, readerMethod;
 	protected final long writerTid, readerTid;
 	
