@@ -3,13 +3,14 @@ package oshaj.instrument;
 import java.util.HashMap;
 import oshaj.util.BitVectorIntSet;
 import oshaj.util.Cons;
+import oshaj.util.IntSet;
 
 public class MethodRegistry {
 	
 	/**
 	 * Initial size for the method ID -> signature map.
 	 */
-	private static final int INITIAL_METHOD_LIST_SIZE = 512;
+	private static final int INITIAL_METHOD_LIST_SIZE = 1024;
 	
 	/**
 	 * Counter for introducing new method IDs.  Non-synchronized access illegal.
@@ -30,6 +31,8 @@ public class MethodRegistry {
 	 */
 	public static String[] methodIDtoSig = new String[INITIAL_METHOD_LIST_SIZE];
 	
+	public static IntSet[] policyTable = new IntSet[INITIAL_METHOD_LIST_SIZE];
+	
 	/**
 	 * ID requests for methods in classes that have not yet been loaded.  
 	 * Non-synchronized access illegal.
@@ -44,9 +47,10 @@ public class MethodRegistry {
 	 * @param sig Method signature
 	 * @return Unique ID
 	 */
-	public static synchronized int register(String sig) {
+	public static synchronized int register(final String sig, final IntSet readerSet) {
 		final int id = nextID;
 		methodSigToID.put(sig, id);
+		policyTable[id] = readerSet;
 		++nextID;
 		
 		// Add IDs to sets that have requested this signature.
@@ -63,10 +67,14 @@ public class MethodRegistry {
 		}
 		
 		// resize if necessary.
-		if (nextID == methodIDtoSig.length) {
-			String[] tmp = new String[2*methodIDtoSig.length];
+		if (nextID == policyTable.length) {
+			System.err.println("!!!!! UNSAFE resize triggered. !!!!!");
+			String[] tmp = new String[2*nextID];
 			System.arraycopy(methodIDtoSig, 0, tmp, 0, nextID);
 			methodIDtoSig = tmp;
+			IntSet[] p = new IntSet[2*nextID];
+			System.arraycopy(policyTable, 0, p, 0, nextID);
+			policyTable = p;
 		}
 		return id;
 	}

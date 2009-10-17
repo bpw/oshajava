@@ -2,7 +2,7 @@ package oshaj.util;
 
 import java.io.Serializable;
 
-public class BitVectorIntSet implements Serializable {
+public class BitVectorIntSet extends IntSet implements Serializable {
 
 	/**
 	 * Auto-generated version ID.

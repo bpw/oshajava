@@ -22,4 +22,14 @@ public class Locking {
 		l.i = 9;
 		l.foo();
 	}
+	
+	public static synchronized void bar() {
+		int z = 0;
+	}
+	
+	public void baz() {
+		synchronized(Locking.class) {
+			i ++;
+		}
+	}
 }

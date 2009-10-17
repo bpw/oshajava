@@ -2,21 +2,22 @@ package oshaj.runtime;
 
 import oshaj.instrument.MethodRegistry;
 import oshaj.util.BitVectorIntSet;
-import oshaj.util.IntSet;
 import oshaj.util.UniversalIntSet;
 import oshaj.util.WeakConcurrentIdentityHashMap;
 import acme.util.collections.IntStack;
 
 public class RuntimeMonitor {
-	
+
 	protected static final ThreadLocal<IntStack> stacks = new ThreadLocal<IntStack>() {
 		@Override protected IntStack initialValue() { return new IntStack(); }
 	};
-	
+
 	// TODO make sure this WeakConcurrentIdentityHashMap actually works.
-	protected static final WeakConcurrentIdentityHashMap<Object,State> lockStates = 
-		new WeakConcurrentIdentityHashMap<Object,State>();
-	
+	// we need a concurrne hash map b/c access for multiple locks at once is not
+	// protected by the app locks...
+	protected static final WeakConcurrentIdentityHashMap<Object,LockState> lockStates = 
+		new WeakConcurrentIdentityHashMap<Object,LockState>();
+
 	/**
 	 * Checks a read by a private reading method, i.e. a method that has no
 	 * in-edges and can only read data written by the same thread.
@@ -40,7 +41,7 @@ public class RuntimeMonitor {
 		if (readerTid != state.writerTid) 
 			throw new IllegalCommunicationException(state.writerTid, state.writerMethod, readerTid, readerMethod);
 	}
-	
+
 	/**
 	 * Checks a read by a self-reading method, i.e. a method that has only one
 	 * in edge, a self edge. (Another future optimization.)
@@ -56,7 +57,7 @@ public class RuntimeMonitor {
 		if (readerTid != state.writerTid && readerMethod != state.writerMethod) 
 			throw new IllegalCommunicationException(state.writerTid, state.writerMethod, readerTid, readerMethod);
 	}
-	
+
 	/**
 	 * Checks a read by a shared reading method, i.e. a method that has in-edges
 	 * and can read a write by the same thread or a write in one of the
@@ -76,7 +77,7 @@ public class RuntimeMonitor {
 				throw new IllegalCommunicationException(state.writerTid, state.writerMethod, readerTid, readerMethod);
 		}
 	}
-	
+
 	/**
 	 * Updates the state to reflect a write by a method with no out-edges.
 	 * 
@@ -95,7 +96,7 @@ public class RuntimeMonitor {
 			}
 		}
 	}
-	
+
 	public static State privateFirstWrite(final int writerMethod) {
 		return new State(Thread.currentThread().getId(), writerMethod);
 	}
@@ -109,19 +110,19 @@ public class RuntimeMonitor {
 	 * @param writerTid
 	 * @param readerSet
 	 */
-	public static void protectedWrite(final IntSet readerSet, final int writerMethod, final State state) {
+	public static void protectedWrite(final int writerMethod, final State state) {
 		final long writerTid = Thread.currentThread().getId();
 		synchronized(state) {
 			state.writerTid = writerTid;
 			if (state.writerMethod != writerMethod) {
 				state.writerMethod = writerMethod;
-				state.readerSet = readerSet;
+				state.readerSet = MethodRegistry.policyTable[writerMethod];
 			}
 		}
 	}
-	
-	public static State protectedFirstWrite(final IntSet readerSet, final int writerMethod) {
-		return new State(Thread.currentThread().getId(), writerMethod, readerSet);
+
+	public static State protectedFirstWrite(final int writerMethod) {
+		return new State(Thread.currentThread().getId(), writerMethod, MethodRegistry.policyTable[writerMethod]);
 	}
 
 	public static void publicWrite(final int writerMethod, final State state) {
@@ -134,45 +135,66 @@ public class RuntimeMonitor {
 			}
 		}
 	}
-	
+
 	public static State publicFirstWrite(final int writerMethod) {
 		return new State(Thread.currentThread().getId(), writerMethod, UniversalIntSet.set);
 	}
-	
-	
+
+
 	public static void arrayRead() {}
 
 	public static void arrayWrite() {}
-	
-	public static void release(final int mid, final Object lock, final IntSet readerSet) {
-		final long tid = Thread.currentThread().getId();
-		State state = lockStates.get(lock);
-		if (state == null) {
-			state = lockStates.putIfAbsent(lock, new State(tid, mid, readerSet));
-		} 
-		if (state != null) {
-			state.writerMethod = mid;
-			state.writerTid = tid;
-			state.readerSet = readerSet;
-		}
+
+	/**
+	 * Lock release hook.  Since things are well-scoped in Java, we'll just do all the work
+	 * in acquire.  Only need to hit the reentrancy counter here.
+	 * 
+	 * @param lock
+	 */
+	public static void release(final Object lock) {
+		lockStates.get(lock).depth--;
 	}
-	
+
+	/**
+	 * Lock acquire hook.
+	 * 
+	 * @param readerSet
+	 * @param mid
+	 * @param lock
+	 */
 	public static void acquire(final int mid, final Object lock) {
 		final long tid = Thread.currentThread().getId();
-		State state = lockStates.get(lock);
-		if (state != null && (tid != state.writerTid || ! state.readerSet.contains(mid))) 
-			throw new IllegalSynchronizationException(state.writerTid, state.writerMethod, tid, mid);
+		LockState state = lockStates.get(lock);
+		if (state == null) {
+			state = lockStates.put(lock, new LockState(tid, mid, MethodRegistry.policyTable[mid]));
+			assert state == null;
+		} else if (state.depth == 0) {
+			// only care on first (non-reentrant) acquire, since it matches with what will be
+			// the last (real) release.
+			if (tid != state.writerTid && (state.readerSet == null || ! state.readerSet.contains(mid))) {
+				throw new IllegalSynchronizationException(state.writerTid, state.writerMethod, tid, mid);
+			} else {
+				state.writerMethod = mid;
+				state.writerTid = tid;
+				state.readerSet = MethodRegistry.policyTable[mid];
+			}
+		} else if (state.depth < 0) {
+			throw new IllegalStateException("Bad lock scoping.");
+		}
 	}
 	
 	public static void enter(final int mid) {
 		stacks.get().push(mid);
 	}
-	
-	public static void exit(final int mid) {
-		int emid = stacks.get().pop();
-		assert emid == mid;
+
+	public static void exit() {
+		stacks.get().pop();
 	}
 	
+	public static int currentMid() { // TODO could replace with opt. to have privateRead, inlinePrivateRead, etc.
+		return stacks.get().top();
+	}
+
 	public static BitVectorIntSet buildSet(String[] readers) {
 		final BitVectorIntSet set = new BitVectorIntSet();
 		for (String r : readers) {
@@ -180,5 +202,5 @@ public class RuntimeMonitor {
 		}
 		return set;
 	}
-	
+
 }

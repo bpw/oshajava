@@ -45,6 +45,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import acme.util.Util;
 
+@SuppressWarnings("unchecked")
 
 /**
  * A hash table supporting full concurrency of retrievals and

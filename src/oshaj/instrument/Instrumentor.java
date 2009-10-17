@@ -4,8 +4,6 @@ import java.lang.instrument.ClassFileTransformer;
 import java.lang.instrument.IllegalClassFormatException;
 import java.lang.instrument.Instrumentation;
 import java.security.ProtectionDomain;
-import java.util.HashMap;
-import java.util.Map;
 
 import org.objectweb.asm.ClassAdapter;
 import org.objectweb.asm.ClassReader;
@@ -51,11 +49,6 @@ public class Instrumentor extends ClassAdapter {
 	protected static final String STATE_INIT_METHOD_SUFFIX = "__osha_state_init$";
 	protected static final String LOCK_STATE_NAME = "__osha_lock_state$";
 	protected static final String VOID_DESC = "()V";
-	protected static final String READERSET_FIELD_PREFIX = "__osha_readers_for_method";
-	protected static final String READERSET_INIT_NAME = "__osha_readersets_init$";
-	protected static final String READERSET_INIT_DESC = Type.getDescriptor(oshaj.util.IntSet.class);
-
-	protected static final int READERSET_INIT_ACCESS = Opcodes.ACC_PRIVATE | Opcodes.ACC_STATIC;
 	
 	protected static final Type[] ARGS_NONE = new Type[0];
 	protected static final Type[] ARGS_INT = { Type.INT_TYPE };
@@ -67,20 +60,24 @@ public class Instrumentor extends ClassAdapter {
 		new Method("buildSet", BITVECTORINTSET_TYPE, new Type[] {Type.getType(String[].class)});
 	
 	protected static final Method HOOK_ENTER = new Method("enter", Type.VOID_TYPE, ARGS_INT);
-	protected static final Method HOOK_EXIT  = new Method("exit",  Type.VOID_TYPE, ARGS_INT);
+	protected static final Method HOOK_EXIT  = new Method("exit",  Type.VOID_TYPE, ARGS_NONE);
+	protected static final Method HOOK_MID  = new Method("currentMid",  Type.INT_TYPE, ARGS_NONE);
 	
 	protected static final Method HOOK_PRIVATE_READ   = new Method("privateRead", Type.VOID_TYPE, ARGS_INT_STATE);
 	protected static final Method HOOK_PROTECTED_READ = new Method("protectedRead", Type.VOID_TYPE, ARGS_INT_STATE);
 
 	protected static final Method HOOK_PRIVATE_WRITE  = new Method("privateWrite", Type.VOID_TYPE, ARGS_INT_STATE);
-	protected static final Method HOOK_PRIVATE_FIRST_WRITE   = new Method("privateFirstWrite", STATE_TYPE, ARGS_INT);
-	protected static final Method HOOK_PROTECTED_WRITE   = 
-		new Method("protectedWrite", Type.VOID_TYPE, new Type[] { Type.INT_TYPE, STATE_TYPE, INTSET_TYPE });
-	protected static final Method HOOK_PROTECTED_FIRST_WRITE = 
-		new Method("protectedFirstWrite", STATE_TYPE, new Type[] { Type.INT_TYPE, INTSET_TYPE });
+	protected static final Method HOOK_PRIVATE_FIRST_WRITE = new Method("privateFirstWrite", STATE_TYPE, ARGS_INT);
+	protected static final Method HOOK_PROTECTED_WRITE = new Method("protectedWrite", Type.VOID_TYPE, ARGS_INT_STATE);
+	protected static final Method HOOK_PROTECTED_FIRST_WRITE = new Method("protectedFirstWrite", STATE_TYPE, ARGS_INT);
 	protected static final Method HOOK_PUBLIC_WRITE       = new Method("publicWrite", STATE_TYPE, ARGS_INT_STATE);
 	protected static final Method HOOK_PUBLIC_FIRST_WRITE = new Method("publicFirstWrite", STATE_TYPE, ARGS_INT);
 		
+	protected static final Method HOOK_ACQUIRE = 
+		new Method("acquire", Type.VOID_TYPE, new Type[] { Type.INT_TYPE, Type.getType(Object.class) });
+	protected static final Method HOOK_RELEASE = 
+		new Method("release",  Type.VOID_TYPE, new Type[] { Type.getType(Object.class) });
+
 	/****************************************************************************/
 
 	public static void premain(String agentArgs, Instrumentation inst) {
@@ -125,9 +122,6 @@ public class Instrumentor extends ClassAdapter {
 	protected String className;
 	protected boolean clinitSeen = false;
 	protected Type classType;
-	
-	// FIXME import
-	protected final HashMap<Integer,String[]> readerSets = new HashMap<Integer,String[]>();
 	
 	public Instrumentor(ClassVisitor cv) {
 		super(cv);
@@ -204,72 +198,8 @@ public class Instrumentor extends ClassAdapter {
 	
 	@Override
 	public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
-		final int id = MethodRegistry.register(signature);
 		return new MethodInstrumentor(super.visitMethod(access, name, desc, signature, exceptions),
-				access, name, desc, id, this);
+				access, name, desc, this);
 	}
 	
-	protected void addReaderSet(int mid, String[] readers) {
-		readerSets.put(mid, readers);
-	}
-	
-	@Override
-	public void visitEnd() {
-		if (!clinitSeen) {
-			System.err.println("!!!!!  no <clinit> seen. creating one. !!!!!");
-			final MethodVisitor mv = super.visitMethod(
-					Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC, "\"<clinit>\"", VOID_DESC, null, null);
-			final GeneratorAdapter clinit = new GeneratorAdapter(
-					mv, Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC, "\"<clinit>\"", VOID_DESC);
-			clinit.visitCode();
-			clinit.invokeStatic(RUNTIME_MONITOR_TYPE, new Method(READERSET_INIT_NAME, READERSET_INIT_DESC));
-			clinit.visitEnd();
-		}
-		readersetSetup();
-		super.visitEnd();
-	}
-	
-	private void readersetSetup() {
-		
-		// Create all the readerset fields, one per method.
-		for (Map.Entry<Integer, String[]> e : readerSets.entrySet()) {
-			if (e.getValue() != null) { // @ReadBy needs a field.
-				super.visitField(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC, 
-						READERSET_FIELD_PREFIX + e.getKey(), VOID_DESC, null, null);
-			} 
-		}
-		
-		// Create a big ol' static method to initialize them. (This is called from clinit.)
-		final MethodVisitor mv = super.visitMethod(
-				READERSET_INIT_ACCESS, READERSET_INIT_NAME, VOID_DESC, null, null);
-		final GeneratorAdapter init = new GeneratorAdapter(
-				mv, READERSET_INIT_ACCESS, READERSET_INIT_NAME, VOID_DESC);
-		init.visitCode();
-		
-		// initialize each one.
-		for (Map.Entry<Integer, String[]> e : readerSets.entrySet()) {
-			final String[] readers = e.getValue();
-			if (readers != null) { // @ReadBy
-				// create an array. stack -> array
-				init.newArray(STRING_TYPE);
-				// for each index, put in the string.
-				for (int i = 0; i < readers.length; i++) {
-					// dup. stack -> array array
-					init.dup();
-					// push index. stack -> array array i
-					init.push(i);
-					// push string. stack -> array array i string
-					init.push(readers[i]);
-					// array store. stack -> array
-					init.arrayStore(STRING_TYPE);
-				}
-				// call MethodRegistry.buildSet(array). stack -> set
-				init.invokeStatic(RUNTIME_MONITOR_TYPE, HOOK_BUILD_SET);
-				// putstatic into shadow field. stack ->
-				init.putStatic(Type.getObjectType(className), READERSET_FIELD_PREFIX + e.getKey(), INTSET_TYPE);
-			}
-		}
-		init.visitEnd();
-	}
-
 }
