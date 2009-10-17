@@ -21,6 +21,12 @@ public class RuntimeMonitor {
 	 * Checks a read by a private reading method, i.e. a method that has no
 	 * in-edges and can only read data written by the same thread.
 	 * 
+	 * TODO dynamic spec-loading prevents the use of this fast path for the 
+	 * time being.  Pre-processing of the whole spec is needed to know that
+	 * a method has no in-edges.
+	 * 
+	 * TODO note that you can't have one in the same program as a public writer.
+	 * 
 	 * This method need not be synchronized. Only one read is performed. If it
 	 * happens to interleave with a privateRead or sharedRead call, no harm done
 	 * since there's no writing done.  If it happens to interleave with a 
@@ -32,6 +38,22 @@ public class RuntimeMonitor {
 	public static void privateRead(final int readerMethod, final State state) {
 		final long readerTid = Thread.currentThread().getId();
 		if (readerTid != state.writerTid) 
+			throw new IllegalCommunicationException(state.writerTid, state.writerMethod, readerTid, readerMethod);
+	}
+	
+	/**
+	 * Checks a read by a self-reading method, i.e. a method that has only one
+	 * in edge, a self edge. (Another future optimization.)
+	 * 
+	 * TODO also, a SingletonIntSet to optimize reads in methods with one
+	 * (non-self) in edge.
+	 * 
+	 * @param readerMethod
+	 * @param state
+	 */
+	public static void selfRead(final int readerMethod, final State state) {
+		final long readerTid = Thread.currentThread().getId();
+		if (readerTid != state.writerTid && readerMethod != state.writerMethod) 
 			throw new IllegalCommunicationException(state.writerTid, state.writerMethod, readerTid, readerMethod);
 	}
 	
@@ -87,7 +109,7 @@ public class RuntimeMonitor {
 	 * @param writerTid
 	 * @param readerSet
 	 */
-	public static void protectedWrite(final int writerMethod, final State state, final IntSet readerSet) {
+	public static void protectedWrite(final IntSet readerSet, final int writerMethod, final State state) {
 		final long writerTid = Thread.currentThread().getId();
 		synchronized(state) {
 			state.writerTid = writerTid;
@@ -98,7 +120,7 @@ public class RuntimeMonitor {
 		}
 	}
 	
-	public static State protectedFirstWrite(final int writerMethod, final IntSet readerSet) {
+	public static State protectedFirstWrite(final IntSet readerSet, final int writerMethod) {
 		return new State(Thread.currentThread().getId(), writerMethod, readerSet);
 	}
 

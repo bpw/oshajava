@@ -1,5 +1,3 @@
 package oshaj.annotation;
 
-public @interface Inline {
-
-}
+public @interface Inline { }

@@ -41,7 +41,11 @@ public class Instrumentor extends ClassAdapter {
 	protected static final Type BITVECTORINTSET_TYPE = Type.getType(oshaj.util.BitVectorIntSet.class);
 	protected static final Type STATE_TYPE           = Type.getType(oshaj.runtime.State.class);
 	protected static final Type RUNTIME_MONITOR_TYPE = Type.getType(oshaj.runtime.RuntimeMonitor.class);
-
+	
+	protected static final String ANNOT_INLINE_DESC = Type.getDescriptor(oshaj.annotation.Inline.class);
+	protected static final String ANNOT_THREAD_PRIVATE_DESC = Type.getDescriptor(oshaj.annotation.ThreadPrivate.class);
+	protected static final String ANNOT_READ_BY_DESC = Type.getDescriptor(oshaj.annotation.ReadBy.class);
+	protected static final String ANNOT_READ_BY_ALL_DESC = Type.getDescriptor(oshaj.annotation.ReadByAll.class);
 	protected static final String STATE_TYPE_NAME = STATE_TYPE.getInternalName();
 	protected static final String SHADOW_FIELD_SUFFIX = "__osha_state$";
 	protected static final String STATE_INIT_METHOD_SUFFIX = "__osha_state_init$";
@@ -50,7 +54,7 @@ public class Instrumentor extends ClassAdapter {
 	protected static final String READERSET_FIELD_PREFIX = "__osha_readers_for_method";
 	protected static final String READERSET_INIT_NAME = "__osha_readersets_init$";
 	protected static final String READERSET_INIT_DESC = Type.getDescriptor(oshaj.util.IntSet.class);
-	
+
 	protected static final int READERSET_INIT_ACCESS = Opcodes.ACC_PRIVATE | Opcodes.ACC_STATIC;
 	
 	protected static final Type[] ARGS_NONE = new Type[0];
@@ -76,9 +80,7 @@ public class Instrumentor extends ClassAdapter {
 		new Method("protectedFirstWrite", STATE_TYPE, new Type[] { Type.INT_TYPE, INTSET_TYPE });
 	protected static final Method HOOK_PUBLIC_WRITE       = new Method("publicWrite", STATE_TYPE, ARGS_INT_STATE);
 	protected static final Method HOOK_PUBLIC_FIRST_WRITE = new Method("publicFirstWrite", STATE_TYPE, ARGS_INT);
-	
-
-	
+		
 	/****************************************************************************/
 
 	public static void premain(String agentArgs, Instrumentation inst) {
@@ -93,7 +95,7 @@ public class Instrumentor extends ClassAdapter {
 						final ClassReader cr = new ClassReader(classFileBuffer);
 						final ClassWriter cw = new ClassWriter(cr, ClassWriter.COMPUTE_FRAMES); 
 						// TODO figure out how to do frames manually. COMPUTE_MAXS is a 2x cost!
-						cr.accept(new Instrumentor(cw, className), 0);
+						cr.accept(new Instrumentor(cw), 0);
 						return cw.toByteArray();
 					} else {
 						System.err.println("!! Skipped instrumenting " + className);
@@ -120,15 +122,23 @@ public class Instrumentor extends ClassAdapter {
 
 	/**************************************************************************/
 	
-	protected final String className;
+	protected String className;
 	protected boolean clinitSeen = false;
+	protected Type classType;
 	
 	// FIXME import
 	protected final HashMap<Integer,String[]> readerSets = new HashMap<Integer,String[]>();
 	
-	public Instrumentor(ClassVisitor cv, String className) {
+	public Instrumentor(ClassVisitor cv) {
 		super(cv);
-		this.className = className;
+	}
+
+	@Override
+	public void visit(int version, int access, String name, String signature,
+			String superName, String[] interfaces) {
+		className = name;
+		classType = Type.getObjectType(name);
+		super.visit(version, access, name, signature, superName, interfaces);
 	}
 
 	@Override
@@ -207,12 +217,10 @@ public class Instrumentor extends ClassAdapter {
 	public void visitEnd() {
 		if (!clinitSeen) {
 			System.err.println("!!!!!  no <clinit> seen. creating one. !!!!!");
-			// TODO create clinit method.
-			// Create a big ol' static method to initialize them. (This is called from clinit.)
 			final MethodVisitor mv = super.visitMethod(
-					Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC, "<clinit>", VOID_DESC, null, null);
+					Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC, "\"<clinit>\"", VOID_DESC, null, null);
 			final GeneratorAdapter clinit = new GeneratorAdapter(
-					mv, Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC, "<clinit>", VOID_DESC);
+					mv, Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC, "\"<clinit>\"", VOID_DESC);
 			clinit.visitCode();
 			clinit.invokeStatic(RUNTIME_MONITOR_TYPE, new Method(READERSET_INIT_NAME, READERSET_INIT_DESC));
 			clinit.visitEnd();

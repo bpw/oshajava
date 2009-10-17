@@ -3,15 +3,15 @@ package oshaj.instrument;
 import org.objectweb.asm.AnnotationVisitor;
 
 public class AnnotationRecorder implements AnnotationVisitor {
-	
+
 	protected final MethodInstrumentor mi;
-	
+
 	public AnnotationRecorder(MethodInstrumentor mi) {
 		this.mi = mi;
 	}
-	
+
 	public void visit(String name, Object value) {
-		if (name.equals("value")) {
+		if (name.equals("readers")) {
 			mi.setReaders((String[])value);
 		}
 	}

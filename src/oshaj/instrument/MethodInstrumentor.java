@@ -16,38 +16,28 @@ public class MethodInstrumentor extends GeneratorAdapter {
 	protected final boolean isSynchronized;
 	protected final boolean isConstructor;
 	protected final boolean isClinit;
-	protected boolean inlined = true;
 	
-	protected Method readHook = null, writeHook = null, firstWriteHook = null;
+	public static enum Policy { INLINE, PRIVATE, PROTECTED, PUBLIC }
+
+	protected Policy policy = Policy.INLINE;
 	
 	protected final Instrumentor inst;
 	
 	// tmp local var used to store target of field put/get and to store state.
-	protected int tmpLocal = super.newLocal(Type.getObjectType("Ljava/lang/Object;"));
+//	protected int tmpLocal = super.newLocal(Type.getObjectType("Ljava/lang/Object;"));
 	protected int stackPeak = 0;
 	
-	protected Label end, handler;
+	protected final Label end = new Label(), handler = new Label();
 	
 	public MethodInstrumentor(MethodVisitor parent, int access, String name, String desc, int mid, Instrumentor inst) {
 		super(parent, access, name, desc);
 		this.mid = mid;
 		this.inst = inst;
-		if (inlined) {
-			end = new Label();
-			handler = new Label();
-		}
-		isMain = (
-				(access == (Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC)) 
-				&& name.endsWith(".main") 
-				&& desc.equals("([Ljava/lang/String;)V")
-		);
+		isMain = (access & Opcodes.ACC_PUBLIC ) != 0 && (access & Opcodes.ACC_STATIC) != 0
+			&& name.equals("main") && desc.equals("([Ljava/lang/String;)V");
 		isSynchronized = (access & Opcodes.ACC_SYNCHRONIZED) != 0;
-		isConstructor = name.endsWith("<init>");
-		isClinit = name.endsWith("<clinit>");
-		
-		readHook = Instrumentor.HOOK_PROTECTED_READ; //( inEdges ? Instrumentor.SHARED_READ_HOOK : Instrumentor.PRIVATE_READ_HOOK);
-//		writeHook = ( outEdges ? Instrumentor.SHARED_WRITE_HOOK : Instrumentor.PRIVATE_WRITE_HOOK);
-//		firstWriteHook = ( outEdges ? Instrumentor.SHARED_FIRST_WRITE_HOOK : Instrumentor.PRIVATE_FIRST_WRITE_HOOK);
+		isConstructor = name.equals("\"<init>\"");
+		isClinit = name.equals("\"<clinit>\"");
 	}
 	
 	protected static int max(int x, int y) {
@@ -62,26 +52,20 @@ public class MethodInstrumentor extends GeneratorAdapter {
 	@Override
 	public AnnotationVisitor visitAnnotation(String desc, boolean visible) {
 		// TODO move descriptors to constants
-		if (desc.equals(Type.getDescriptor(oshaj.annotation.ThreadPrivate.class))) {
-			writeHook = Instrumentor.HOOK_PRIVATE_WRITE;
-			firstWriteHook = Instrumentor.HOOK_PRIVATE_FIRST_WRITE;
+		if (desc.equals(Instrumentor.ANNOT_INLINE_DESC)) {
+			policy = Policy.INLINE;
+			return null;
+		} else if (desc.equals(Instrumentor.ANNOT_THREAD_PRIVATE_DESC)) {
+			policy = Policy.PRIVATE;
+			return null;
+		} else if (desc.equals(Instrumentor.ANNOT_READ_BY_DESC)) {
+			policy = Policy.PROTECTED;
+			return new AnnotationRecorder(this);
+		} else if (desc.equals(Instrumentor.ANNOT_READ_BY_ALL_DESC)) {
+			policy = Policy.PUBLIC;
+			return null;
 		} else {
-			writeHook = Instrumentor.HOOK_PROTECTED_WRITE;
-			firstWriteHook = Instrumentor.HOOK_PROTECTED_FIRST_WRITE;
-		}
-		if (! desc.equals(Type.getDescriptor(oshaj.annotation.Inline.class))) {
-			inlined = false; // it's true by default.
-			if (desc.equals(Type.getDescriptor(oshaj.annotation.ReadBy.class))) {
-				// new BitVectorIntSet
-				return new AnnotationRecorder(this);
-			} else if (desc.equals(Type.getDescriptor(oshaj.annotation.ReadByAll.class))) {
-				// UniversalIntSet.set
-			}
-		}
-		final String readByClass = Type.getDescriptor(oshaj.annotation.ReadBy.class);
-		if (desc.startsWith(readByClass.substring(0, readByClass.lastIndexOf('/')))) {
-			return null; // if it's an oshaj annotation, no need to send it on.
-		} else {
+			// Not one of ours.
 			return super.visitAnnotation(desc, visible);
 		}
 	}
@@ -90,7 +74,7 @@ public class MethodInstrumentor extends GeneratorAdapter {
 	public void visitCode() {
 		super.visitCode();
 		Label start = new Label();
-		if (!inlined) {
+		if (policy != Policy.INLINE) {
 			super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_ENTER);
 		}
 		if (isSynchronized) {
@@ -105,13 +89,14 @@ public class MethodInstrumentor extends GeneratorAdapter {
 		super.visitLabel(end); // TODO use same label for end and handler?
 		super.visitLabel(handler);
 		if (isClinit) {
+			inst.clinitSeen = true;
 			super.invokeStatic(Type.getObjectType(inst.className), 
 					new Method(inst.className + "." + Instrumentor.READERSET_INIT_NAME, Instrumentor.READERSET_INIT_DESC));
 		}
 		if (isSynchronized) {
 			// TODO call release hook.
 		}
-		if (!inlined) {
+		if (policy != Policy.INLINE) {
 			super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_EXIT);
 		}
 		super.visitEnd();
@@ -121,7 +106,7 @@ public class MethodInstrumentor extends GeneratorAdapter {
 	public void visitFrame(int type, int nLocal, Object[] local, int nStack, Object[] stack) {
 		super.visitFrame(type, nLocal, local, nStack, stack);
 	}
-
+	
 	/**
 	 * Instrument accesses with read and write hooks.
 	 * 
@@ -155,8 +140,23 @@ public class MethodInstrumentor extends GeneratorAdapter {
 			super.dup();
 			// Push the current method id. stack -> obj | mid
 			super.push(mid);
-			// do a first write. stack -> obj | state
-			super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, firstWriteHook);
+			switch (policy) {
+			case INLINE:
+			case PROTECTED:
+				// load the readerset. stack -> obj | mid set
+				super.getStatic(inst.classType, Instrumentor.READERSET_FIELD_PREFIX + mid, Instrumentor.BITVECTORINTSET_TYPE);
+				// do a first write. stack -> obj | state
+				super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PROTECTED_FIRST_WRITE);
+				break;
+			case PUBLIC:
+				// do a first write. stack -> obj | state
+				super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PUBLIC_FIRST_WRITE);
+				break;
+			case PRIVATE:
+				// do a first write. stack -> obj | state
+				super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PRIVATE_FIRST_WRITE);
+				break;
+			}
 			// swap. stack -> state | obj
 			super.swap();
 			// dup down 1. -> obj | state obj
@@ -171,8 +171,23 @@ public class MethodInstrumentor extends GeneratorAdapter {
 			super.mark(nonNullState);
 			// Push the current method id. stack -> obj | state mid
 			super.push(mid);
-			// Call the write hook. stack -> obj | 
-			super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, writeHook);
+			switch (policy) {
+			case INLINE:
+			case PROTECTED:
+				// load the readerset. stack -> obj | state mid set
+				super.getStatic(inst.classType, Instrumentor.READERSET_FIELD_PREFIX + mid, Instrumentor.BITVECTORINTSET_TYPE);
+				// Call the write hook. stack -> obj | 
+				super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PROTECTED_WRITE);
+				break;
+			case PUBLIC:
+				// Call the write hook. stack -> obj | 
+				super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PUBLIC_WRITE);
+				break;
+			case PRIVATE:
+				// Call the write hook. stack -> obj | 
+				super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PRIVATE_WRITE);
+				break;
+			}
 			
 			break;
 		case Opcodes.PUTSTATIC:
@@ -188,8 +203,23 @@ public class MethodInstrumentor extends GeneratorAdapter {
 			super.pop();
 			// Push the current method id. stack -> mid
 			super.push(mid);
-			// do a first write. stack -> state
-			super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, firstWriteHook);
+			switch (policy) {
+			case INLINE:
+			case PROTECTED:
+				// load the readerset. stack -> mid set
+				super.getStatic(inst.classType, Instrumentor.READERSET_FIELD_PREFIX + mid, Instrumentor.BITVECTORINTSET_TYPE);
+				// do a first write. stack -> state
+				super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PROTECTED_FIRST_WRITE);
+				break;
+			case PUBLIC:
+				// do a first write. stack -> state
+				super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PUBLIC_FIRST_WRITE);
+				break;
+			case PRIVATE:
+				// do a first write. stack -> state
+				super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PRIVATE_FIRST_WRITE);
+				break;
+			}
 			// store the new state. stack -> 
 			super.putStatic(ownerType, stateFieldName, Instrumentor.STATE_TYPE);
 			// jump to end. stack -> 
@@ -200,8 +230,23 @@ public class MethodInstrumentor extends GeneratorAdapter {
 			super.mark(nonNullState);
 			// Push the current method id. stack -> state mid
 			super.push(mid);
-			// Call the write hook. stack -> 
-			super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, writeHook);
+			switch (policy) {
+			case INLINE:
+			case PROTECTED:
+				// load the readerset. stack -> state mid set
+				super.getStatic(inst.classType, Instrumentor.READERSET_FIELD_PREFIX + mid, Instrumentor.BITVECTORINTSET_TYPE);
+				// Call the write hook. stack -> 
+				super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PROTECTED_WRITE);
+				break;
+			case PUBLIC:
+				// Call the write hook. stack -> 
+				super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PUBLIC_WRITE);
+				break;
+			case PRIVATE:
+				// Call the write hook. stack -> 
+				super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PRIVATE_WRITE);
+				break;
+			}
 			
 			break;
 		case Opcodes.GETFIELD:
@@ -226,7 +271,7 @@ public class MethodInstrumentor extends GeneratorAdapter {
 			// Push the current method id. stack -> obj | state mid
 			super.push(mid);
 			// Call the read hook. stack -> obj | 
-			super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, readHook);
+			super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PROTECTED_READ);
 			
 			break;
 		case Opcodes.GETSTATIC:
@@ -249,7 +294,7 @@ public class MethodInstrumentor extends GeneratorAdapter {
 			// Push the current method id. stack -> state mid
 			super.push(mid);
 			// Call the read hook. stack -> 
-			super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, readHook);
+			super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PROTECTED_READ);
 			
 			break;
 		}

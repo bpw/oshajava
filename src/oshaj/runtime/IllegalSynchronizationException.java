@@ -11,7 +11,6 @@ public class IllegalSynchronizationException extends
 	public IllegalSynchronizationException(long writerTid, int writerMethod,
 			long readerTid, int readerMethod) {
 		super(writerTid, writerMethod, readerTid, readerMethod);
-		// TODO Auto-generated constructor stub
 	}
 
 }

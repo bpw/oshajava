@@ -1,5 +1,3 @@
 package oshaj.annotation;
 
-public @interface ReadByAll {
-
-}
+public @interface ReadByAll { }
