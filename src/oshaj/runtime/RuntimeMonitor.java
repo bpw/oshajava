@@ -1,6 +1,5 @@
 package oshaj.runtime;
 
-import oshaj.instrument.MethodRegistry;
 import oshaj.util.IntSet;
 import oshaj.util.UniversalIntSet;
 import oshaj.util.WeakConcurrentIdentityHashMap;

@@ -13,13 +13,10 @@ import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.FieldVisitor;
 import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.GeneratorAdapter;
 import org.objectweb.asm.commons.Method;
-
-import org.objectweb.asm.Opcodes;
-
-import oshaj.util.UniversalIntSet;
 
 
 // TODO make asm Method, GenericAdapter, etc. use copies of java.util stuff.
@@ -253,6 +250,18 @@ public class Instrumentor extends ClassAdapter {
 	
 	@Override
 	public void visitEnd() {
+		if (!clinitSeen) {
+			System.err.println("!!!!!  no <clinit> seen. creating one. !!!!!");
+			// TODO create clinit method.
+			// Create a big ol' static method to initialize them. (This is called from clinit.)
+			final MethodVisitor mv = super.visitMethod(
+					Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC, "<clinit>", VOID_DESC, null, null);
+			final GeneratorAdapter clinit = new GeneratorAdapter(
+					mv, Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC, "<clinit>", VOID_DESC);
+			clinit.visitCode();
+			clinit.invokeStatic(RUNTIMEMONITOR_TYPE, new Method(READERSET_INIT_NAME, READERSET_INIT_DESC));
+			clinit.visitEnd();
+		}
 		readersetSetup();
 		super.visitEnd();
 	}
