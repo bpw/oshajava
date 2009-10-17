@@ -1,6 +1,6 @@
 package oshaj.runtime;
 
-import oshaj.util.BitVector;
+import oshaj.util.IntSet;
 
 /**
  * A representation of the state of a field as a channel for communication
@@ -28,18 +28,18 @@ public class State {
 	/**
 	 * Method allowed to read the field from a different thread in the current state.
 	 */
-	protected BitVector readerList;
+	protected IntSet readerSet;
 	
-	protected State(long writerTid, int writerMethod, BitVector readerList) {
+	protected State(long writerTid, int writerMethod, IntSet readerList) {
 		this.writerTid = writerTid;
 		this.writerMethod = writerMethod;
-		this.readerList = readerList;
+		this.readerSet = readerList;
 	}
 	
 	protected State(long writerTid, int writerMethod) {
 		this.writerTid = writerTid;
 		this.writerMethod = writerMethod;
-		this.readerList = null;
+		this.readerSet = null;
 	}
 	
 }

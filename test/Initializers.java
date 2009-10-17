@@ -12,4 +12,8 @@ public class Initializers {
 		obj.toString();
 		new Initializers(0);
 	}
+	
+	static {
+		System.out.println("static init");
+	}
 }

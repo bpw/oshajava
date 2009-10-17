@@ -4,6 +4,8 @@ import java.lang.instrument.ClassFileTransformer;
 import java.lang.instrument.IllegalClassFormatException;
 import java.lang.instrument.Instrumentation;
 import java.security.ProtectionDomain;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.objectweb.asm.ClassAdapter;
 import org.objectweb.asm.ClassReader;
@@ -17,7 +19,8 @@ import org.objectweb.asm.commons.Method;
 
 import org.objectweb.asm.Opcodes;
 
-import oshaj.Spec;
+import oshaj.util.UniversalIntSet;
+
 
 // TODO make asm Method, GenericAdapter, etc. use copies of java.util stuff.
 // TODO repackage asm into oshaj.org.... so that oshaj can be run on apps that
@@ -37,6 +40,21 @@ public class Instrumentor extends ClassAdapter {
 	protected static final String SHADOW_FIELD_SUFFIX = "__osha_state$";
 	protected static final String STATE_INIT_METHOD_SUFFIX = "__osha_state_init$";
 	protected static final String LOCK_STATE_NAME = "__osha_lock_state$";
+	protected static final String READERSET_FIELD_PREFIX = "__osha_readers_for_method";
+	protected static final String VOID_DESC = Type.getDescriptor(oshaj.util.IntSet.class);
+	protected static final String READERSET_INIT_NAME = "__osha_readersets_init$";
+	protected static final String READERSET_INIT_DESC = "()V";
+	protected static final int READERSET_INIT_ACCESS = Opcodes.ACC_PRIVATE | Opcodes.ACC_STATIC;
+	
+	protected static final Type BITVECTORINTSET_TYPE = Type.getType(oshaj.util.BitVectorIntSet.class);
+	protected static final Type INTSET_TYPE = Type.getType(oshaj.util.IntSet.class);
+	protected static final Type STRING_TYPE = Type.getType(String.class);
+	protected static final Type METHOD_REGISTRY_TYPE = Type.getType(MethodRegistry.class);
+	protected static final Method BUILDSET_METHOD = new Method(
+			"oshaj.instrument.MethodRegistry.buildSet",
+			BITVECTORINTSET_TYPE,
+			new Type[] {Type.getType(String[].class)}
+	);
 	
 	protected static final String[] NONINSTRUMENTED_PREFIXES = { "oshaj.", "org.objectweb.asm.", "acme." };
 	
@@ -60,7 +78,7 @@ public class Instrumentor extends ClassAdapter {
 			new Type[0]
 	);
 	
-	protected static final Type RUNTIMEMONITOR_TYPE = Type.getType(Spec.class);
+	protected static final Type RUNTIMEMONITOR_TYPE = Type.getType(MethodRegistry.class);
 	protected static final Method ENTER_HOOK = new Method(
 			"oshaj.RuntimeMonitor.enter", 
 			Type.VOID_TYPE, 
@@ -151,6 +169,10 @@ public class Instrumentor extends ClassAdapter {
 	/**************************************************************************/
 	
 	protected final String className;
+	protected boolean clinitSeen = false;
+	
+	// FIXME import
+	protected final HashMap<Integer,String[]> readerSets = new HashMap<Integer,String[]>();
 	
 	public Instrumentor(ClassVisitor cv, String className) {
 		super(cv);
@@ -171,7 +193,8 @@ public class Instrumentor extends ClassAdapter {
 		if (fv != null) {
 			fv.visitEnd();
 		}
-		final String stateFieldName = name + STATE_INIT_METHOD_SUFFIX;
+		final String stateFieldName = name + SHADOW_FIELD_SUFFIX;
+		final String stateInitMethodName = name + STATE_INIT_METHOD_SUFFIX;
 		// Add a method to initialize the shadow field
 		// TODO this is currently a safe initializer (synchronized, and the state shadow field is 
 		// volatile, to support safe doule-checked locking), but we might be able to apply the
@@ -181,9 +204,9 @@ public class Instrumentor extends ClassAdapter {
 		// is across method boundaries.  This would rely on the JIT not inlining/optimizing across method
 		// boundaries... not a safe bet. For now, we play it safe.
 		final MethodVisitor mv = super.visitMethod(
-				access | Opcodes.ACC_SYNCHRONIZED, stateFieldName, "()V", "", new String[0]);
+				access | Opcodes.ACC_SYNCHRONIZED, stateInitMethodName, VOID_DESC, null, null);
 		final GeneratorAdapter init = new GeneratorAdapter(
-				mv, access | Opcodes.ACC_SYNCHRONIZED, name + STATE_INIT_METHOD_SUFFIX, "()V");
+				mv, access | Opcodes.ACC_SYNCHRONIZED, stateInitMethodName, VOID_DESC);
 		init.visitCode();
 		// create a new State. stack -> state
 		init.newInstance(STATE_TYPE);
@@ -219,20 +242,62 @@ public class Instrumentor extends ClassAdapter {
 	
 	@Override
 	public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
-		final int id = Spec.getId(name, desc, signature);
+		final int id = MethodRegistry.register(signature);
 		return new MethodInstrumentor(super.visitMethod(access, name, desc, signature, exceptions),
-				access, name, desc,
-				id, Spec.inlined(id), Spec.inEdges(id), Spec.outEdges(id));
+				access, name, desc, id, this);
 	}
 	
-//	@Override
-//	public void visitEnd() {
-//		// insert field to hold lock State.
-//		// nice to make this final, but it's easier to init it outside the constructor for now,
-//		// to avoid making sure I've got exactly one initialization in each...
-//		// TODO how to get a lock state field in every Object?
-//		super.visitField(Opcodes.ACC_PUBLIC, LOCK_STATE_NAME, STATE_TYPE.getDescriptor(), null, null);
-//		super.visitEnd();
-//	}
+	protected void addReaderSet(int mid, String[] readers) {
+		readerSets.put(mid, readers);
+	}
+	
+	@Override
+	public void visitEnd() {
+		readersetSetup();
+		super.visitEnd();
+	}
+	
+	private void readersetSetup() {
+		
+		// Create all the readerset fields, one per method.
+		for (Map.Entry<Integer, String[]> e : readerSets.entrySet()) {
+			if (e.getValue() != null) { // @ReadBy needs a field.
+				super.visitField(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC, 
+						READERSET_FIELD_PREFIX + e.getKey(), VOID_DESC, null, null);
+			} 
+		}
+		
+		// Create a big ol' static method to initialize them. (This is called from clinit.)
+		final MethodVisitor mv = super.visitMethod(
+				READERSET_INIT_ACCESS, READERSET_INIT_NAME, VOID_DESC, null, null);
+		final GeneratorAdapter init = new GeneratorAdapter(
+				mv, READERSET_INIT_ACCESS, READERSET_INIT_NAME, VOID_DESC);
+		init.visitCode();
+		
+		// initialize each one.
+		for (Map.Entry<Integer, String[]> e : readerSets.entrySet()) {
+			final String[] readers = e.getValue();
+			if (readers != null) { // @ReadBy
+				// create an array. stack -> array
+				init.newArray(STRING_TYPE);
+				// for each index, put in the string.
+				for (int i = 0; i < readers.length; i++) {
+					// dup. stack -> array array
+					init.dup();
+					// push index. stack -> array array i
+					init.push(i);
+					// push string. stack -> array array i string
+					init.push(readers[i]);
+					// array store. stack -> array
+					init.arrayStore(STRING_TYPE);
+				}
+				// call MethodRegistry.buildSet(array). stack -> set
+				init.invokeStatic(METHOD_REGISTRY_TYPE, BUILDSET_METHOD);
+				// putstatic into shadow field. stack ->
+				init.putStatic(Type.getObjectType(className), READERSET_FIELD_PREFIX + e.getKey(), INTSET_TYPE);
+			}
+		}
+		init.visitEnd();
+	}
 
 }

@@ -1,6 +1,8 @@
 package oshaj.runtime;
 
-import oshaj.Spec;
+import oshaj.instrument.MethodRegistry;
+import oshaj.util.IntSet;
+import oshaj.util.UniversalIntSet;
 import oshaj.util.WeakConcurrentIdentityHashMap;
 import acme.util.collections.IntStack;
 
@@ -47,7 +49,7 @@ public class RuntimeMonitor {
 	public static void sharedRead(final int readerMethod, final State state) {
 		final long readerTid = Thread.currentThread().getId();
 		synchronized(state) {
-			if (readerTid != state.writerTid && (state.readerList == null || !state.readerList.get(readerMethod))) 
+			if (readerTid != state.writerTid && (state.readerSet == null || !state.readerSet.contains(readerMethod))) 
 				throw new IllegalCommunicationException(state.writerTid, state.writerMethod, readerTid, readerMethod);
 		}
 	}
@@ -66,7 +68,7 @@ public class RuntimeMonitor {
 			state.writerTid = writerTid;
 			if (state.writerMethod != writerMethod) { 
 				state.writerMethod = writerMethod;
-				state.readerList = null;
+				state.readerSet = null;
 			}
 		}
 	}
@@ -82,44 +84,58 @@ public class RuntimeMonitor {
 	 * sharedRead or sharedWrite.
 	 *  
 	 * @param writerTid
-	 * @param readerList
+	 * @param readerSet
 	 */
-	public static void sharedWrite(final int writerMethod, final State state) {
+	public static void sharedWrite(final int writerMethod, final State state, IntSet readerSet) {
 		final long writerTid = Thread.currentThread().getId();
 		synchronized(state) {
 			state.writerTid = writerTid;
 			if (state.writerMethod != writerMethod) {
 				state.writerMethod = writerMethod;
-				state.readerList = Spec.communicationTable[writerMethod];
+				state.readerSet = readerSet;
 			}
 		}
 	}
 	
-	public static State sharedFirstWrite(final int writerMethod) {
-		return new State(Thread.currentThread().getId(), writerMethod, Spec.communicationTable[writerMethod]);
+	public static State sharedFirstWrite(final int writerMethod, IntSet readerSet) {
+		return new State(Thread.currentThread().getId(), writerMethod, readerSet);
 	}
 
+	public static void fullySharedWrite(final int writerMethod, final State state) {
+		final long writerTid = Thread.currentThread().getId();
+		synchronized(state) {
+			state.writerTid = writerTid;
+			if (state.writerMethod != writerMethod) {
+				state.writerMethod = writerMethod;
+				state.readerSet = UniversalIntSet.set;
+			}
+		}
+	}
+	
+	public static State fullySharedFirstWrite(final int writerMethod) {
+		return new State(Thread.currentThread().getId(), writerMethod, UniversalIntSet.set);
+	}
 	public static void arrayRead() {}
 
 	public static void arrayWrite() {}
 	
-	public static void release(final int mid, final Object lock) {
+	public static void release(final int mid, final Object lock, IntSet readerSet) {
 		final long tid = Thread.currentThread().getId();
 		State state = lockStates.get(lock);
 		if (state == null) {
-			state = lockStates.putIfAbsent(lock, new State(tid, mid, Spec.syncTable[mid]));
+			state = lockStates.putIfAbsent(lock, new State(tid, mid, readerSet));
 		} 
 		if (state != null) {
 			state.writerMethod = mid;
 			state.writerTid = tid;
-			state.readerList = Spec.syncTable[mid];
+			state.readerSet = readerSet;
 		}
 	}
 	
 	public static void acquire(final int mid, final Object lock) {
 		final long tid = Thread.currentThread().getId();
 		State state = lockStates.get(lock);
-		if (state != null && (tid != state.writerTid || ! state.readerList.get(mid))) 
+		if (state != null && (tid != state.writerTid || ! state.readerSet.contains(mid))) 
 			throw new IllegalSynchronizationException(state.writerTid, state.writerMethod, tid, mid);
 	}
 	

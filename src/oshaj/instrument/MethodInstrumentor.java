@@ -1,5 +1,6 @@
 package oshaj.instrument;
 
+import org.objectweb.asm.AnnotationVisitor;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
@@ -11,12 +12,15 @@ import org.objectweb.asm.commons.Method;
 public class MethodInstrumentor extends GeneratorAdapter {
 	
 	protected final int mid;
-	protected final boolean inlined;
 	protected final boolean isMain;
 	protected final boolean isSynchronized;
-//	protected final boolean isConstructor;
+	protected final boolean isConstructor;
+	protected final boolean isClinit;
+	protected boolean inlined = true;
 	
-	protected final Method readHook, writeHook, firstWriteHook;
+	protected Method readHook = null, writeHook = null, firstWriteHook = null;
+	
+	protected final Instrumentor inst;
 	
 	// tmp local var used to store target of field put/get and to store state.
 	protected int tmpLocal = super.newLocal(Type.getObjectType("Ljava/lang/Object;"));
@@ -24,11 +28,10 @@ public class MethodInstrumentor extends GeneratorAdapter {
 	
 	protected Label end, handler;
 	
-	public MethodInstrumentor(MethodVisitor parent, int access, String name, String desc, 
-			int id, boolean inlined, boolean inEdges, boolean outEdges) {
+	public MethodInstrumentor(MethodVisitor parent, int access, String name, String desc, int mid, Instrumentor inst) {
 		super(parent, access, name, desc);
-		this.mid = id;
-		this.inlined = inlined;
+		this.mid = mid;
+		this.inst = inst;
 		if (inlined) {
 			end = new Label();
 			handler = new Label();
@@ -39,10 +42,12 @@ public class MethodInstrumentor extends GeneratorAdapter {
 				&& desc.equals("([Ljava/lang/String;)V")
 		);
 		isSynchronized = (access & Opcodes.ACC_SYNCHRONIZED) != 0;
-//		isConstructor = name.endsWith("<init>");
-		readHook = ( inEdges ? Instrumentor.SHARED_READ_HOOK : Instrumentor.PRIVATE_READ_HOOK);
-		writeHook = ( outEdges ? Instrumentor.SHARED_WRITE_HOOK : Instrumentor.PRIVATE_WRITE_HOOK);
-		firstWriteHook = ( outEdges ? Instrumentor.SHARED_FIRST_WRITE_HOOK : Instrumentor.PRIVATE_FIRST_WRITE_HOOK);
+		isConstructor = name.endsWith("<init>");
+		isClinit = name.endsWith("<clinit>");
+		
+		readHook = Instrumentor.SHARED_READ_HOOK; //( inEdges ? Instrumentor.SHARED_READ_HOOK : Instrumentor.PRIVATE_READ_HOOK);
+//		writeHook = ( outEdges ? Instrumentor.SHARED_WRITE_HOOK : Instrumentor.PRIVATE_WRITE_HOOK);
+//		firstWriteHook = ( outEdges ? Instrumentor.SHARED_FIRST_WRITE_HOOK : Instrumentor.PRIVATE_FIRST_WRITE_HOOK);
 	}
 	
 	protected static int max(int x, int y) {
@@ -50,6 +55,37 @@ public class MethodInstrumentor extends GeneratorAdapter {
 		else return y;
 	}
 	
+	public void setReaders(String[] readers) {
+		inst.addReaderSet(mid, readers);
+	}
+	
+	@Override
+	public AnnotationVisitor visitAnnotation(String desc, boolean visible) {
+		// TODO move descriptors to constants
+		if (desc.equals(Type.getDescriptor(oshaj.annotation.ThreadPrivate.class))) {
+			writeHook = Instrumentor.PRIVATE_WRITE_HOOK;
+			firstWriteHook = Instrumentor.PRIVATE_FIRST_WRITE_HOOK;
+		} else {
+			writeHook = Instrumentor.SHARED_WRITE_HOOK;
+			firstWriteHook = Instrumentor.SHARED_FIRST_WRITE_HOOK;
+		}
+		if (! desc.equals(Type.getDescriptor(oshaj.annotation.Inline.class))) {
+			inlined = false; // it's true by default.
+			if (desc.equals(Type.getDescriptor(oshaj.annotation.ReadBy.class))) {
+				// new BitVectorIntSet
+				return new AnnotationRecorder(this);
+			} else if (desc.equals(Type.getDescriptor(oshaj.annotation.ReadByAll.class))) {
+				// UniversalIntSet.set
+			}
+		}
+		final String readByClass = Type.getDescriptor(oshaj.annotation.ReadBy.class);
+		if (desc.startsWith(readByClass.substring(0, readByClass.lastIndexOf('/')))) {
+			return null; // if it's an oshaj annotation, no need to send it on.
+		} else {
+			return super.visitAnnotation(desc, visible);
+		}
+	}
+
 	@Override
 	public void visitCode() {
 		super.visitCode();
@@ -68,6 +104,10 @@ public class MethodInstrumentor extends GeneratorAdapter {
 	public void visitEnd() {
 		super.visitLabel(end); // TODO use same label for end and handler?
 		super.visitLabel(handler);
+		if (isClinit) {
+			super.invokeStatic(Type.getObjectType(inst.className), 
+					new Method(inst.className + "." + Instrumentor.READERSET_INIT_NAME, Instrumentor.READERSET_INIT_DESC));
+		}
 		if (isSynchronized) {
 			// TODO call release hook.
 		}
