@@ -100,12 +100,4 @@ public class MethodRegistry {
 		} 
 	}
 	
-	public static BitVectorIntSet buildSet(String[] readers) {
-		final BitVectorIntSet set = new BitVectorIntSet();
-		for (String r : readers) {
-			requestID(r, set);
-		}
-		return set;
-	}
-	
 }

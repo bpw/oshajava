@@ -45,7 +45,7 @@ public class MethodInstrumentor extends GeneratorAdapter {
 		isConstructor = name.endsWith("<init>");
 		isClinit = name.endsWith("<clinit>");
 		
-		readHook = Instrumentor.SHARED_READ_HOOK; //( inEdges ? Instrumentor.SHARED_READ_HOOK : Instrumentor.PRIVATE_READ_HOOK);
+		readHook = Instrumentor.HOOK_PROTECTED_READ; //( inEdges ? Instrumentor.SHARED_READ_HOOK : Instrumentor.PRIVATE_READ_HOOK);
 //		writeHook = ( outEdges ? Instrumentor.SHARED_WRITE_HOOK : Instrumentor.PRIVATE_WRITE_HOOK);
 //		firstWriteHook = ( outEdges ? Instrumentor.SHARED_FIRST_WRITE_HOOK : Instrumentor.PRIVATE_FIRST_WRITE_HOOK);
 	}
@@ -63,11 +63,11 @@ public class MethodInstrumentor extends GeneratorAdapter {
 	public AnnotationVisitor visitAnnotation(String desc, boolean visible) {
 		// TODO move descriptors to constants
 		if (desc.equals(Type.getDescriptor(oshaj.annotation.ThreadPrivate.class))) {
-			writeHook = Instrumentor.PRIVATE_WRITE_HOOK;
-			firstWriteHook = Instrumentor.PRIVATE_FIRST_WRITE_HOOK;
+			writeHook = Instrumentor.HOOK_PRIVATE_WRITE;
+			firstWriteHook = Instrumentor.HOOK_PRIVATE_FIRST_WRITE;
 		} else {
-			writeHook = Instrumentor.SHARED_WRITE_HOOK;
-			firstWriteHook = Instrumentor.SHARED_FIRST_WRITE_HOOK;
+			writeHook = Instrumentor.HOOK_PROTECTED_WRITE;
+			firstWriteHook = Instrumentor.HOOK_PROTECTED_FIRST_WRITE;
 		}
 		if (! desc.equals(Type.getDescriptor(oshaj.annotation.Inline.class))) {
 			inlined = false; // it's true by default.
@@ -91,7 +91,7 @@ public class MethodInstrumentor extends GeneratorAdapter {
 		super.visitCode();
 		Label start = new Label();
 		if (!inlined) {
-			super.invokeStatic(Instrumentor.RUNTIMEMONITOR_TYPE, Instrumentor.ENTER_HOOK);
+			super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_ENTER);
 		}
 		if (isSynchronized) {
 			// TODO call acquire hook.
@@ -112,7 +112,7 @@ public class MethodInstrumentor extends GeneratorAdapter {
 			// TODO call release hook.
 		}
 		if (!inlined) {
-			super.invokeStatic(Instrumentor.RUNTIMEMONITOR_TYPE, Instrumentor.EXIT_HOOK);
+			super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_EXIT);
 		}
 		super.visitEnd();
 	}
@@ -156,7 +156,7 @@ public class MethodInstrumentor extends GeneratorAdapter {
 			// Push the current method id. stack -> obj | mid
 			super.push(mid);
 			// do a first write. stack -> obj | state
-			super.invokeStatic(Instrumentor.RUNTIMEMONITOR_TYPE, firstWriteHook);
+			super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, firstWriteHook);
 			// swap. stack -> state | obj
 			super.swap();
 			// dup down 1. -> obj | state obj
@@ -172,7 +172,7 @@ public class MethodInstrumentor extends GeneratorAdapter {
 			// Push the current method id. stack -> obj | state mid
 			super.push(mid);
 			// Call the write hook. stack -> obj | 
-			super.invokeStatic(Instrumentor.RUNTIMEMONITOR_TYPE, writeHook);
+			super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, writeHook);
 			
 			break;
 		case Opcodes.PUTSTATIC:
@@ -189,7 +189,7 @@ public class MethodInstrumentor extends GeneratorAdapter {
 			// Push the current method id. stack -> mid
 			super.push(mid);
 			// do a first write. stack -> state
-			super.invokeStatic(Instrumentor.RUNTIMEMONITOR_TYPE, firstWriteHook);
+			super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, firstWriteHook);
 			// store the new state. stack -> 
 			super.putStatic(ownerType, stateFieldName, Instrumentor.STATE_TYPE);
 			// jump to end. stack -> 
@@ -201,7 +201,7 @@ public class MethodInstrumentor extends GeneratorAdapter {
 			// Push the current method id. stack -> state mid
 			super.push(mid);
 			// Call the write hook. stack -> 
-			super.invokeStatic(Instrumentor.RUNTIMEMONITOR_TYPE, writeHook);
+			super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, writeHook);
 			
 			break;
 		case Opcodes.GETFIELD:
@@ -226,7 +226,7 @@ public class MethodInstrumentor extends GeneratorAdapter {
 			// Push the current method id. stack -> obj | state mid
 			super.push(mid);
 			// Call the read hook. stack -> obj | 
-			super.invokeStatic(Instrumentor.RUNTIMEMONITOR_TYPE, readHook);
+			super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, readHook);
 			
 			break;
 		case Opcodes.GETSTATIC:
@@ -249,7 +249,7 @@ public class MethodInstrumentor extends GeneratorAdapter {
 			// Push the current method id. stack -> state mid
 			super.push(mid);
 			// Call the read hook. stack -> 
-			super.invokeStatic(Instrumentor.RUNTIMEMONITOR_TYPE, readHook);
+			super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, readHook);
 			
 			break;
 		}

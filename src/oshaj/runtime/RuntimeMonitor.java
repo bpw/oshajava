@@ -1,5 +1,7 @@
 package oshaj.runtime;
 
+import oshaj.instrument.MethodRegistry;
+import oshaj.util.BitVectorIntSet;
 import oshaj.util.IntSet;
 import oshaj.util.UniversalIntSet;
 import oshaj.util.WeakConcurrentIdentityHashMap;
@@ -85,7 +87,7 @@ public class RuntimeMonitor {
 	 * @param writerTid
 	 * @param readerSet
 	 */
-	public static void sharedWrite(final int writerMethod, final State state, IntSet readerSet) {
+	public static void protectedWrite(final int writerMethod, final State state, final IntSet readerSet) {
 		final long writerTid = Thread.currentThread().getId();
 		synchronized(state) {
 			state.writerTid = writerTid;
@@ -96,11 +98,11 @@ public class RuntimeMonitor {
 		}
 	}
 	
-	public static State sharedFirstWrite(final int writerMethod, IntSet readerSet) {
+	public static State protectedFirstWrite(final int writerMethod, final IntSet readerSet) {
 		return new State(Thread.currentThread().getId(), writerMethod, readerSet);
 	}
 
-	public static void fullySharedWrite(final int writerMethod, final State state) {
+	public static void publicWrite(final int writerMethod, final State state) {
 		final long writerTid = Thread.currentThread().getId();
 		synchronized(state) {
 			state.writerTid = writerTid;
@@ -111,14 +113,16 @@ public class RuntimeMonitor {
 		}
 	}
 	
-	public static State fullySharedFirstWrite(final int writerMethod) {
+	public static State publicFirstWrite(final int writerMethod) {
 		return new State(Thread.currentThread().getId(), writerMethod, UniversalIntSet.set);
 	}
+	
+	
 	public static void arrayRead() {}
 
 	public static void arrayWrite() {}
 	
-	public static void release(final int mid, final Object lock, IntSet readerSet) {
+	public static void release(final int mid, final Object lock, final IntSet readerSet) {
 		final long tid = Thread.currentThread().getId();
 		State state = lockStates.get(lock);
 		if (state == null) {
@@ -145,6 +149,14 @@ public class RuntimeMonitor {
 	public static void exit(final int mid) {
 		int emid = stacks.get().pop();
 		assert emid == mid;
+	}
+	
+	public static BitVectorIntSet buildSet(String[] readers) {
+		final BitVectorIntSet set = new BitVectorIntSet();
+		for (String r : readers) {
+			MethodRegistry.requestID(r, set);
+		}
+		return set;
 	}
 	
 }

@@ -34,126 +34,81 @@ public class Instrumentor extends ClassAdapter {
 	 * 
 	 */
 	
+	protected static final String[] NONINSTRUMENTED_PREFIXES = { "oshaj.", "org.objectweb.asm.", "acme." };
+	
+	protected static final Type STRING_TYPE          = Type.getType(java.lang.String.class);
+	protected static final Type INTSET_TYPE          = Type.getType(oshaj.util.IntSet.class);
+	protected static final Type BITVECTORINTSET_TYPE = Type.getType(oshaj.util.BitVectorIntSet.class);
+	protected static final Type STATE_TYPE           = Type.getType(oshaj.runtime.State.class);
+	protected static final Type RUNTIME_MONITOR_TYPE = Type.getType(oshaj.runtime.RuntimeMonitor.class);
+
+	protected static final String STATE_TYPE_NAME = STATE_TYPE.getInternalName();
 	protected static final String SHADOW_FIELD_SUFFIX = "__osha_state$";
 	protected static final String STATE_INIT_METHOD_SUFFIX = "__osha_state_init$";
 	protected static final String LOCK_STATE_NAME = "__osha_lock_state$";
+	protected static final String VOID_DESC = "()V";
 	protected static final String READERSET_FIELD_PREFIX = "__osha_readers_for_method";
-	protected static final String VOID_DESC = Type.getDescriptor(oshaj.util.IntSet.class);
 	protected static final String READERSET_INIT_NAME = "__osha_readersets_init$";
-	protected static final String READERSET_INIT_DESC = "()V";
+	protected static final String READERSET_INIT_DESC = Type.getDescriptor(oshaj.util.IntSet.class);
+	
 	protected static final int READERSET_INIT_ACCESS = Opcodes.ACC_PRIVATE | Opcodes.ACC_STATIC;
 	
-	protected static final Type BITVECTORINTSET_TYPE = Type.getType(oshaj.util.BitVectorIntSet.class);
-	protected static final Type INTSET_TYPE = Type.getType(oshaj.util.IntSet.class);
-	protected static final Type STRING_TYPE = Type.getType(String.class);
-	protected static final Type METHOD_REGISTRY_TYPE = Type.getType(MethodRegistry.class);
-	protected static final Method BUILDSET_METHOD = new Method(
-			"oshaj.instrument.MethodRegistry.buildSet",
-			BITVECTORINTSET_TYPE,
-			new Type[] {Type.getType(String[].class)}
-	);
+	protected static final Type[] ARGS_NONE = new Type[0];
+	protected static final Type[] ARGS_INT = { Type.INT_TYPE };
+	protected static final Type[] ARGS_INT_STATE = { Type.INT_TYPE, STATE_TYPE };
 	
-	protected static final String[] NONINSTRUMENTED_PREFIXES = { "oshaj.", "org.objectweb.asm.", "acme." };
+	protected static final Method STATE_CONSTRUCTOR = new Method("\"<init>\"", VOID_DESC);
+
+	protected static final Method HOOK_BUILD_SET = 
+		new Method("buildSet", BITVECTORINTSET_TYPE, new Type[] {Type.getType(String[].class)});
 	
-	protected static final Type STATE_TYPE = Type.getType(oshaj.runtime.State.class);
-	protected static final String STATE_TYPE_NAME = STATE_TYPE.getInternalName();
-	protected static final Method STATE_CONSTRUCTOR = new Method(
-			STATE_TYPE_NAME + ".\"<init>\"", 
-			Type.VOID_TYPE, 
-			new Type[0]
-	);
+	protected static final Method HOOK_ENTER = new Method("enter", Type.VOID_TYPE, ARGS_INT);
+	protected static final Method HOOK_EXIT  = new Method("exit",  Type.VOID_TYPE, ARGS_INT);
 	
-	protected static final Type THREAD_TYPE = Type.getType(Thread.class);
-	protected static final Method CURRENT_THREAD_METHOD = new Method(
-			"java.lang.Thread.currentThread", 
-			THREAD_TYPE, 
-			new Type[0]
-	);
-	protected static final Method GET_TID_METHOD = new Method(
-			"java.lang.Thread.getTid", 
-			Type.LONG_TYPE, 
-			new Type[0]
-	);
+	protected static final Method HOOK_PRIVATE_READ   = new Method("privateRead", Type.VOID_TYPE, ARGS_INT_STATE);
+	protected static final Method HOOK_PROTECTED_READ = new Method("protectedRead", Type.VOID_TYPE, ARGS_INT_STATE);
+
+	protected static final Method HOOK_PRIVATE_WRITE  = new Method("privateWrite", Type.VOID_TYPE, ARGS_INT_STATE);
+	protected static final Method HOOK_PRIVATE_FIRST_WRITE   = new Method("privateFirstWrite", STATE_TYPE, ARGS_INT);
+	protected static final Method HOOK_PROTECTED_WRITE   = 
+		new Method("protectedWrite", Type.VOID_TYPE, new Type[] { Type.INT_TYPE, STATE_TYPE, INTSET_TYPE });
+	protected static final Method HOOK_PROTECTED_FIRST_WRITE = 
+		new Method("protectedFirstWrite", STATE_TYPE, new Type[] { Type.INT_TYPE, INTSET_TYPE });
+	protected static final Method HOOK_PUBLIC_WRITE       = new Method("publicWrite", STATE_TYPE, ARGS_INT_STATE);
+	protected static final Method HOOK_PUBLIC_FIRST_WRITE = new Method("publicFirstWrite", STATE_TYPE, ARGS_INT);
 	
-	protected static final Type RUNTIMEMONITOR_TYPE = Type.getType(MethodRegistry.class);
-	protected static final Method ENTER_HOOK = new Method(
-			"oshaj.RuntimeMonitor.enter", 
-			Type.VOID_TYPE, 
-			new Type[] { Type.INT_TYPE }
-	);
-	protected static final Method EXIT_HOOK = new Method(
-			"oshaj.RuntimeMonitor.exit", 
-			Type.VOID_TYPE, 
-			new Type[] { Type.INT_TYPE }
-	);
-		
-	protected static final Type[] ACCESS_HOOK_ARGS = { Type.INT_TYPE, STATE_TYPE };
-	protected static final Method PRIVATE_READ_HOOK = new Method(
-			"oshaj.runtime.Instrumentor.privateRead", 
-			Type.VOID_TYPE, 
-			ACCESS_HOOK_ARGS
-	);
-	protected static final Method SHARED_READ_HOOK = new Method(
-			"oshaj.runtime.Instrumentor.sharedRead", 
-			Type.VOID_TYPE, 
-			ACCESS_HOOK_ARGS
-	);
-	protected static final Method PRIVATE_WRITE_HOOK = new Method(
-			"oshaj.runtime.Instrumentor.privateWrite", 
-			Type.VOID_TYPE, 
-			ACCESS_HOOK_ARGS
-	);
-	protected static final Method SHARED_WRITE_HOOK = new Method(
-			"oshaj.runtime.Instrumentor.sharedWrite", 
-			Type.VOID_TYPE, 
-			ACCESS_HOOK_ARGS
-	);
+
 	
-	protected static final Type[] FIRST_WRITE_HOOK_ARGS = { Type.INT_TYPE };
-	protected static final Method PRIVATE_FIRST_WRITE_HOOK = new Method(
-			"oshaj.runtime.Instrumentor.privateFirstWrite", 
-			Instrumentor.STATE_TYPE, 
-			FIRST_WRITE_HOOK_ARGS
-	);
-	protected static final Method SHARED_FIRST_WRITE_HOOK = new Method(
-			"oshaj.runtime.Instrumentor.sharedFirstWrite", 
-			Instrumentor.STATE_TYPE, 
-			FIRST_WRITE_HOOK_ARGS
-	);
-	
+	/****************************************************************************/
+
 	public static void premain(String agentArgs, Instrumentation inst) {
-//		System.err.println("Loaded classes:");
-//		java 6+ only: inst.appendToSystemClassLoaderSearch(new JarFile(agentArgs));
-//		for (Class<?> c : inst.getAllLoadedClasses()) {
-//			System.err.println(c.getName());
-//		}
-//		System.exit(0);
-//		if (inst.isRedefineClassesSupported()) {
-//			System.err.println("Class redinition supported.");
-//		} else {
-//			System.err.println("Class redefinition not supported. :-(");
-//		}
-		// Register the instrumentor with the jvm as a class file transformer.
-		inst.addTransformer(new ClassFileTransformer() {
-			public byte[] transform(ClassLoader loader, String className, Class<?> targetClass,
-					ProtectionDomain protectionDomain, byte[] classFileBuffer)
-					throws IllegalClassFormatException {
-				if (shouldInstrument(className)) {
-					// Use ASM to insert hooks for all the sorts of accesses, acquire, release, maybe fork, join, volatiles, etc.
-					final ClassReader cr = new ClassReader(classFileBuffer);
-					final ClassWriter cw = new ClassWriter(cr, ClassWriter.COMPUTE_FRAMES); 
-					// TODO figure out how to do frames manually. COMPUTE_MAXS is a 2x cost!
-					cr.accept(new Instrumentor(cw, className), 0);
-					return cw.toByteArray();
-				} else {
-					System.err.println("!! Skipped instrumenting " + className);
-					return classFileBuffer;
-				}
-			}			
-		});
-		// Add the libraries that our instrumentation hooks will call to the classpath.
-		// inst.appendToSystemClassLoaderSearch(jarFileForRunTimeHooksEtc);
-		System.err.println("oshaj loaded!");
+		try {
+			// Register the instrumentor with the jvm as a class file transformer.
+			inst.addTransformer(new ClassFileTransformer() {
+				public byte[] transform(ClassLoader loader, String className, Class<?> targetClass,
+						ProtectionDomain protectionDomain, byte[] classFileBuffer)
+				throws IllegalClassFormatException {
+					if (shouldInstrument(className)) {
+						// Use ASM to insert hooks for all the sorts of accesses, acquire, release, maybe fork, join, volatiles, etc.
+						final ClassReader cr = new ClassReader(classFileBuffer);
+						final ClassWriter cw = new ClassWriter(cr, ClassWriter.COMPUTE_FRAMES); 
+						// TODO figure out how to do frames manually. COMPUTE_MAXS is a 2x cost!
+						cr.accept(new Instrumentor(cw, className), 0);
+						return cw.toByteArray();
+					} else {
+						System.err.println("!! Skipped instrumenting " + className);
+						return classFileBuffer;
+					}
+				}			
+			});
+			// Add the libraries that our instrumentation hooks will call to the classpath.
+			// inst.appendToSystemClassLoaderSearch(jarFileForRunTimeHooksEtc);
+			System.err.println("oshaj loaded!");
+		} catch (Exception e) {
+			System.err.println("Problem installing oshaj class transformer.");
+			e.printStackTrace();
+			System.exit(-1);
+		}
 	}
 	
 	public static boolean shouldInstrument(String className) {
@@ -259,7 +214,7 @@ public class Instrumentor extends ClassAdapter {
 			final GeneratorAdapter clinit = new GeneratorAdapter(
 					mv, Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC, "<clinit>", VOID_DESC);
 			clinit.visitCode();
-			clinit.invokeStatic(RUNTIMEMONITOR_TYPE, new Method(READERSET_INIT_NAME, READERSET_INIT_DESC));
+			clinit.invokeStatic(RUNTIME_MONITOR_TYPE, new Method(READERSET_INIT_NAME, READERSET_INIT_DESC));
 			clinit.visitEnd();
 		}
 		readersetSetup();
@@ -301,7 +256,7 @@ public class Instrumentor extends ClassAdapter {
 					init.arrayStore(STRING_TYPE);
 				}
 				// call MethodRegistry.buildSet(array). stack -> set
-				init.invokeStatic(METHOD_REGISTRY_TYPE, BUILDSET_METHOD);
+				init.invokeStatic(RUNTIME_MONITOR_TYPE, HOOK_BUILD_SET);
 				// putstatic into shadow field. stack ->
 				init.putStatic(Type.getObjectType(className), READERSET_FIELD_PREFIX + e.getKey(), INTSET_TYPE);
 			}
