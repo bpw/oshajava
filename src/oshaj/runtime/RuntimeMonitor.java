@@ -4,6 +4,7 @@ import oshaj.instrument.MethodRegistry;
 import oshaj.util.BitVectorIntSet;
 import oshaj.util.UniversalIntSet;
 import oshaj.util.WeakConcurrentIdentityHashMap;
+import acme.util.Util;
 import acme.util.collections.IntStack;
 
 public class RuntimeMonitor {
@@ -52,7 +53,7 @@ public class RuntimeMonitor {
 	 * @param readerMethod
 	 * @param state
 	 */
-	public static void selfRead(final int readerMethod, final State state) {
+	public static void selfRead(final State state, final int readerMethod) {
 		final long readerTid = Thread.currentThread().getId();
 		if (readerTid != state.writerTid && readerMethod != state.writerMethod) 
 			throw new IllegalCommunicationException(state.writerTid, state.writerMethod, readerTid, readerMethod);
@@ -70,7 +71,7 @@ public class RuntimeMonitor {
 	 * @param readerTid
 	 * @param readerMethod
 	 */
-	public static void sharedRead(final int readerMethod, final State state) {
+	public static void sharedRead(final State state, final int readerMethod) {
 		final long readerTid = Thread.currentThread().getId();
 		synchronized(state) {
 			if (readerTid != state.writerTid && (state.readerSet == null || !state.readerSet.contains(readerMethod))) 
@@ -86,7 +87,7 @@ public class RuntimeMonitor {
 	 *  
 	 * @param writerTid
 	 */
-	public static void privateWrite(final int writerMethod, final State state) {
+	public static void privateWrite(final State state, final int writerMethod) {
 		final long writerTid = Thread.currentThread().getId();
 		synchronized(state) {
 			state.writerTid = writerTid;
@@ -110,7 +111,7 @@ public class RuntimeMonitor {
 	 * @param writerTid
 	 * @param readerSet
 	 */
-	public static void protectedWrite(final int writerMethod, final State state) {
+	public static void protectedWrite(final State state, final int writerMethod) {
 		final long writerTid = Thread.currentThread().getId();
 		synchronized(state) {
 			state.writerTid = writerTid;
@@ -125,7 +126,7 @@ public class RuntimeMonitor {
 		return new State(Thread.currentThread().getId(), writerMethod, MethodRegistry.policyTable[writerMethod]);
 	}
 
-	public static void publicWrite(final int writerMethod, final State state) {
+	public static void publicWrite(final State state, final int writerMethod) {
 		final long writerTid = Thread.currentThread().getId();
 		synchronized(state) {
 			state.writerTid = writerTid;
@@ -162,7 +163,7 @@ public class RuntimeMonitor {
 	 * @param mid
 	 * @param lock
 	 */
-	public static void acquire(final int mid, final Object lock) {
+	public static void acquire(final Object lock, final int mid) {
 		final long tid = Thread.currentThread().getId();
 		LockState state = lockStates.get(lock);
 		if (state == null) {
@@ -184,10 +185,12 @@ public class RuntimeMonitor {
 	}
 	
 	public static void enter(final int mid) {
+		Util.log("enter");
 		stacks.get().push(mid);
 	}
 
 	public static void exit() {
+		Util.log("exit");
 		stacks.get().pop();
 	}
 	

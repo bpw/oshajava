@@ -1,6 +1,8 @@
 package oshaj.instrument;
 
 import java.util.HashMap;
+
+import acme.util.Util;
 import oshaj.util.BitVectorIntSet;
 import oshaj.util.Cons;
 import oshaj.util.IntSet;
@@ -68,7 +70,7 @@ public class MethodRegistry {
 		
 		// resize if necessary.
 		if (nextID == policyTable.length) {
-			System.err.println("!!!!! UNSAFE resize triggered. !!!!!");
+			Util.yikes("!!!!! UNSAFE resize triggered. !!!!!");
 			String[] tmp = new String[2*nextID];
 			System.arraycopy(methodIDtoSig, 0, tmp, 0, nextID);
 			methodIDtoSig = tmp;

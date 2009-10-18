@@ -10,11 +10,15 @@ CLASSLIST=$(BIN)/classlist.txt
 OSHAJAR=oshaj.jar
 MANIFEST=$(SRC)/Manifest.txt
 
+SETUP_SCRIPT=setup.sh
+
 JAVAC=javac
 
 MAIN=$(SRC)/oshaj/instrument/Instrumentor.java
 
-build:	classes classlist
+build:	jar setupscript
+
+jar:	classes classlist
 	jar cfm $(OSHAJAR) $(MANIFEST) @$(CLASSLIST)
 	jar i $(OSHAJAR)
 	
@@ -24,11 +28,16 @@ classlist:	classes
 classes:	$(MAIN)
 	$(JAVAC) -d $(BIN) -classpath $(CLASSPATH) -sourcepath $(SRC) $(MAIN)
 
+setupscript:	jar
+	echo "export OSHAJ_HOME=$(PWD)" > $(SETUP_SCRIPT)
+	echo "alias oshajrun='java -javaagent:${OSHAJ_HOME}/oshaj.jar'" >> $(SETUP_SCRIPT)
+
 clean:
 	rm -rf $(BIN)/*
 
 distclean:
 	rm -f $(OSHAJAR)
+	rm -f $(SETUP_SCRIPT)
 
 fullclean:	clean distclean cleantests
 
