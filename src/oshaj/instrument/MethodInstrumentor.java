@@ -190,81 +190,87 @@ public class MethodInstrumentor extends AdviceAdapter {
 
 			switch(opcode) {
 			case Opcodes.PUTFIELD:
-				// dup the target twice. stack -> obj | obj
+				// stack == obj value |
+				// swap. stack -> value obj |
+				gen.swap();
+				// dup the target twice. stack -> value obj | obj
 				gen.dup();
-				// Get the State for this field. stack -> obj | state
+				// Get the State for this field. stack -> value obj | state
 				gen.getField(ownerType, stateFieldName, Instrumentor.STATE_TYPE);
-				// dup the state. stack -> obj | state state
+				// dup the state. stack -> value obj | state state
 				gen.dup();
-				// if non-null, jump ahead. stack -> obj | state
+				// if non-null, jump ahead. stack -> value obj | state
 				gen.ifNonNull(nonNullState);
 
 				// NULL CASE: first write
-				// pop the null. stack -> obj | 
+				// pop the null. stack -> value obj | 
 				gen.pop();
-				// dup. stack -> obj | obj
+				// dup. stack -> value obj | obj
 				gen.dup();
 				switch (policy) {
 				case INLINE:
-					// get the current method ID. stack -> obj | obj mid
+					// get the current method ID. stack -> value obj | obj mid
 					gen.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_MID);
-					// do a first write. stack -> obj | obj state
+					// do a first write. stack -> value obj | obj state
 					gen.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PROTECTED_FIRST_WRITE);
 					break;
 				case PROTECTED:
-					// Push the current method id. stack -> obj | obj mid
+					// Push the current method id. stack -> value obj | obj mid
 					gen.push(mid);
-					// do a first write. stack -> obj | obj state
+					// do a first write. stack -> value obj | obj state
 					gen.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PROTECTED_FIRST_WRITE);
 					break;
 				case PUBLIC:
-					// Push the current method id. stack -> obj | obj mid
+					// Push the current method id. stack -> value obj | obj mid
 					gen.push(mid);
-					// do a first write. stack -> obj | obj state
+					// do a first write. stack -> value obj | obj state
 					gen.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PUBLIC_FIRST_WRITE);
 					break;
 				case PRIVATE:
-					// Push the current method id. stack -> obj | obj mid
+					// Push the current method id. stack -> value obj | obj mid
 					gen.push(mid);
-					// do a first write. stack -> obj | obj state
+					// do a first write. stack -> value obj | obj state
 					gen.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PRIVATE_FIRST_WRITE);
 					break;
 				}
-				// store the new state. stack -> obj | 
+				// store the new state. stack -> value obj | 
 				gen.putField(ownerType, stateFieldName, Instrumentor.STATE_TYPE);
-				// jump to end. stack -> obj | 
+				// swap back. stack -> obj value |
+				gen.swap();
+				// jump to end. stack -> obj value | 
 				gen.goTo(stateDone);
 
 				// NON-NULL CASE: regular write
-				// stack == obj | state
+				// stack == value obj | state
 				gen.mark(nonNullState);
 				switch (policy) {
 				case INLINE:
-					// Push the current method id. stack -> obj | state mid
+					// Push the current method id. stack -> value obj | state mid
 					gen.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_MID);
-					// Call the write hook. stack -> obj | 
+					// Call the write hook. stack -> value obj | 
 					gen.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PROTECTED_WRITE);
 					break;
 				case PROTECTED:
-					// Push the current method id. stack -> obj | state mid
+					// Push the current method id. stack -> value obj | state mid
 					gen.push(mid);
-					// Call the write hook. stack -> obj | 
+					// Call the write hook. stack -> value obj | 
 					gen.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PROTECTED_WRITE);
 					break;
 				case PUBLIC:
-					// Push the current method id. stack -> obj | state mid
+					// Push the current method id. stack -> value obj | state mid
 					gen.push(mid);
-					// Call the write hook. stack -> obj | 
+					// Call the write hook. stack -> value obj | 
 					gen.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PUBLIC_WRITE);
 					break;
 				case PRIVATE:
-					// Push the current method id. stack -> obj | state mid
+					// Push the current method id. stack -> value obj | state mid
 					gen.push(mid);
-					// Call the write hook. stack -> obj | 
+					// Call the write hook. stack -> value obj | 
 					gen.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PRIVATE_WRITE);
 					break;
 				}
-
+				// swap back. stack -> obj value |
+				gen.swap();
 				break;
 			case Opcodes.PUTSTATIC:
 				// Get the State for this field. stack -> state
