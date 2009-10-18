@@ -429,7 +429,9 @@ public class MethodInstrumentor extends AdviceAdapter {
 			myStackSize(2);
 			// dup the target. stack -> lock | lock
 			gen.dup();
-			// get mid. stack -> lock | lock mid
+			// do the monitorenter. stack -> lock
+			super.visitInsn(opcode);
+			// get mid. stack -> lock mid
 			switch (policy) {
 			case INLINE:
 				gen.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_MID);
@@ -440,18 +442,21 @@ public class MethodInstrumentor extends AdviceAdapter {
 				gen.push(mid);
 				break;
 			}
-			// call acquire hook. stack -> lock |
+			// call acquire hook. stack -> 
 			gen.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_ACQUIRE);
 			break;
 		case Opcodes.MONITOREXIT:
 			myStackSize(1);
 			// dup the target. stack -> lock | lock
 			gen.dup();
-			// call acquire hook. stack -> lock |
+			// call release hook. stack -> lock |
 			gen.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_RELEASE);
+			super.visitInsn(opcode);
 			break;
+		default:
+			super.visitInsn(opcode);
+			break;			
 		}
-		super.visitInsn(opcode);
 	}
 
 	@Override

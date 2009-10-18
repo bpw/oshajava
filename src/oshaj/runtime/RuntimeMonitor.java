@@ -6,6 +6,7 @@ import oshaj.util.UniversalIntSet;
 import oshaj.util.WeakConcurrentIdentityHashMap;
 import acme.util.Util;
 import acme.util.collections.IntStack;
+import acme.util.identityhash.ConcurrentIdentityHashMap;
 
 public class RuntimeMonitor {
 
@@ -13,11 +14,11 @@ public class RuntimeMonitor {
 		@Override protected IntStack initialValue() { return new IntStack(); }
 	};
 
-	// TODO make sure this WeakConcurrentIdentityHashMap actually works.
-	// we need a concurrne hash map b/c access for multiple locks at once is not
+	// TODO fix WeakConcurrentIdentityHashMap and replace with that..
+	// we need a concurrent hash map b/c access for multiple locks at once is not
 	// protected by the app locks...
-	protected static final WeakConcurrentIdentityHashMap<Object,LockState> lockStates = 
-		new WeakConcurrentIdentityHashMap<Object,LockState>();
+	protected static final ConcurrentIdentityHashMap<Object,LockState> lockStates = 
+		new ConcurrentIdentityHashMap<Object,LockState>();
 
 	/**
 	 * Checks a read by a private reading method, i.e. a method that has no
@@ -153,11 +154,15 @@ public class RuntimeMonitor {
 	 * @param lock
 	 */
 	public static void release(final Object lock) {
-		lockStates.get(lock).depth--;
+		final LockState state = lockStates.get(lock);
+		if (state.depth <= 0) throw new IllegalStateException("Bad lock scoping");
+		state.depth--;
 	}
 
 	/**
 	 * Lock acquire hook.
+	 * 
+	 * TODO cache locks by thread.
 	 * 
 	 * @param readerSet
 	 * @param mid
@@ -167,8 +172,12 @@ public class RuntimeMonitor {
 		final long tid = Thread.currentThread().getId();
 		LockState state = lockStates.get(lock);
 		if (state == null) {
-			state = lockStates.put(lock, new LockState(tid, mid, MethodRegistry.policyTable[mid]));
+			state = new LockState(tid, mid, MethodRegistry.policyTable[mid]);
+			state.depth = 1;
+			state = lockStates.put(lock, state);
 			assert state == null;
+		} else if (state.depth < 0) {
+			throw new IllegalStateException("Bad lock scoping.");
 		} else if (state.depth == 0) {
 			// only care on first (non-reentrant) acquire, since it matches with what will be
 			// the last (real) release.
@@ -178,9 +187,10 @@ public class RuntimeMonitor {
 				state.writerMethod = mid;
 				state.writerTid = tid;
 				state.readerSet = MethodRegistry.policyTable[mid];
+				state.depth++;
 			}
-		} else if (state.depth < 0) {
-			throw new IllegalStateException("Bad lock scoping.");
+		} else {
+			state.depth++;
 		}
 	}
 	
