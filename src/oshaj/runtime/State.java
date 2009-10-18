@@ -7,8 +7,8 @@ import oshaj.util.IntSet;
  * between methods in different threads.
  * 
  * TODO try baking this in directly as 3 shadow fields instead of 1 with indirection.
- * Takes 64 bytes per object whether or not the shadow fields are used instead of the 
- * current 8 bytes, then 64 bytes + header more when actually used.
+ * Takes 12 bytes per object whether or not the shadow fields are used instead of the 
+ * current 4 bytes, then 12 bytes + header more when actually used.
  * 
  * @author bpw
  *
@@ -18,7 +18,7 @@ public class State {
 	/**
 	 * Thread id of the last thread to write to the field.
 	 */
-	protected long writerTid;
+	protected Thread writerThread;
 	
 	/**
 	 * Method id of the last method in which the field was written.
@@ -30,14 +30,14 @@ public class State {
 	 */
 	protected IntSet readerSet;
 	
-	protected State(long writerTid, int writerMethod, IntSet readerList) {
-		this.writerTid = writerTid;
+	protected State(Thread writerTid, int writerMethod, IntSet readerList) {
+		this.writerThread = writerTid;
 		this.writerMethod = writerMethod;
 		this.readerSet = readerList;
 	}
 	
-	protected State(long writerTid, int writerMethod) {
-		this.writerTid = writerTid;
+	protected State(Thread writerTid, int writerMethod) {
+		this.writerThread = writerTid;
 		this.writerMethod = writerMethod;
 		this.readerSet = null;
 	}

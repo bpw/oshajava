@@ -6,12 +6,12 @@ public class LockState extends State {
 	
 	protected int depth = 0;
 
-	protected LockState(long writerTid, int writerMethod) {
-		super(writerTid, writerMethod);
+	protected LockState(Thread writerThread, int writerMethod) {
+		super(writerThread, writerMethod);
 	}
 
-	protected LockState(long writerTid, int writerMethod, IntSet readerSet) {
-		super(writerTid, writerMethod);
+	protected LockState(Thread writerThread, int writerMethod, IntSet readerSet) {
+		super(writerThread, writerMethod, readerSet);
 	}
 
 }

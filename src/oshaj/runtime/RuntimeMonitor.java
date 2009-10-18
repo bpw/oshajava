@@ -36,12 +36,16 @@ public class RuntimeMonitor {
 	 * privateWrite call or a sharedWrite call, we get luck of the draw since the
 	 * application did not order these calls. Fine. We're not a race detector.
 	 * 
-	 * @param readerTid
+	 * @param readerMethod
+	 * @param state
 	 */
 	public static void privateRead(final int readerMethod, final State state) {
-		final long readerTid = Thread.currentThread().getId();
-		if (readerTid != state.writerTid) 
-			throw new IllegalCommunicationException(state.writerTid, state.writerMethod, readerTid, readerMethod);
+		final Thread readerThread = Thread.currentThread();
+		if (readerThread != state.writerThread) 
+			throw new IllegalSharingException(
+					state.writerThread, MethodRegistry.lookup(state.writerMethod), 
+					readerThread, MethodRegistry.lookup(readerMethod)
+			);
 	}
 
 	/**
@@ -54,10 +58,13 @@ public class RuntimeMonitor {
 	 * @param readerMethod
 	 * @param state
 	 */
-	public static void selfRead(final State state, final int readerMethod) {
-		final long readerTid = Thread.currentThread().getId();
-		if (readerTid != state.writerTid && readerMethod != state.writerMethod) 
-			throw new IllegalCommunicationException(state.writerTid, state.writerMethod, readerTid, readerMethod);
+	public static void selfRead(final int readerMethod, final State state) {
+		final Thread readerThread = Thread.currentThread();
+		if (readerThread != state.writerThread && readerMethod != state.writerMethod) 
+			throw new IllegalSharingException(
+					state.writerThread, MethodRegistry.lookup(state.writerMethod), 
+					readerThread, MethodRegistry.lookup(readerMethod)
+			);
 	}
 
 	/**
@@ -69,14 +76,17 @@ public class RuntimeMonitor {
 	 * sharedWrite or privateWrite. A cleverer solution using volatiles could 
 	 * work too.
 	 * 
-	 * @param readerTid
+	 * @param state
 	 * @param readerMethod
 	 */
 	public static void sharedRead(final State state, final int readerMethod) {
-		final long readerTid = Thread.currentThread().getId();
+		final Thread readerThread = Thread.currentThread();
 		synchronized(state) {
-			if (readerTid != state.writerTid && (state.readerSet == null || !state.readerSet.contains(readerMethod))) 
-				throw new IllegalCommunicationException(state.writerTid, state.writerMethod, readerTid, readerMethod);
+			if (readerThread != state.writerThread && (state.readerSet == null || !state.readerSet.contains(readerMethod))) 
+				throw new IllegalSharingException(
+						state.writerThread, MethodRegistry.lookup(state.writerMethod), 
+						readerThread, MethodRegistry.lookup(readerMethod)
+				);
 		}
 	}
 
@@ -86,12 +96,13 @@ public class RuntimeMonitor {
 	 * This method must be synchronized to prevent bad interleavings with
 	 * sharedRead or sharedWrite.
 	 *  
-	 * @param writerTid
+	 * @param state
+	 * @param writerMethod
 	 */
 	public static void privateWrite(final State state, final int writerMethod) {
-		final long writerTid = Thread.currentThread().getId();
+		final Thread writerThread = Thread.currentThread();
 		synchronized(state) {
-			state.writerTid = writerTid;
+			state.writerThread = writerThread;
 			if (state.writerMethod != writerMethod) { 
 				state.writerMethod = writerMethod;
 				state.readerSet = null;
@@ -100,7 +111,7 @@ public class RuntimeMonitor {
 	}
 
 	public static State privateFirstWrite(final int writerMethod) {
-		return new State(Thread.currentThread().getId(), writerMethod);
+		return new State(Thread.currentThread(), writerMethod);
 	}
 
 	/**
@@ -109,13 +120,13 @@ public class RuntimeMonitor {
 	 * This method must be synchronized to prevent bad interleavings with
 	 * sharedRead or sharedWrite.
 	 *  
-	 * @param writerTid
-	 * @param readerSet
+	 * @param state
+	 * @param writerMethod
 	 */
 	public static void protectedWrite(final State state, final int writerMethod) {
-		final long writerTid = Thread.currentThread().getId();
+		final Thread writerThread = Thread.currentThread();
 		synchronized(state) {
-			state.writerTid = writerTid;
+			state.writerThread = writerThread;
 			if (state.writerMethod != writerMethod) {
 				state.writerMethod = writerMethod;
 				state.readerSet = MethodRegistry.policyTable[writerMethod];
@@ -124,13 +135,13 @@ public class RuntimeMonitor {
 	}
 
 	public static State protectedFirstWrite(final int writerMethod) {
-		return new State(Thread.currentThread().getId(), writerMethod, MethodRegistry.policyTable[writerMethod]);
+		return new State(Thread.currentThread(), writerMethod, MethodRegistry.policyTable[writerMethod]);
 	}
 
 	public static void publicWrite(final State state, final int writerMethod) {
-		final long writerTid = Thread.currentThread().getId();
+		final Thread writerThread = Thread.currentThread();
 		synchronized(state) {
-			state.writerTid = writerTid;
+			state.writerThread = writerThread;
 			if (state.writerMethod != writerMethod) {
 				state.writerMethod = writerMethod;
 				state.readerSet = UniversalIntSet.set;
@@ -139,7 +150,7 @@ public class RuntimeMonitor {
 	}
 
 	public static State publicFirstWrite(final int writerMethod) {
-		return new State(Thread.currentThread().getId(), writerMethod, UniversalIntSet.set);
+		return new State(Thread.currentThread(), writerMethod, UniversalIntSet.set);
 	}
 
 
@@ -155,8 +166,9 @@ public class RuntimeMonitor {
 	 */
 	public static void release(final Object lock) {
 		final LockState state = lockStates.get(lock);
-		if (state.depth <= 0) throw new IllegalStateException("Bad lock scoping");
+		if (state.depth <= 0) Util.fail("Bad lock scoping");
 		state.depth--;
+//		if (state.depth == 0) Util.logf("real release %s", Util.objectToIdentityString(lock));
 	}
 
 	/**
@@ -169,51 +181,64 @@ public class RuntimeMonitor {
 	 * @param lock
 	 */
 	public static void acquire(final Object lock, final int mid) {
-		final long tid = Thread.currentThread().getId();
-		LockState state = lockStates.get(lock);
-		if (state == null) {
-			state = new LockState(tid, mid, MethodRegistry.policyTable[mid]);
-			state.depth = 1;
-			state = lockStates.put(lock, state);
-			assert state == null;
-		} else if (state.depth < 0) {
-			throw new IllegalStateException("Bad lock scoping.");
-		} else if (state.depth == 0) {
-			// only care on first (non-reentrant) acquire, since it matches with what will be
-			// the last (real) release.
-			if (tid != state.writerTid && (state.readerSet == null || ! state.readerSet.contains(mid))) {
-				throw new IllegalSynchronizationException(state.writerTid, state.writerMethod, tid, mid);
+		try {
+			LockState state = lockStates.get(lock);
+			if (state == null) {
+				state = new LockState(Thread.currentThread(), mid, MethodRegistry.policyTable[mid]);
+				state.depth = 1;
+				state = lockStates.put(lock, state);
+				assert state == null;
+			} else if (state.depth < 0) {
+				Util.fail("Bad lock scoping.");
+			} else if (state.depth == 0) {
+				// only care on first (non-reentrant) acquire, since it matches with what will be
+				// the last (real) release.
+				final Thread acquirerThread = Thread.currentThread();
+				if (acquirerThread != state.writerThread && (state.readerSet == null || ! state.readerSet.contains(mid))) {
+					throw new IllegalSynchronizationException(
+							state.writerThread, MethodRegistry.lookup(state.writerMethod), 
+							acquirerThread, MethodRegistry.lookup(mid));
+				} else {
+					state.writerMethod = mid;
+					state.writerThread = acquirerThread;
+					state.readerSet = MethodRegistry.policyTable[mid];
+					state.depth++;
+				}
 			} else {
-				state.writerMethod = mid;
-				state.writerTid = tid;
-				state.readerSet = MethodRegistry.policyTable[mid];
 				state.depth++;
 			}
-		} else {
-			state.depth++;
+		} catch (IllegalCommunicationException e) {
+			throw e;
+		} catch (Throwable t) {
+			Util.fail(t);
 		}
 	}
 	
 	public static void enter(final int mid) {
-		Util.log("enter");
-		stacks.get().push(mid);
+		try {
+			Util.logf("enter %d", mid);
+			stacks.get().push(mid);
+		} catch (Throwable t) {
+			Util.fail(t);
+		}
 	}
 
 	public static void exit() {
-		Util.log("exit");
-		stacks.get().pop();
-	}
-	
-	public static int currentMid() { // TODO could replace with opt. to have privateRead, inlinePrivateRead, etc.
-		return stacks.get().top();
+		try {
+			Util.log("exit");
+			stacks.get().pop();
+		} catch (Throwable t) {
+			Util.fail(t);
+		}
 	}
 
-	public static BitVectorIntSet buildSet(String[] readers) {
-		final BitVectorIntSet set = new BitVectorIntSet();
-		for (String r : readers) {
-			MethodRegistry.requestID(r, set);
+	public static int currentMid() { // TODO could replace with opt. to have privateRead, inlinePrivateRead, etc.
+		try {
+			return stacks.get().top();
+		} catch (Throwable t) {
+			Util.fail(t);
+			return -1;
 		}
-		return set;
 	}
 
 }

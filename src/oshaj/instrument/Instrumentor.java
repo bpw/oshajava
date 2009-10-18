@@ -37,43 +37,37 @@ public class Instrumentor extends ClassAdapter {
 	 */
 
 	protected static final String[] NONINSTRUMENTED_PREFIXES = { "oshaj/", "org/objectweb/asm/", "acme/", "sun/", "java/" };
-
+	
 	protected static final Type STRING_TYPE          = Type.getType(java.lang.String.class);
-	protected static final Type INTSET_TYPE          = Type.getType(oshaj.util.IntSet.class);
-	protected static final Type BITVECTORINTSET_TYPE = Type.getType(oshaj.util.BitVectorIntSet.class);
 	protected static final Type STATE_TYPE           = Type.getType(oshaj.runtime.State.class);
 	protected static final Type RUNTIME_MONITOR_TYPE = Type.getType(oshaj.runtime.RuntimeMonitor.class);
 	protected static final Type OBJECT_TYPE          = Type.getType(java.lang.Object.class);
 
-	protected static final String ANNOT_INLINE_DESC = Type.getDescriptor(oshaj.annotation.Inline.class);
+	protected static final String ANNOT_INLINE_DESC         = Type.getDescriptor(oshaj.annotation.Inline.class);
 	protected static final String ANNOT_THREAD_PRIVATE_DESC = Type.getDescriptor(oshaj.annotation.ThreadPrivate.class);
-	protected static final String ANNOT_READ_BY_DESC = Type.getDescriptor(oshaj.annotation.ReadBy.class);
-	protected static final String ANNOT_READ_BY_ALL_DESC = Type.getDescriptor(oshaj.annotation.ReadByAll.class);
-	protected static final String STATE_DESC = STATE_TYPE.getDescriptor();
-	protected static final String SHADOW_FIELD_SUFFIX = "__osha_state";
+	protected static final String ANNOT_READ_BY_DESC        = Type.getDescriptor(oshaj.annotation.ReadBy.class);
+	protected static final String ANNOT_READ_BY_ALL_DESC    = Type.getDescriptor(oshaj.annotation.ReadByAll.class);
+	protected static final String COMM_EXCEPT_DESC          = Type.getDescriptor(oshaj.runtime.IllegalCommunicationException.class);
+	protected static final String SHADOW_FIELD_SUFFIX       = "__osha_state";
+	protected static final String STATE_DESC                = STATE_TYPE.getDescriptor();
 
-	protected static final Type[] ARGS_NONE = new Type[0];
-	protected static final Type[] ARGS_INT = { Type.INT_TYPE };
+	protected static final Type[] ARGS_NONE      = new Type[0];
+	protected static final Type[] ARGS_INT       = { Type.INT_TYPE };
 	protected static final Type[] ARGS_STATE_INT = { STATE_TYPE, Type.INT_TYPE  };
-
-	protected static final Method STATE_CONSTRUCTOR = new Method("<init>", Type.VOID_TYPE, ARGS_NONE);
-
-	protected static final Method HOOK_BUILD_SET = 
-		new Method("buildSet", BITVECTORINTSET_TYPE, new Type[] {Type.getType(String[].class)});
 
 	protected static final Method HOOK_ENTER = new Method("enter", Type.VOID_TYPE, ARGS_INT);
 	protected static final Method HOOK_EXIT  = new Method("exit",  Type.VOID_TYPE, ARGS_NONE);
-	protected static final Method HOOK_MID  = new Method("currentMid",  Type.INT_TYPE, ARGS_NONE);
+	protected static final Method HOOK_MID   = new Method("currentMid",  Type.INT_TYPE, ARGS_NONE);
 
 	protected static final Method HOOK_PRIVATE_READ   = new Method("privateRead", Type.VOID_TYPE, ARGS_STATE_INT);
 	protected static final Method HOOK_PROTECTED_READ = new Method("sharedRead", Type.VOID_TYPE, ARGS_STATE_INT);
 
-	protected static final Method HOOK_PRIVATE_WRITE  = new Method("privateWrite", Type.VOID_TYPE, ARGS_STATE_INT);
-	protected static final Method HOOK_PRIVATE_FIRST_WRITE = new Method("privateFirstWrite", STATE_TYPE, ARGS_INT);
-	protected static final Method HOOK_PROTECTED_WRITE = new Method("protectedWrite", Type.VOID_TYPE, ARGS_STATE_INT);
+	protected static final Method HOOK_PRIVATE_WRITE         = new Method("privateWrite", Type.VOID_TYPE, ARGS_STATE_INT);
+	protected static final Method HOOK_PRIVATE_FIRST_WRITE   = new Method("privateFirstWrite", STATE_TYPE, ARGS_INT);
+	protected static final Method HOOK_PROTECTED_WRITE       = new Method("protectedWrite", Type.VOID_TYPE, ARGS_STATE_INT);
 	protected static final Method HOOK_PROTECTED_FIRST_WRITE = new Method("protectedFirstWrite", STATE_TYPE, ARGS_INT);
-	protected static final Method HOOK_PUBLIC_WRITE       = new Method("publicWrite", STATE_TYPE, ARGS_STATE_INT);
-	protected static final Method HOOK_PUBLIC_FIRST_WRITE = new Method("publicFirstWrite", STATE_TYPE, ARGS_INT);
+	protected static final Method HOOK_PUBLIC_WRITE          = new Method("publicWrite", STATE_TYPE, ARGS_STATE_INT);
+	protected static final Method HOOK_PUBLIC_FIRST_WRITE    = new Method("publicFirstWrite", STATE_TYPE, ARGS_INT);
 
 	protected static final Method HOOK_ACQUIRE = 
 		new Method("acquire", Type.VOID_TYPE, new Type[] { OBJECT_TYPE, Type.INT_TYPE });
@@ -93,7 +87,7 @@ public class Instrumentor extends ClassAdapter {
 						if (shouldInstrument(className)) {
 							// Use ASM to insert hooks for all the sorts of accesses, acquire, release, maybe fork, join, volatiles, etc.
 							final ClassReader cr = new ClassReader(classFileBuffer);
-							final ClassWriter cw = new ClassWriter(cr, 0); 
+							final ClassWriter cw = new ClassWriter(cr, 0); //ClassWriter.COMPUTE_FRAMES); 
 							// TODO figure out how to do frames manually. COMPUTE_MAXS is a 2x cost!
 							// For now we just drop them and change the version to 5 (no other
 							// differences with 6...)
@@ -138,6 +132,7 @@ public class Instrumentor extends ClassAdapter {
 
 	/**************************************************************************/
 
+	protected String className;
 	protected String classDesc;
 	protected Type classType;
 
@@ -148,6 +143,7 @@ public class Instrumentor extends ClassAdapter {
 	@Override
 	public void visit(int version, int access, String name, String signature,
 			String superName, String[] interfaces) {
+		className = name;
 		classDesc = getDescriptor(name);
 		classType = Type.getObjectType(name);
 		// TODO

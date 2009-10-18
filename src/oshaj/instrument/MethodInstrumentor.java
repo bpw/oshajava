@@ -8,13 +8,13 @@ import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.AdviceAdapter;
 import org.objectweb.asm.commons.GeneratorAdapter;
 
+import acme.util.Util;
+
 import oshaj.util.BitVectorIntSet;
 import oshaj.util.UniversalIntSet;
 
 
 public class MethodInstrumentor extends AdviceAdapter {
-
-	protected final GeneratorAdapter gen;
 
 	protected int mid;
 	protected final boolean isMain;
@@ -23,7 +23,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 	//	protected final boolean isClinit;
 	protected final boolean isStatic;
 
-	protected final String nameAndDesc;
+	protected final String fullNameAndDesc;
 
 	public static enum Policy { INLINE, PRIVATE, PROTECTED, PUBLIC }
 
@@ -47,12 +47,11 @@ public class MethodInstrumentor extends AdviceAdapter {
 		isSynchronized = (access & Opcodes.ACC_SYNCHRONIZED) != 0;
 		isConstructor = name.equals("\"<init>\"");
 		//		isClinit = name.equals("\"<clinit>\"");
-		nameAndDesc = name + desc;
+		fullNameAndDesc = inst.className + "." + name + desc;
 		if (isMain) { // and it wasn't annotated...
 			policy = Policy.PUBLIC;
-			mid = MethodRegistry.register(nameAndDesc, UniversalIntSet.set);
+			mid = MethodRegistry.register(fullNameAndDesc, UniversalIntSet.set);
 		}
-		gen = new GeneratorAdapter(next, access, name, desc);
 	}
 
 	protected void myStackSize(int size) {
@@ -69,16 +68,17 @@ public class MethodInstrumentor extends AdviceAdapter {
 			return null;
 		} else if (desc.equals(Instrumentor.ANNOT_THREAD_PRIVATE_DESC)) {
 			policy = Policy.PRIVATE;
-			mid = MethodRegistry.register(nameAndDesc, null);
+			mid = MethodRegistry.register(fullNameAndDesc, null);
 			return null;
 		} else if (desc.equals(Instrumentor.ANNOT_READ_BY_DESC)) {
 			policy = Policy.PROTECTED;
 			final BitVectorIntSet readerSet = new BitVectorIntSet();
-			mid = MethodRegistry.register(nameAndDesc, readerSet);
+			mid = MethodRegistry.register(fullNameAndDesc, readerSet);
 			return new AnnotationRecorder(readerSet);
 		} else if (desc.equals(Instrumentor.ANNOT_READ_BY_ALL_DESC)) {
 			policy = Policy.PUBLIC;
-			mid = MethodRegistry.register(nameAndDesc, UniversalIntSet.set);
+			mid = MethodRegistry.register(fullNameAndDesc, UniversalIntSet.set);
+//			Util.logf("%s (mid = %d) is ReadByAll. set in table = %s", fullNameAndDesc, mid, MethodRegistry.policyTable[mid]);
 			return null;
 		}  else {
 			// Not one of ours.
@@ -113,31 +113,31 @@ public class MethodInstrumentor extends AdviceAdapter {
 	public void onMethodEnter() {
 		if (policy != Policy.INLINE) {
 			myStackSize(1);
-			gen.push(mid);
-			gen.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_ENTER);
+			super.push(mid);
+			super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_ENTER);
 		}
 		if (isSynchronized) {
 			myStackSize(2);
 			if (isStatic) {
 				// get class (lock). stack -> lock
-				gen.push(inst.classType);
+				super.push(inst.classType);
 			} else {
 				// get object (lock). stack -> lock
-				gen.loadThis();
+				super.loadThis();
 			}
 			// get mid. stack -> lock mid
 			switch (policy) {
 			case INLINE:
-				gen.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_MID);
+				super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_MID);
 				break;
 			case PRIVATE:
 			case PROTECTED:
 			case PUBLIC:
-				gen.push(mid);
+				super.push(mid);
 				break;
 			}
 			// call acquire hook. stack ->
-			gen.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_ACQUIRE);
+			super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_ACQUIRE);
 		}
 	}
 
@@ -147,16 +147,16 @@ public class MethodInstrumentor extends AdviceAdapter {
 			myStackSize(1);
 			if (isStatic) {
 				// get class (lock). stack -> lock
-				gen.push(inst.classType);
+				super.push(inst.classType);
 			} else {
 				// get object (lock). stack -> lock
-				gen.loadThis();
+				super.loadThis();
 			}
 			// call release hook. stack ->
-			gen.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_RELEASE);
+			super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_RELEASE);
 		}
 		if (policy != Policy.INLINE) {
-			gen.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_EXIT);
+			super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_EXIT);
 		}
 	}
 
@@ -192,229 +192,229 @@ public class MethodInstrumentor extends AdviceAdapter {
 			case Opcodes.PUTFIELD:
 				// stack == obj value |
 				// swap. stack -> value obj |
-				gen.swap();
+				super.swap();
 				// dup the target twice. stack -> value obj | obj
-				gen.dup();
+				super.dup();
 				// Get the State for this field. stack -> value obj | state
-				gen.getField(ownerType, stateFieldName, Instrumentor.STATE_TYPE);
+				super.getField(ownerType, stateFieldName, Instrumentor.STATE_TYPE);
 				// dup the state. stack -> value obj | state state
-				gen.dup();
+				super.dup();
 				// if non-null, jump ahead. stack -> value obj | state
-				gen.ifNonNull(nonNullState);
+				super.ifNonNull(nonNullState);
 
 				// NULL CASE: first write
 				// pop the null. stack -> value obj | 
-				gen.pop();
+				super.pop();
 				// dup. stack -> value obj | obj
-				gen.dup();
+				super.dup();
 				switch (policy) {
 				case INLINE:
 					// get the current method ID. stack -> value obj | obj mid
-					gen.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_MID);
+					super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_MID);
 					// do a first write. stack -> value obj | obj state
-					gen.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PROTECTED_FIRST_WRITE);
+					super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PROTECTED_FIRST_WRITE);
 					break;
 				case PROTECTED:
 					// Push the current method id. stack -> value obj | obj mid
-					gen.push(mid);
+					super.push(mid);
 					// do a first write. stack -> value obj | obj state
-					gen.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PROTECTED_FIRST_WRITE);
+					super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PROTECTED_FIRST_WRITE);
 					break;
 				case PUBLIC:
 					// Push the current method id. stack -> value obj | obj mid
-					gen.push(mid);
+					super.push(mid);
 					// do a first write. stack -> value obj | obj state
-					gen.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PUBLIC_FIRST_WRITE);
+					super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PUBLIC_FIRST_WRITE);
 					break;
 				case PRIVATE:
 					// Push the current method id. stack -> value obj | obj mid
-					gen.push(mid);
+					super.push(mid);
 					// do a first write. stack -> value obj | obj state
-					gen.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PRIVATE_FIRST_WRITE);
+					super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PRIVATE_FIRST_WRITE);
 					break;
 				}
 				// store the new state. stack -> value obj | 
-				gen.putField(ownerType, stateFieldName, Instrumentor.STATE_TYPE);
+				super.putField(ownerType, stateFieldName, Instrumentor.STATE_TYPE);
 				// swap back. stack -> obj value |
-				gen.swap();
+				super.swap();
 				// jump to end. stack -> obj value | 
-				gen.goTo(stateDone);
+				super.goTo(stateDone);
 
 				// NON-NULL CASE: regular write
 				// stack == value obj | state
-				gen.mark(nonNullState);
+				super.mark(nonNullState);
 				switch (policy) {
 				case INLINE:
 					// Push the current method id. stack -> value obj | state mid
-					gen.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_MID);
+					super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_MID);
 					// Call the write hook. stack -> value obj | 
-					gen.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PROTECTED_WRITE);
+					super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PROTECTED_WRITE);
 					break;
 				case PROTECTED:
 					// Push the current method id. stack -> value obj | state mid
-					gen.push(mid);
+					super.push(mid);
 					// Call the write hook. stack -> value obj | 
-					gen.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PROTECTED_WRITE);
+					super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PROTECTED_WRITE);
 					break;
 				case PUBLIC:
 					// Push the current method id. stack -> value obj | state mid
-					gen.push(mid);
+					super.push(mid);
 					// Call the write hook. stack -> value obj | 
-					gen.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PUBLIC_WRITE);
+					super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PUBLIC_WRITE);
 					break;
 				case PRIVATE:
 					// Push the current method id. stack -> value obj | state mid
-					gen.push(mid);
+					super.push(mid);
 					// Call the write hook. stack -> value obj | 
-					gen.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PRIVATE_WRITE);
+					super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PRIVATE_WRITE);
 					break;
 				}
 				// swap back. stack -> obj value |
-				gen.swap();
+				super.swap();
 				break;
 			case Opcodes.PUTSTATIC:
 				// Get the State for this field. stack -> state
-				gen.getStatic(ownerType, stateFieldName, Instrumentor.STATE_TYPE);
+				super.getStatic(ownerType, stateFieldName, Instrumentor.STATE_TYPE);
 				// dup the state. stack -> state state
-				gen.dup();
+				super.dup();
 				// if non-null, jump ahead. stack -> state
-				gen.ifNonNull(nonNullState);
+				super.ifNonNull(nonNullState);
 
 				// NULL CASE: first write
 				// pop the null. stack -> 
-				gen.pop();
+				super.pop();
 				switch (policy) {
 				case INLINE:
 					// get the current method ID. stack -> mid
-					gen.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_MID);
+					super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_MID);
 					// load the readerset. stack -> mid set
 					// do a first write. stack -> state
-					gen.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PROTECTED_FIRST_WRITE);
+					super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PROTECTED_FIRST_WRITE);
 					break;
 				case PROTECTED:
 					// Push the current method id. stack -> mid
-					gen.push(mid);
+					super.push(mid);
 					// do a first write. stack -> state
-					gen.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PROTECTED_FIRST_WRITE);
+					super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PROTECTED_FIRST_WRITE);
 					break;
 				case PUBLIC:
 					// Push the current method id. stack -> mid
-					gen.push(mid);
+					super.push(mid);
 					// do a first write. stack -> state
-					gen.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PUBLIC_FIRST_WRITE);
+					super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PUBLIC_FIRST_WRITE);
 					break;
 				case PRIVATE:
 					// Push the current method id. stack -> mid
-					gen.push(mid);
+					super.push(mid);
 					// do a first write. stack -> state
-					gen.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PRIVATE_FIRST_WRITE);
+					super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PRIVATE_FIRST_WRITE);
 					break;
 				}
 				// store the new state. stack -> 
-				gen.putStatic(ownerType, stateFieldName, Instrumentor.STATE_TYPE);
+				super.putStatic(ownerType, stateFieldName, Instrumentor.STATE_TYPE);
 				// jump to end. stack -> 
-				gen.goTo(stateDone);
+				super.goTo(stateDone);
 
 				// NON-NULL CASE: regular write
 				// stack == state
-				gen.mark(nonNullState);
+				super.mark(nonNullState);
 				switch (policy) {
 				case INLINE:
 					// Push the current method id. stack -> state mid
-					gen.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_MID);
+					super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_MID);
 					// Call the write hook. stack -> 
-					gen.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PROTECTED_WRITE);
+					super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PROTECTED_WRITE);
 					break;
 				case PROTECTED:
 					// Push the current method id. stack -> state mid
-					gen.push(mid);
+					super.push(mid);
 					// Call the write hook. stack -> 
-					gen.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PROTECTED_WRITE);
+					super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PROTECTED_WRITE);
 					break;
 				case PUBLIC:
 					// Push the current method id. stack -> state mid
-					gen.push(mid);
+					super.push(mid);
 					// Call the write hook. stack -> 
-					gen.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PUBLIC_WRITE);
+					super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PUBLIC_WRITE);
 					break;
 				case PRIVATE:
 					// Push the current method id. stack -> state mid
-					gen.push(mid);
+					super.push(mid);
 					// Call the write hook. stack -> 
-					gen.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PRIVATE_WRITE);
+					super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PRIVATE_WRITE);
 					break;
 				}
 
 				break;
 			case Opcodes.GETFIELD:
 				// dup the target. stack -> obj | obj
-				gen.dup();
+				super.dup();
 				// Get the State for this field. stack -> obj | state
-				gen.getField(ownerType, stateFieldName, Instrumentor.STATE_TYPE);
+				super.getField(ownerType, stateFieldName, Instrumentor.STATE_TYPE);
 				// dup the state. stack -> obj | state state
-				gen.dup();
+				super.dup();
 				// if non-null, jump ahead. stack -> obj | state
-				gen.ifNonNull(nonNullState);
+				super.ifNonNull(nonNullState);
 
 				// NULL CASE: no communication
 				// pop the null. stack -> obj | 
-				gen.pop();
+				super.pop();
 				// jump to end. stack -> obj | 
-				gen.goTo(stateDone);
+				super.goTo(stateDone);
 
 				// NON-NULL CASE: regular communication
 				// stack == obj | state
-				gen.mark(nonNullState);
+				super.mark(nonNullState);
 				// Push the current method id. stack -> obj | state mid
 				switch (policy) {
 				case INLINE:
-					gen.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_MID);
+					super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_MID);
 					break;
 				case PRIVATE:
 				case PROTECTED:
 				case PUBLIC:
-					gen.push(mid);
+					super.push(mid);
 					break;
 				}
 				// Call the read hook. stack -> obj | 
-				gen.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PROTECTED_READ);
+				super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PROTECTED_READ);
 
 				break;
 			case Opcodes.GETSTATIC:
 				// Get the State for this field. stack -> state
-				gen.getStatic(ownerType, stateFieldName, Instrumentor.STATE_TYPE);
+				super.getStatic(ownerType, stateFieldName, Instrumentor.STATE_TYPE);
 				// dup the state. stack -> state state
-				gen.dup();
+				super.dup();
 				// if non-null, jump ahead. stack -> state
-				gen.ifNonNull(nonNullState);
+				super.ifNonNull(nonNullState);
 
 				// NULL CASE: no communication
 				// pop the null. stack -> 
-				gen.pop();
+				super.pop();
 				// jump to end. stack -> 
-				gen.goTo(stateDone);
+				super.goTo(stateDone);
 
 				// NON-NULL CASE: regular communication
 				// stack == state
-				gen.mark(nonNullState);
+				super.mark(nonNullState);
 				// Push the current method id. stack -> state mid
 				switch (policy) {
 				case INLINE:
-					gen.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_MID);
+					super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_MID);
 					break;
 				case PRIVATE:
 				case PROTECTED:
 				case PUBLIC:
-					gen.push(mid);
+					super.push(mid);
 					break;
 				}
 				// Call the read hook. stack -> 
-				gen.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PROTECTED_READ);
+				super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PROTECTED_READ);
 
 				break;
 			}
 			// END
-			gen.mark(stateDone);
+			super.mark(stateDone);
 		}
 
 		// Do the actual op.
@@ -427,37 +427,59 @@ public class MethodInstrumentor extends AdviceAdapter {
 		switch (opcode) {
 		case Opcodes.MONITORENTER:
 			myStackSize(2);
+			// put in a try/finally to put in the release if needed...
+			final Label start = super.newLabel(), handler = super.newLabel(), done = super.newLabel();
+			super.visitTryCatchBlock(start, handler, handler, Instrumentor.COMM_EXCEPT_DESC);
+			
 			// dup the target. stack -> lock | lock
-			gen.dup();
+			super.dup();
+			// save. stack -> lock
+			final int lock = super.newLocal(Instrumentor.OBJECT_TYPE);
+			super.storeLocal(lock);
+			// dup. stack -> lock lock
+			super.dup();
 			// do the monitorenter. stack -> lock
-			super.visitInsn(opcode);
+			super.monitorEnter();
+			super.mark(start);
 			// get mid. stack -> lock mid
 			switch (policy) {
 			case INLINE:
-				gen.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_MID);
+				super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_MID);
 				break;
 			case PRIVATE:
 			case PROTECTED:
 			case PUBLIC:
-				gen.push(mid);
+				super.push(mid);
 				break;
 			}
 			// call acquire hook. stack -> 
-			gen.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_ACQUIRE);
+			super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_ACQUIRE);
+			super.goTo(done);
+			// handler. We get thee exception on the stack. stack -> e
+			super.mark(handler);
+			// reload lock. stack -> e lock
+			super.loadLocal(lock);
+			// monitorexit. stack -> e
+			super.monitorExit();
+			// rethrow. ->
+			super.throwException();
+			super.mark(done);
 			break;
 		case Opcodes.MONITOREXIT:
 			myStackSize(1);
 			// dup the target. stack -> lock | lock
-			gen.dup();
+			super.dup();
 			// call release hook. stack -> lock |
-			gen.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_RELEASE);
-			super.visitInsn(opcode);
+			super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_RELEASE);
+			super.monitorExit();
 			break;
 		default:
 			super.visitInsn(opcode);
 			break;			
 		}
 	}
+	
+	
 
 	@Override
 	public void visitMultiANewArrayInsn(String arg0, int arg1) {

@@ -8,9 +8,14 @@ public class IllegalSynchronizationException extends
 	 */
 	private static final long serialVersionUID = 1736616437563200866L;
 
-	public IllegalSynchronizationException(long writerTid, int writerMethod,
-			long readerTid, int readerMethod) {
-		super(writerTid, writerMethod, readerTid, readerMethod);
+	public IllegalSynchronizationException(Thread writerThread, String writerMethod,
+			Thread readerThread, String readerMethod) {
+		super(writerThread, writerMethod, readerThread, readerMethod);
+	}
+	
+	@Override
+	protected String actionString() {
+		return "acquired a lock last released by";
 	}
 
 }

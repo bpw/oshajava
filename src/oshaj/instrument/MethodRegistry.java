@@ -53,6 +53,7 @@ public class MethodRegistry {
 		final int id = nextID;
 		methodSigToID.put(sig, id);
 		policyTable[id] = readerSet;
+		methodIDtoSig[id] = sig;
 		++nextID;
 		
 		// Add IDs to sets that have requested this signature.
@@ -67,6 +68,7 @@ public class MethodRegistry {
 			 *  ordered.
 			 */
 		}
+		idRequests.remove(sig);
 		
 		// resize if necessary.
 		if (nextID == policyTable.length) {
