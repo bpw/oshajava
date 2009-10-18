@@ -16,10 +16,9 @@ import org.objectweb.asm.FieldVisitor;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
-import org.objectweb.asm.commons.GeneratorAdapter;
 import org.objectweb.asm.commons.Method;
 
-import acme.util.Util; // TODO create own Util. This one uses a bunch of java.util stuff.
+import acme.util.Util;
 
 
 // TODO make asm Method, GenericAdapter, etc. use copies of java.util stuff.
@@ -52,7 +51,6 @@ public class Instrumentor extends ClassAdapter {
 	protected static final String ANNOT_READ_BY_ALL_DESC = Type.getDescriptor(oshaj.annotation.ReadByAll.class);
 	protected static final String STATE_DESC = STATE_TYPE.getDescriptor();
 	protected static final String SHADOW_FIELD_SUFFIX = "__osha_state";
-	protected static final String STATE_INIT_METHOD_SUFFIX = "__osha_state_init";
 
 	protected static final Type[] ARGS_NONE = new Type[0];
 	protected static final Type[] ARGS_INT = { Type.INT_TYPE };
@@ -165,47 +163,11 @@ public class Instrumentor extends ClassAdapter {
 		// own.
 		final FieldVisitor fv = super.visitField(
 				access & ~Opcodes.ACC_FINAL | Opcodes.ACC_VOLATILE, 
-				name + SHADOW_FIELD_SUFFIX, STATE_DESC, signature, value
+				name + SHADOW_FIELD_SUFFIX, STATE_DESC, signature, null
 		);
 		if (fv != null) {
 			fv.visitEnd();
 		}
-		final String stateFieldName = name + SHADOW_FIELD_SUFFIX;
-		// Add a method to initialize the shadow field
-		// TODO this is currently a safe initializer (synchronized, and the state shadow field is 
-		// volatile, to support safe doule-checked locking), but we might be able to apply the
-		// "it's OK to have races if the app has races argument" as long as this doesn't cause issues
-		// with escaping uninitialized but allocated States.
-		// The volatile may be unnecessary if double-checked locking is not an issue if the double-checking
-		// is across method boundaries.  This would rely on the JIT not inlining/optimizing across method
-		// boundaries... not a safe bet. For now, we play it safe.
-		final GeneratorAdapter init = new GeneratorAdapter(access | Opcodes.ACC_SYNCHRONIZED, 
-				new Method(name + STATE_INIT_METHOD_SUFFIX, STATE_TYPE, ARGS_NONE), null, null, cv);
-		// create a new State. stack -> state
-		init.newInstance(STATE_TYPE);
-		// dup it. stack -> state state
-		init.dup();
-		// initialize it. stack -> state
-		init.invokeConstructor(STATE_TYPE, STATE_CONSTRUCTOR);
-		// dup it. stack -> state state
-		init.dup();
-		if ((access & Opcodes.ACC_STATIC) != 0) {
-			// static field
-			// put static. stack -> state
-			init.putStatic(classType, stateFieldName, STATE_TYPE);
-			// return state. stack ->
-			init.returnValue();
-		} else {
-			// instance field
-			// get this. stack -> state state this
-			init.loadThis();
-			// put field. stack -> state
-			init.putField(classType, stateFieldName, STATE_TYPE);
-			// return state. stack ->
-			init.returnValue();
-		}
-		init.visitMaxs(0,3);
-		init.visitEnd();
 
 		return super.visitField(access, name, desc, signature, value);
 	}
