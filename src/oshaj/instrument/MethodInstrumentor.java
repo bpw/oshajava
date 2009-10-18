@@ -173,12 +173,12 @@ public class MethodInstrumentor extends AdviceAdapter {
 	/**
 	 * Instrument accesses with read and write hooks.
 	 * 
-	 * Puts one int, one long, and one address on the stack.	
+	 * TODO handle anonymous classes correctly.	
 	 */
 	@Override
 	public void visitFieldInsn(int opcode, String owner, String name, String desc) {
 
-		if (Instrumentor.shouldInstrument(owner)) {
+		if (inst.shouldInstrumentField(owner, name, desc)) {
 			myStackSize(2);
 
 			// TODO figure out how to add visitFrame where needed below (GOTOs) to
@@ -190,9 +190,10 @@ public class MethodInstrumentor extends AdviceAdapter {
 
 			switch(opcode) {
 			case Opcodes.PUTFIELD:
+				final Type fieldType = Type.getType(desc);				
 				// stack == obj value |
-				// swap. stack -> value obj |
-				super.swap();
+				// swap (may push 2 past the bar temporarily). stack -> value obj |   
+				super.swap(Instrumentor.OBJECT_TYPE, fieldType);
 				// dup the target twice. stack -> value obj | obj
 				super.dup();
 				// Get the State for this field. stack -> value obj | state
@@ -235,8 +236,8 @@ public class MethodInstrumentor extends AdviceAdapter {
 				}
 				// store the new state. stack -> value obj | 
 				super.putField(ownerType, stateFieldName, Instrumentor.STATE_TYPE);
-				// swap back. stack -> obj value |
-				super.swap();
+				// swap back (may push 2 past the bar temporarily). stack -> obj value |
+				super.swap(Instrumentor.OBJECT_TYPE, fieldType);
 				// jump to end. stack -> obj value | 
 				super.goTo(stateDone);
 
@@ -269,8 +270,8 @@ public class MethodInstrumentor extends AdviceAdapter {
 					super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PRIVATE_WRITE);
 					break;
 				}
-				// swap back. stack -> obj value |
-				super.swap();
+				// swap back (may push 2 past the bar temporarily). stack -> obj value |
+				super.swap(Instrumentor.OBJECT_TYPE, fieldType);
 				break;
 			case Opcodes.PUTSTATIC:
 				// Get the State for this field. stack -> state

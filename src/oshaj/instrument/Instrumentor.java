@@ -133,6 +133,7 @@ public class Instrumentor extends ClassAdapter {
 	/**************************************************************************/
 
 	protected String className;
+	protected String outerClassDesc = null;
 	protected String classDesc;
 	protected Type classType;
 
@@ -148,6 +149,12 @@ public class Instrumentor extends ClassAdapter {
 		classType = Type.getObjectType(name);
 		// TODO
 		super.visit((version == Opcodes.V1_6 ? Opcodes.V1_5 : version), access, name, signature, superName, interfaces);
+	}
+	
+	@Override
+	public void visitOuterClass(String owner, String name, String desc) {
+		outerClassDesc = getDescriptor(owner);
+		super.visitOuterClass(owner, name, desc);
 	}
 	
 	@Override
@@ -174,4 +181,8 @@ public class Instrumentor extends ClassAdapter {
 				access, name, desc, this);
 	}
 
+	public boolean shouldInstrumentField(String owner, String name, String desc) {
+		return shouldInstrument(owner) && (outerClassDesc == null 
+				|| ! (name.startsWith("this$") && desc.equals(outerClassDesc)));
+	}
 }
