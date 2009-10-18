@@ -164,14 +164,15 @@ public class Instrumentor extends ClassAdapter {
 		// and volatile to support safe double-checked locking for lazy initialization.
 		// TODO this is not optimal, as it enforces more ordering than the application does on its
 		// own.
-		final FieldVisitor fv = super.visitField(
-				access & ~Opcodes.ACC_FINAL | Opcodes.ACC_VOLATILE, 
-				name + SHADOW_FIELD_SUFFIX, STATE_DESC, signature, null
-		);
-		if (fv != null) {
-			fv.visitEnd();
+		if (shouldInstrumentField(name, desc)) {
+			final FieldVisitor fv = super.visitField(
+					access & ~Opcodes.ACC_FINAL | Opcodes.ACC_VOLATILE, 
+					name + SHADOW_FIELD_SUFFIX, STATE_DESC, signature, null
+			);
+			if (fv != null) {
+				fv.visitEnd();
+			}
 		}
-
 		return super.visitField(access, name, desc, signature, value);
 	}
 
@@ -181,8 +182,23 @@ public class Instrumentor extends ClassAdapter {
 				access, name, desc, this);
 	}
 
+	/**
+	 * Decides whether a field in class owner with name name and type desc should be instrumented.
+	 * Avoids instrumenting this$0, this$1, etc. fields in inner classes.  Just hope there aren't
+	 * any dolts who named things this$foo.  I tried. You can -- no collisions (the special this$'s
+	 * just become this$0$, this$1$, and so on).
+	 * 
+	 * @param owner
+	 * @param name
+	 * @param desc
+	 * @return
+	 */
 	public boolean shouldInstrumentField(String owner, String name, String desc) {
-		return shouldInstrument(owner) && (outerClassDesc == null 
+		return shouldInstrument(owner) && shouldInstrumentField(name, desc);
+	}
+	
+	protected boolean shouldInstrumentField(String name, String desc) {
+		return (outerClassDesc == null 
 				|| ! (name.startsWith("this$") && desc.equals(outerClassDesc)));
 	}
 }
