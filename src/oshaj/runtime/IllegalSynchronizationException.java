@@ -8,8 +8,8 @@ public class IllegalSynchronizationException extends
 	 */
 	private static final long serialVersionUID = 1736616437563200866L;
 
-	public IllegalSynchronizationException(Thread writerThread, String writerMethod,
-			Thread readerThread, String readerMethod) {
+	public IllegalSynchronizationException(ThreadState writerThread, String writerMethod,
+			ThreadState readerThread, String readerMethod) {
 		super(writerThread, writerMethod, readerThread, readerMethod);
 	}
 	

@@ -7,7 +7,9 @@ ASMCOMMONSJAR=asm-commons-3.2.jar
 ACMEJAR=acme-10-7-09.jar
 CLASSPATH=$(ASMDIR)/$(ASMJAR):$(ASMDIR)/$(ASMCOMMONSJAR):$(ASMDIR)/asm-util-3.2.jar:$(LIBS)/$(ACMEJAR):$(BIN)
 CLASSLIST=$(BIN)/classlist.txt
+ANNOT_CLASSLIST=$(BIN)/annotation-classlist.txt
 OSHAJAR=oshaj.jar
+ANNOT_JAR=oshaj-annotation.jar
 MANIFEST=$(SRC)/Manifest.txt
 
 SETUP_SCRIPT=setup.sh
@@ -16,20 +18,29 @@ JAVAC=javac
 
 MAIN=$(SRC)/oshaj/instrument/Instrumentor.java
 
-build:	jar setupscript
+build:	jar annotation-jar setupscript
 
 jar:	classes classlist
 	jar cfm $(OSHAJAR) $(MANIFEST) @$(CLASSLIST)
 	jar i $(OSHAJAR)
-	
+		
 classlist:	classes
 	find $(BIN) -name '*.class' | sed -e 's+$(BIN)/+-C $(BIN) +' > $(CLASSLIST)
 
 classes:	$(MAIN)
 	$(JAVAC) -d $(BIN) -classpath $(CLASSPATH) -sourcepath $(SRC) $(MAIN)
 
-setupscript:	jar
-	echo "alias oshajrun='java -javaagent:$(PWD)/oshaj.jar'" >> $(SETUP_SCRIPT)
+## Build jar with just the oshaj.annotation package
+annotation-jar: classes annotation-classlist
+	jar cf $(ANNOT_JAR) @$(ANNOT_CLASSLIST)
+	jar i $(ANNOT_JAR)
+	
+annotation-classlist:	classes
+	find $(BIN)/oshaj/annotation -name '*.class' | sed -e 's+$(BIN)/+-C $(BIN) +' > $(ANNOT_CLASSLIST)
+
+setupscript:
+	echo "alias oshaj='java -javaagent:$(PWD)/oshaj.jar'" >> $(SETUP_SCRIPT)
+	echo "export CLASSPATH=$$CLASSPATH:$(PWD)/oshaj-annotation.jar" >> $(SETUP_SCRIPT)
 
 clean:
 	rm -rf $(BIN)/*

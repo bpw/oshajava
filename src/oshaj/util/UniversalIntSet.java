@@ -8,4 +8,8 @@ public class UniversalIntSet extends IntSet {
 	
 	public void add(int i) {}
 	public boolean contains(int i) { return true; }
+	
+	public String toString() {
+		return "UniversalIntSet";
+	}
 }

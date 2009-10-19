@@ -4,7 +4,6 @@ import oshaj.instrument.MethodRegistry;
 import oshaj.util.IntSet;
 import oshaj.util.UniversalIntSet;
 import acme.util.Util;
-import acme.util.collections.IntStack;
 import acme.util.identityhash.ConcurrentIdentityHashMap;
 
 /**
@@ -45,8 +44,8 @@ import acme.util.identityhash.ConcurrentIdentityHashMap;
  */
 public class RuntimeMonitor {
 
-	protected static final ThreadLocal<IntStack> stacks = new ThreadLocal<IntStack>() {
-		@Override protected IntStack initialValue() { return new IntStack(); }
+	protected static final ThreadLocal<ThreadState> threadState = new ThreadLocal<ThreadState>() {
+		@Override protected ThreadState initialValue() { return new ThreadState(Thread.currentThread()); }
 	};
 
 	// TODO fix WeakConcurrentIdentityHashMap and replace with that..
@@ -68,9 +67,9 @@ public class RuntimeMonitor {
 	 * @param readerMethod
 	 */
 	public static void sharedRead(final State state, final int readerMethod) {
-		final Thread readerThread = Thread.currentThread();
+		final ThreadState readerThread = threadState.get();
 		// volatile read
-		final Thread writerThread = state.writerThread;
+		final ThreadState writerThread = state.writerThread;
 		if (writerThread != readerThread) {
 			synchronized(state) {
 				// Even though readerSet may have been written by a different thread
@@ -97,7 +96,7 @@ public class RuntimeMonitor {
 	 * @param writerMethod
 	 */
 	public static void privateWrite(final State state, final int writerMethod) {
-		final Thread writerThread = Thread.currentThread();
+		final ThreadState writerThread = threadState.get();
 		synchronized(state) {
 			if (state.writerMethod != writerMethod) { 
 				state.writerMethod = writerMethod;
@@ -108,7 +107,7 @@ public class RuntimeMonitor {
 	}
 
 	public static State privateFirstWrite(final int writerMethod) {
-		return new State(Thread.currentThread(), writerMethod);
+		return new State(threadState.get(), writerMethod);
 	}
 
 	/**
@@ -121,7 +120,7 @@ public class RuntimeMonitor {
 	 * @param writerMethod
 	 */
 	public static void protectedWrite(final State state, final int writerMethod) {
-		final Thread writerThread = Thread.currentThread();
+		final ThreadState writerThread = threadState.get();
 		synchronized(state) {
 			if (state.writerMethod != writerMethod) {
 				state.writerMethod = writerMethod;
@@ -132,11 +131,11 @@ public class RuntimeMonitor {
 	}
 
 	public static State protectedFirstWrite(final int writerMethod) {
-		return new State(Thread.currentThread(), writerMethod, MethodRegistry.policyTable[writerMethod]);
+		return new State(threadState.get(), writerMethod, MethodRegistry.policyTable[writerMethod]);
 	}
 
 	public static void publicWrite(final State state, final int writerMethod) {
-		final Thread writerThread = Thread.currentThread();
+		final ThreadState writerThread = threadState.get();
 		synchronized(state) {
 			if (state.writerMethod != writerMethod) {
 				state.writerMethod = writerMethod;
@@ -147,7 +146,7 @@ public class RuntimeMonitor {
 	}
 
 	public static State publicFirstWrite(final int writerMethod) {
-		return new State(Thread.currentThread(), writerMethod, UniversalIntSet.set);
+		return new State(threadState.get(), writerMethod, UniversalIntSet.set);
 	}
 
 
@@ -189,17 +188,17 @@ public class RuntimeMonitor {
 		try {
 			LockState state = lockStates.get(lock);
 			if (state == null) {
-				state = new LockState(Thread.currentThread(), holderMethod, MethodRegistry.policyTable[holderMethod]);
+				state = new LockState(threadState.get(), holderMethod, MethodRegistry.policyTable[holderMethod]);
 				state.depth = 1;
 				state = lockStates.put(lock, state);
-				assert state == null;
+				Util.assertTrue(state == null);
 			} else if (state.depth < 0) {
 				Util.fail("Bad lock scoping.");
 			} else if (state.depth == 0) {
 				// First (non-reentrant) acquire by this thread.
 				// NOTE: this is all atomic, because we hold lock and no other thread can call
 				// the acquire or release hooks until they hold the lock.
-				final Thread holderThread = Thread.currentThread();
+				final ThreadState holderThread = threadState.get();
 				final IntSet readerSet = state.nextMethods;
 				if (state.lastMethod != holderMethod) {
 					state.lastMethod = holderMethod;
@@ -229,7 +228,7 @@ public class RuntimeMonitor {
 	public static void enter(final int mid) {
 		try {
 			Util.logf("enter %d", mid);
-			stacks.get().push(mid);
+			threadState.get().enter(mid, MethodRegistry.policyTable[mid]);
 		} catch (Throwable t) {
 			Util.fail(t);
 		}
@@ -238,7 +237,7 @@ public class RuntimeMonitor {
 	public static void exit() {
 		try {
 			Util.log("exit");
-			stacks.get().pop();
+			threadState.get().exit();
 		} catch (Throwable t) {
 			Util.fail(t);
 		}
@@ -246,9 +245,9 @@ public class RuntimeMonitor {
 
 	public static int currentMid() { // TODO could replace with opt. to have privateRead, inlinePrivateRead, etc.
 		try {
-			return stacks.get().top();
-		} catch (Throwable t) {
-			Util.fail(t);
+			return threadState.get().currentMethod();
+		} catch (ArrayIndexOutOfBoundsException e) {
+			Util.fail(new InlinedEntryPointException());
 			return -1;
 		}
 	}

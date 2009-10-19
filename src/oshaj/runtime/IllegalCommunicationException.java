@@ -1,6 +1,7 @@
 package oshaj.runtime;
 
 
+
 public abstract class IllegalCommunicationException extends RuntimeException {
 
 	/**
@@ -9,10 +10,10 @@ public abstract class IllegalCommunicationException extends RuntimeException {
 	private static final long serialVersionUID = -8360898879626150853L;
 	
 	protected final String writerMethod, readerMethod;
-	protected final Thread writerThread, readerThread;
+	protected final ThreadState writerThread, readerThread;
 	
-	protected IllegalCommunicationException(Thread writerThread, String writerMethod, 
-			Thread readerThread, String readerMethod) {
+	protected IllegalCommunicationException(ThreadState writerThread, String writerMethod, 
+			ThreadState readerThread, String readerMethod) {
 		this.writerMethod = writerMethod;
 		this.readerMethod = readerMethod;
 		this.writerThread = writerThread;
@@ -23,11 +24,20 @@ public abstract class IllegalCommunicationException extends RuntimeException {
 
 	@Override
 	public String getMessage() {
+//		String s = "";
+//		for (int i = 0; i < MethodRegistry.policyTable.length; i++) {
+//			String n = MethodRegistry.lookup(i);
+//			if (n != null) {
+//				s += n + " (id=" + i + "): " + MethodRegistry.policyTable[i] + "\n";
+//			}
+//		}
 		return String.format(
-				"\"%s\" (thread id=%d) in %s %s \"%s\" (thread id=%d) in %s.", 
-				readerThread.getName(), readerThread.getId(), readerMethod,
+				"%s in %s %s %s in %s.", // Reader Set was: %s; whole policy table:\n %s", 
+				readerThread, readerMethod,
 				actionString(),
-				writerThread.getName(), writerThread.getId(), writerMethod
+				writerThread, writerMethod //,
+//				MethodRegistry.getPolicy(writerMethod),
+//				s
 		);
 	}
 

@@ -9,7 +9,7 @@ public class LockState {
 	/**
 	 * Thread id of the last thread to hold the lock.
 	 */
-	protected Thread lastThread;
+	protected ThreadState lastThread;
 	
 	/**
 	 * Method id of the last method in which the lock was held.
@@ -21,13 +21,13 @@ public class LockState {
 	 */
 	protected IntSet nextMethods;
 	
-	protected LockState(Thread holderThread, int holderMethod, IntSet nextMethods) {
+	protected LockState(ThreadState holderThread, int holderMethod, IntSet nextMethods) {
 		this.lastMethod  = holderMethod;
 		this.nextMethods = nextMethods;
 		this.lastThread  = holderThread;
 	}
 	
-	protected LockState(Thread holderThread, int holderMethod) {
+	protected LockState(ThreadState holderThread, int holderMethod) {
 		this.lastMethod  = holderMethod;
 		this.nextMethods = null;
 		this.lastThread  = holderThread;

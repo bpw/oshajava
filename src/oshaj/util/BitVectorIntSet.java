@@ -14,7 +14,8 @@ public class BitVectorIntSet extends IntSet implements Serializable {
 	protected int maxBitIndex;
 	
 	public BitVectorIntSet(final int nbits) {
-		upsize(nbits);
+		bits = new int[nbits];
+		maxBitIndex = nbits - 1;
 	}
 	
 	public BitVectorIntSet() {
@@ -51,5 +52,18 @@ public class BitVectorIntSet extends IntSet implements Serializable {
 	
 	public int[] toArray() {
 		return bits;
+	}
+	
+	public String toString() {
+		String s = "";
+		for (int i = 0; i <= maxBitIndex; i++) {
+			if (contains(i)) {
+				if (!s.isEmpty()) {
+					s += ", ";
+				}
+				s += i;
+			}
+		}
+		return "{" + s + "}";
 	}
 }

@@ -94,6 +94,12 @@ public class MethodRegistry {
 		return methodIDtoSig[id];
 	}
 	
+	public static synchronized IntSet getPolicy(String name) {
+		final Integer id = methodSigToID.get(name);
+		if (id == null) Util.fail("Not in there.");
+		return MethodRegistry.policyTable[id];
+	}
+	
 	/**
 	 * Request that the ID of the method with signature sig be added to the given
 	 * readerSet.  If a method with this signature has already been defined, then 

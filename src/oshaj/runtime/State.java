@@ -18,7 +18,7 @@ public class State {
 	/**
 	 * Thread id of the last thread to write to the field.
 	 */
-	protected volatile Thread writerThread;
+	protected volatile ThreadState writerThread;
 	
 	/**
 	 * Method id of the last method in which the field was written.
@@ -30,13 +30,13 @@ public class State {
 	 */
 	protected IntSet readerSet;
 	
-	protected State(Thread writerThread, int writerMethod, IntSet readerSet) {
+	protected State(ThreadState writerThread, int writerMethod, IntSet readerSet) {
 		this.writerMethod = writerMethod;
 		this.readerSet = readerSet;
 		this.writerThread = writerThread;
 	}
 	
-	protected State(Thread writerTid, int writerMethod) {
+	protected State(ThreadState writerTid, int writerMethod) {
 		this.writerMethod = writerMethod;
 		this.readerSet = null;
 		this.writerThread = writerTid;

@@ -22,7 +22,7 @@ public class Except {
 			if (b) {
 				bar(1);
 			} else {
-				throw new oshaj.runtime.IllegalSharingException(Thread.currentThread(), "", Thread.currentThread(), "");
+//				throw new oshaj.runtime.IllegalSharingException(Thread.currentThread(), "", Thread.currentThread(), "");
 			}
 		} catch (oshaj.runtime.IllegalCommunicationException e) {
 			System.out.println("ice");

@@ -93,7 +93,10 @@ public class MethodInstrumentor extends AdviceAdapter {
 		}
 
 		public void visit(String name, Object value) {
-			if (name.equals("value")) {
+			if (name == null) {
+				MethodRegistry.requestID((String)value, readerSet);
+			} else if (name.equals("value")) {
+				Util.log("add " + name);
 				for (String m : (String[])value) {
 					MethodRegistry.requestID(m, readerSet);
 				}
@@ -102,8 +105,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 
 		public AnnotationVisitor visitAnnotation(String name, String desc) { return null; }
 		public AnnotationVisitor visitArray(String name) {
-			Util.fail("AnnotationRecorder.visitArray called, but unimplemented");
-			return null;
+			return name.equals("value") ? this : null;
 		}
 		public void visitEnd() { }
 		public void visitEnum(String name, String desc, String value) { }
