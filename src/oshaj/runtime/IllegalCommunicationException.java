@@ -18,6 +18,14 @@ public abstract class IllegalCommunicationException extends RuntimeException {
 		this.readerMethod = readerMethod;
 		this.writerThread = writerThread;
 		this.readerThread = readerThread;
+		StackTraceElement[] stack = getStackTrace();
+		int i = 0;
+		while (i < stack.length && stack[i].getClass().equals(oshaj.runtime.RuntimeMonitor.class)) i++;
+		if (i > 0) {
+			StackTraceElement[] fudgedStack = new StackTraceElement[stack.length - i];
+			System.arraycopy(stack, i, fudgedStack, 0, stack.length - i);
+			setStackTrace(fudgedStack);
+		}
 	}
 	
 	protected abstract String actionString();
