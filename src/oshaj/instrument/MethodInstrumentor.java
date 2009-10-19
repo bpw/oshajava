@@ -11,11 +11,14 @@ import oshaj.util.BitVectorIntSet;
 import oshaj.util.UniversalIntSet;
 import acme.util.Util;
 
+// TODO allow annotations on interface methods, applied to all their
+// implementers?  This opens a bigger can of worms:
+// TODO allow annotation inheritance?
 
 public class MethodInstrumentor extends AdviceAdapter {
 
-	protected static final int NO_MID = -1;
-	protected int mid = NO_MID;
+	protected static final int UNINITIALIZED = -1;
+	protected int mid = UNINITIALIZED;
 	protected final boolean isMain;
 	protected final boolean isSynchronized;
 	protected final boolean isConstructor;
@@ -36,10 +39,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 
 	protected int myMaxStackAdditions = 0;
 
-	protected int lastFrameLocals, lastFrameStack;
-	protected Object[] lastFrameLocalTypes = {}, lastFrameStackTypes = {};
-
-	protected int originalMaxLocals, originalMaxStack;
+	protected int originalMaxLocals = UNINITIALIZED, originalMaxStack = UNINITIALIZED;
 
 	public MethodInstrumentor(MethodVisitor next, int access, String name, String desc, Instrumentor inst) {
 		super(next, access, name, desc);
@@ -111,7 +111,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 	
 	@Override
 	public void visitCode() {
-		if (mid == NO_MID && (isMain || isClinit)) {
+		if (mid == UNINITIALIZED && (isMain || isClinit)) {
 			policy = Policy.PUBLIC;
 			mid = MethodRegistry.register(fullNameAndDesc, UniversalIntSet.set);
 		}
@@ -167,15 +167,19 @@ public class MethodInstrumentor extends AdviceAdapter {
 	
 	@Override
 	public void visitEnd() {
-		// on ICEs, call release and exit hooks as needed and
-		if (policy != Policy.INLINE || isSynchronized) {
-			super.mark(endTryBeginHandler);
-			makeReleaseExitHook(1);
-			super.throwException();
+		// If this is a non-abstract, non-interface, real, warm-blooded method.
+		if (originalMaxStack != UNINITIALIZED) {
+			// on ICEs, call release and exit hooks as needed and
+			if (policy != Policy.INLINE || isSynchronized) {
+				super.mark(endTryBeginHandler);
+				makeReleaseExitHook(1);
+				super.throwException();
+			}
+
+			// -- end code -------------
+			super.visitMaxs(originalMaxStack + myMaxStackAdditions, originalMaxLocals);
 		}
 		
-		// -- end code -------------
-		super.visitMaxs(originalMaxStack + myMaxStackAdditions, originalMaxLocals);
 		super.visitEnd();
 	}
 	
