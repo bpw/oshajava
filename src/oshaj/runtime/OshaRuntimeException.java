@@ -7,7 +7,9 @@ public abstract class OshaRuntimeException extends RuntimeException {
 	 */
 	private static final long serialVersionUID = -2528906495574526086L;
 	
-	private static final String CANONICAL_NAME = OshaRuntimeException.class.getCanonicalName();
+	private static final String CANONICAL_NAME = RuntimeMonitor.class.getCanonicalName();
+	
+	// TODO option to disable stack trace fudging.	
 
 	public OshaRuntimeException() {
 		// fudge the stack to remove the top frame(s?) belonging to the RuntimeMonitor and make it
