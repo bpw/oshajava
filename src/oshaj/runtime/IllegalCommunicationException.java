@@ -20,7 +20,9 @@ public abstract class IllegalCommunicationException extends RuntimeException {
 		this.readerThread = readerThread;
 		StackTraceElement[] stack = getStackTrace();
 		int i = 0;
-		while (i < stack.length && stack[i].getClass().equals(oshaj.runtime.RuntimeMonitor.class)) i++;
+		while (i < stack.length && stack[i].getClassName().equals("oshaj.runtime.RuntimeMonitor")) {
+			i++;
+		}
 		if (i > 0) {
 			StackTraceElement[] fudgedStack = new StackTraceElement[stack.length - i];
 			System.arraycopy(stack, i, fudgedStack, 0, stack.length - i);
