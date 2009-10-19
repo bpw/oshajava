@@ -3,11 +3,9 @@ package oshaj.instrument;
 import java.util.HashMap;
 
 import acme.util.Util;
-import oshaj.util.AbstractMethodSet;
 import oshaj.util.BitVectorIntSet;
 import oshaj.util.Cons;
 import oshaj.util.IntSet;
-import oshaj.util.MutableMethodSet;
 
 public class MethodRegistry {
 	

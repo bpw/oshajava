@@ -1,6 +1,5 @@
 package oshaj.runtime;
 
-import oshaj.util.AbstractMethodSet;
 import oshaj.util.IntSet;
 
 /**
