@@ -1,13 +1,48 @@
 package oshaj.runtime;
 
 import oshaj.instrument.MethodRegistry;
-import oshaj.util.BitVectorIntSet;
+import oshaj.util.IntSet;
 import oshaj.util.UniversalIntSet;
-import oshaj.util.WeakConcurrentIdentityHashMap;
 import acme.util.Util;
 import acme.util.collections.IntStack;
 import acme.util.identityhash.ConcurrentIdentityHashMap;
 
+/**
+ * TODO Possible optimizations:
+ *  
+ * 1. store a stack of method sets instead of method ids (i.e. do the array load 
+ *    in the enter and exit hooks instead of in each read, write, and acquire hook.
+ *    Hopefully this is less often, but who knows.)
+ *    
+ * 2. Don't call the enter and exit hooks for non-inlined methods that:
+ *    - do not contain field accesses (except private reads);
+ *    - do not contain any synchronization (including being a synchronized method);
+ *    - do not contain any method calls to inlined methods.
+ *    
+ *    The last one (no inlined method calls) is thwarted a bit by the current
+ *    dynamic spec-reading scheme.  Moving to static spec-reading would allow us
+ *    to take advantage of that, but for now we have to assume any method that
+ *    does not already have an id could be inlined.  Hence:
+ *    
+ * 3. Do a static pass to build the spec, at least on the classes that are
+ *    immediately accessible.  (We'll always need dynamic spec reading, etc. to
+ *    handle reflection and dynamic class loading, but for most apps we'll be able
+ *    to get most of what's interesting up front.)
+ *    
+ * 4. Use volatile instead of synchronized for state accesses (see optSharedRead and
+ *    optSharedWrite, below). Probably a bad idea, b/c of race potential etc., but
+ *    read up on that JMM... It also means that ICEs are not guaranteed to report
+ *    *blame* correctly. (They are still validly illegal communication...)
+ *    
+ * 5. Store the currentThread in a local in each method. This way, Thread.currentThread()
+ *    is called only once per method invocation. Then pass it as an argument to each
+ *    hook that needs it.
+ *    
+ * 6. Inline the writerThread == currentThread check for reads. (i.e. do it outside the
+ *    hook and only call the hook if needed.)
+ *    
+ * @author bpw
+ */
 public class RuntimeMonitor {
 
 	protected static final ThreadLocal<IntStack> stacks = new ThreadLocal<IntStack>() {
@@ -19,53 +54,6 @@ public class RuntimeMonitor {
 	// protected by the app locks...
 	protected static final ConcurrentIdentityHashMap<Object,LockState> lockStates = 
 		new ConcurrentIdentityHashMap<Object,LockState>();
-
-	/**
-	 * Checks a read by a private reading method, i.e. a method that has no
-	 * in-edges and can only read data written by the same thread.
-	 * 
-	 * TODO dynamic spec-loading prevents the use of this fast path for the 
-	 * time being.  Pre-processing of the whole spec is needed to know that
-	 * a method has no in-edges.
-	 * 
-	 * TODO note that you can't have one in the same program as a public writer.
-	 * 
-	 * This method need not be synchronized. Only one read is performed. If it
-	 * happens to interleave with a privateRead or sharedRead call, no harm done
-	 * since there's no writing done.  If it happens to interleave with a 
-	 * privateWrite call or a sharedWrite call, we get luck of the draw since the
-	 * application did not order these calls. Fine. We're not a race detector.
-	 * 
-	 * @param readerMethod
-	 * @param state
-	 */
-	public static void privateRead(final int readerMethod, final State state) {
-		final Thread readerThread = Thread.currentThread();
-		if (readerThread != state.writerThread) 
-			throw new IllegalSharingException(
-					state.writerThread, MethodRegistry.lookup(state.writerMethod), 
-					readerThread, MethodRegistry.lookup(readerMethod)
-			);
-	}
-
-	/**
-	 * Checks a read by a self-reading method, i.e. a method that has only one
-	 * in edge, a self edge. (Another future optimization.)
-	 * 
-	 * TODO also, a SingletonIntSet to optimize reads in methods with one
-	 * (non-self) in edge.
-	 * 
-	 * @param readerMethod
-	 * @param state
-	 */
-	public static void selfRead(final int readerMethod, final State state) {
-		final Thread readerThread = Thread.currentThread();
-		if (readerThread != state.writerThread && readerMethod != state.writerMethod) 
-			throw new IllegalSharingException(
-					state.writerThread, MethodRegistry.lookup(state.writerMethod), 
-					readerThread, MethodRegistry.lookup(readerMethod)
-			);
-	}
 
 	/**
 	 * Checks a read by a shared reading method, i.e. a method that has in-edges
@@ -81,15 +69,24 @@ public class RuntimeMonitor {
 	 */
 	public static void sharedRead(final State state, final int readerMethod) {
 		final Thread readerThread = Thread.currentThread();
-		synchronized(state) {
-			if (readerThread != state.writerThread && (state.readerSet == null || !state.readerSet.contains(readerMethod))) 
-				throw new IllegalSharingException(
-						state.writerThread, MethodRegistry.lookup(state.writerMethod), 
-						readerThread, MethodRegistry.lookup(readerMethod)
-				);
+		// volatile read
+		final Thread writerThread = state.writerThread;
+		if (writerThread != readerThread) {
+			synchronized(state) {
+				// Even though readerSet may have been written by a different thread
+				// than writerThread, it is still true that they were not written
+				// by readerThread.
+				final IntSet readerSet = state.readerSet;				
+				if (readerSet == null || ! readerSet.contains(readerMethod)) {
+					throw new IllegalSharingException(
+							state.writerThread, MethodRegistry.lookup(state.writerMethod), 
+							readerThread, MethodRegistry.lookup(readerMethod)
+					);
+				}
+			}
 		}
 	}
-
+	
 	/**
 	 * Updates the state to reflect a write by a method with no out-edges.
 	 * 
@@ -102,11 +99,11 @@ public class RuntimeMonitor {
 	public static void privateWrite(final State state, final int writerMethod) {
 		final Thread writerThread = Thread.currentThread();
 		synchronized(state) {
-			state.writerThread = writerThread;
 			if (state.writerMethod != writerMethod) { 
 				state.writerMethod = writerMethod;
 				state.readerSet = null;
 			}
+			state.writerThread = writerThread; // sync edge to volatile read in privateRead()
 		}
 	}
 
@@ -126,11 +123,11 @@ public class RuntimeMonitor {
 	public static void protectedWrite(final State state, final int writerMethod) {
 		final Thread writerThread = Thread.currentThread();
 		synchronized(state) {
-			state.writerThread = writerThread;
 			if (state.writerMethod != writerMethod) {
 				state.writerMethod = writerMethod;
 				state.readerSet = MethodRegistry.policyTable[writerMethod];
 			}
+			state.writerThread = writerThread;
 		}
 	}
 
@@ -141,11 +138,11 @@ public class RuntimeMonitor {
 	public static void publicWrite(final State state, final int writerMethod) {
 		final Thread writerThread = Thread.currentThread();
 		synchronized(state) {
-			state.writerThread = writerThread;
 			if (state.writerMethod != writerMethod) {
 				state.writerMethod = writerMethod;
 				state.readerSet = UniversalIntSet.set;
 			}
+			state.writerThread = writerThread;
 		}
 	}
 
@@ -162,13 +159,21 @@ public class RuntimeMonitor {
 	 * Lock release hook.  Since things are well-scoped in Java, we'll just do all the work
 	 * in acquire.  Only need to hit the reentrancy counter here.
 	 * 
+	 * INVARIANT: The method instrumentor relies on the fact that release() does NOT throw
+	 * ANY EXCEPTIONS.  We ensure the exit and release hooks are called on method exit
+	 * as needed by surrounding the body after the enter and acquire hooks with a try {}
+	 * catch (Throwable t) {}, where the catch block calls release and exit...
+	 * 
 	 * @param lock
 	 */
 	public static void release(final Object lock) {
-		final LockState state = lockStates.get(lock);
-		if (state.depth <= 0) Util.fail("Bad lock scoping");
-		state.depth--;
-//		if (state.depth == 0) Util.logf("real release %s", Util.objectToIdentityString(lock));
+		try {
+			final LockState state = lockStates.get(lock);
+			if (state.depth <= 0) Util.fail("Bad lock scoping");
+			state.depth--;
+		} catch (Throwable t) {
+			Util.fail(t);
+		}
 	}
 
 	/**
@@ -176,35 +181,42 @@ public class RuntimeMonitor {
 	 * 
 	 * TODO cache locks by thread.
 	 * 
-	 * @param readerSet
-	 * @param mid
+	 * @param nextMethods
+	 * @param holderMethod
 	 * @param lock
 	 */
-	public static void acquire(final Object lock, final int mid) {
+	public static void acquire(final Object lock, final int holderMethod) {
 		try {
 			LockState state = lockStates.get(lock);
 			if (state == null) {
-				state = new LockState(Thread.currentThread(), mid, MethodRegistry.policyTable[mid]);
+				state = new LockState(Thread.currentThread(), holderMethod, MethodRegistry.policyTable[holderMethod]);
 				state.depth = 1;
 				state = lockStates.put(lock, state);
 				assert state == null;
 			} else if (state.depth < 0) {
 				Util.fail("Bad lock scoping.");
 			} else if (state.depth == 0) {
-				// only care on first (non-reentrant) acquire, since it matches with what will be
-				// the last (real) release.
-				final Thread acquirerThread = Thread.currentThread();
-				if (acquirerThread != state.writerThread && (state.readerSet == null || ! state.readerSet.contains(mid))) {
-					throw new IllegalSynchronizationException(
-							state.writerThread, MethodRegistry.lookup(state.writerMethod), 
-							acquirerThread, MethodRegistry.lookup(mid));
-				} else {
-					state.writerMethod = mid;
-					state.writerThread = acquirerThread;
-					state.readerSet = MethodRegistry.policyTable[mid];
-					state.depth++;
+				// First (non-reentrant) acquire by this thread.
+				// NOTE: this is all atomic, because we hold lock and no other thread can call
+				// the acquire or release hooks until they hold the lock.
+				final Thread holderThread = Thread.currentThread();
+				final IntSet readerSet = state.nextMethods;
+				if (state.lastMethod != holderMethod) {
+					state.lastMethod = holderMethod;
+					state.nextMethods = MethodRegistry.policyTable[holderMethod];					
+				}
+				state.depth++;
+				if (state.lastThread != holderThread) {
+					state.lastThread = holderThread;
+					if (readerSet == null || ! readerSet.contains(holderMethod)) {
+						throw new IllegalSynchronizationException(
+								state.lastThread, MethodRegistry.lookup(state.lastMethod), 
+								holderThread, MethodRegistry.lookup(holderMethod)
+						);
+					}
 				}
 			} else {
+				// if we're already reentrant, just go one deeper.
 				state.depth++;
 			}
 		} catch (IllegalCommunicationException e) {
@@ -240,5 +252,76 @@ public class RuntimeMonitor {
 			return -1;
 		}
 	}
-
+	
+	
+	// -- TODO ----------------------------------------------
+//	/**
+//	 * Checks a read by a private reading method, i.e. a method that has no
+//	 * in-edges and can only read data written by the same thread.
+//	 * 
+//	 * TODO dynamic spec-loading prevents the use of this fast path for the 
+//	 * time being.  Pre-processing of the whole spec is needed to know that
+//	 * a method has no in-edges.
+//	 * 
+//	 * TODO note that you can't have one in the same program as a public writer.
+//	 * 
+//	 * This method need not be synchronized. Only one read is performed. If it
+//	 * happens to interleave with a privateRead or sharedRead call, no harm done
+//	 * since there's no writing done.  If it happens to interleave with a 
+//	 * privateWrite call or a sharedWrite call, we get luck of the draw since the
+//	 * application did not order these calls. Fine. We're not a race detector.
+//	 * 
+//	 * @param readerMethod
+//	 * @param state
+//	 */
+//	public static void privateRead(final State state, final int readerMethod) {
+//		final Thread readerThread = Thread.currentThread();
+//		final Thread writerThread;
+//		final int writerId;
+//		synchronized(state) {
+//			writerThread = state.writerThread;
+//			writerId = state.writerMethod;
+//		}
+//		if (readerThread != writerThread) 
+//			throw new IllegalSharingException(
+//					writerThread, MethodRegistry.lookup(writerId), 
+//					readerThread, MethodRegistry.lookup(readerMethod)
+//			);
+//	}
+//
+//
+//
+//	public static void optSharedRead(final State state, final int readerMid) {
+//	final Thread readerThread = Thread.currentThread();
+//	// volatile read: if someone else has written, then we'll know.
+//	final Thread writerThread = state.writerThread;
+//	if (writerThread != readerThread) {
+//		// a third thread != writerThread and != readerThread could write between that check
+//		// and this load of readerSet.  Likewise, writerThread could write again in a different
+//		// method. This is potentially problematic if we want to report the correct illegal 
+//		// communication, but is fine otherwise, because if the check below fire, there was the
+//		// potential for *some* illegal communication.
+//		
+//		// non-volatile read:
+//		final AbstractMethodSet readerSet = state.readerSet;
+//		if (readerSet == null || ! readerSet.contains(readerMid)) {
+//			// writerThread and readerSet are potentially from different accesses, possibly even
+//			// in different threads, but it is true that this communication was illegal, because.
+//			// 
+//			throw new IllegalSharingException(
+//					writerThread, MethodRegistry.lookup(readerSet.owner), 
+//					readerThread, MethodRegistry.lookup(readerMid)
+//			);
+//		}
+//	}
+//}
+//
+//public static void optSharedWrite(final State state, final int writerMid) {
+//	final Thread writerThread = Thread.currentThread();
+//	// non-volatile write
+//	state.readerSet = MethodRegistry.policyTable[writerMid];
+//	// volatile write
+//	state.writerThread = writerThread;
+//}
+//
 }

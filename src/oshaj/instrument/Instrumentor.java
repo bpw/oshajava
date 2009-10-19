@@ -8,6 +8,7 @@ import java.lang.instrument.IllegalClassFormatException;
 import java.lang.instrument.Instrumentation;
 import java.security.ProtectionDomain;
 
+import org.objectweb.asm.util.CheckClassAdapter;
 import org.objectweb.asm.ClassAdapter;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
@@ -47,7 +48,7 @@ public class Instrumentor extends ClassAdapter {
 	protected static final String ANNOT_THREAD_PRIVATE_DESC = Type.getDescriptor(oshaj.annotation.ThreadPrivate.class);
 	protected static final String ANNOT_READ_BY_DESC        = Type.getDescriptor(oshaj.annotation.ReadBy.class);
 	protected static final String ANNOT_READ_BY_ALL_DESC    = Type.getDescriptor(oshaj.annotation.ReadByAll.class);
-	protected static final String COMM_EXCEPT_DESC          = Type.getDescriptor(oshaj.runtime.IllegalCommunicationException.class);
+	protected static final String COMM_EXCEPT_TYPE_NAME     = Type.getInternalName(oshaj.runtime.IllegalCommunicationException.class);
 	protected static final String SHADOW_FIELD_SUFFIX       = "__osha_state";
 	protected static final String STATE_DESC                = STATE_TYPE.getDescriptor();
 
@@ -66,7 +67,7 @@ public class Instrumentor extends ClassAdapter {
 	protected static final Method HOOK_PRIVATE_FIRST_WRITE   = new Method("privateFirstWrite", STATE_TYPE, ARGS_INT);
 	protected static final Method HOOK_PROTECTED_WRITE       = new Method("protectedWrite", Type.VOID_TYPE, ARGS_STATE_INT);
 	protected static final Method HOOK_PROTECTED_FIRST_WRITE = new Method("protectedFirstWrite", STATE_TYPE, ARGS_INT);
-	protected static final Method HOOK_PUBLIC_WRITE          = new Method("publicWrite", STATE_TYPE, ARGS_STATE_INT);
+	protected static final Method HOOK_PUBLIC_WRITE          = new Method("publicWrite", Type.VOID_TYPE, ARGS_STATE_INT);
 	protected static final Method HOOK_PUBLIC_FIRST_WRITE    = new Method("publicFirstWrite", STATE_TYPE, ARGS_INT);
 
 	protected static final Method HOOK_ACQUIRE = 
@@ -92,7 +93,7 @@ public class Instrumentor extends ClassAdapter {
 							// For now we just drop them and change the version to 5 (no other
 							// differences with 6...)
 							Util.log("Instrumenting class " + className);
-							cr.accept(new Instrumentor(cw), ClassReader.SKIP_FRAMES);
+							cr.accept(new Instrumentor(new CheckClassAdapter(cw)), ClassReader.SKIP_FRAMES);
 							classFileBuffer = cw.toByteArray();
 							File f = new File("oshajdump/" + className + ".class");
 							f.getParentFile().mkdirs();
@@ -150,6 +151,8 @@ public class Instrumentor extends ClassAdapter {
 		// TODO
 		super.visit((version == Opcodes.V1_6 ? Opcodes.V1_5 : version), access, name, signature, superName, interfaces);
 	}
+	
+	// TODO allow the annotations on a class... just send to all methods...
 	
 	@Override
 	public void visitOuterClass(String owner, String name, String desc) {

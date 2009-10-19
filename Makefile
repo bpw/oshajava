@@ -5,7 +5,7 @@ ASMDIR=$(LIBS)/asm-3.2/lib
 ASMJAR=asm-3.2.jar
 ASMCOMMONSJAR=asm-commons-3.2.jar
 ACMEJAR=acme-10-7-09.jar
-CLASSPATH=$(ASMDIR)/$(ASMJAR):$(ASMDIR)/$(ASMCOMMONSJAR):$(LIBS)/$(ACMEJAR):$(BIN)
+CLASSPATH=$(ASMDIR)/$(ASMJAR):$(ASMDIR)/$(ASMCOMMONSJAR):$(ASMDIR)/asm-util-3.2.jar:$(LIBS)/$(ACMEJAR):$(BIN)
 CLASSLIST=$(BIN)/classlist.txt
 OSHAJAR=oshaj.jar
 MANIFEST=$(SRC)/Manifest.txt
@@ -29,8 +29,7 @@ classes:	$(MAIN)
 	$(JAVAC) -d $(BIN) -classpath $(CLASSPATH) -sourcepath $(SRC) $(MAIN)
 
 setupscript:	jar
-	echo "export OSHAJ_HOME=$(PWD)" > $(SETUP_SCRIPT)
-	echo "alias oshajrun='java -javaagent:${OSHAJ_HOME}/oshaj.jar'" >> $(SETUP_SCRIPT)
+	echo "alias oshajrun='java -javaagent:$(PWD)/oshaj.jar'" >> $(SETUP_SCRIPT)
 
 clean:
 	rm -rf $(BIN)/*

@@ -6,25 +6,28 @@ import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.AdviceAdapter;
-import org.objectweb.asm.commons.GeneratorAdapter;
-
-import acme.util.Util;
 
 import oshaj.util.BitVectorIntSet;
 import oshaj.util.UniversalIntSet;
+import acme.util.Util;
 
 
 public class MethodInstrumentor extends AdviceAdapter {
 
-	protected int mid;
+	protected static final int NO_MID = -1;
+	protected int mid = NO_MID;
 	protected final boolean isMain;
 	protected final boolean isSynchronized;
 	protected final boolean isConstructor;
-	//	protected final boolean isClinit;
+		protected final boolean isClinit;
 	protected final boolean isStatic;
 
 	protected final String fullNameAndDesc;
 
+	// TODO policy names: @Inline, @Private, @ShareSelf, @ShareProtected, @SharePublic
+	// @Inline, @Private, @Self, @Group, @World
+	// @Inline, @Private, @Self, @Some, @All
+	// @Inline, @Private, @Self, @Shared, @Global
 	public static enum Policy { INLINE, PRIVATE, PROTECTED, PUBLIC }
 
 	protected Policy policy = Policy.INLINE;
@@ -45,13 +48,9 @@ public class MethodInstrumentor extends AdviceAdapter {
 		isMain = (access & Opcodes.ACC_PUBLIC ) != 0 && isStatic
 		&& name.equals("main") && desc.equals("([Ljava/lang/String;)V");
 		isSynchronized = (access & Opcodes.ACC_SYNCHRONIZED) != 0;
-		isConstructor = name.equals("\"<init>\"");
-		//		isClinit = name.equals("\"<clinit>\"");
+		isConstructor = name.equals("<init>");
+		isClinit = name.equals("<clinit>");
 		fullNameAndDesc = inst.className + "." + name + desc;
-		if (isMain) { // and it wasn't annotated...
-			policy = Policy.PUBLIC;
-			mid = MethodRegistry.register(fullNameAndDesc, UniversalIntSet.set);
-		}
 	}
 
 	protected void myStackSize(int size) {
@@ -103,14 +102,27 @@ public class MethodInstrumentor extends AdviceAdapter {
 
 		public AnnotationVisitor visitAnnotation(String name, String desc) { return null; }
 		public AnnotationVisitor visitArray(String name) {
-			throw new RuntimeException("AnnotationRecorder.visitArray called, but unimplemented");
+			Util.fail("AnnotationRecorder.visitArray called, but unimplemented");
+			return null;
 		}
 		public void visitEnd() { }
 		public void visitEnum(String name, String desc, String value) { }
 	}
+	
+	@Override
+	public void visitCode() {
+		if (mid == NO_MID && (isMain || isClinit)) {
+			policy = Policy.PUBLIC;
+			mid = MethodRegistry.register(fullNameAndDesc, UniversalIntSet.set);
+		}
+		super.visitCode();
+	}
+	
+	protected final Label beginTry = super.newLabel();
+	protected final Label endTryBeginHandler = super.newLabel();
 
 	@Override
-	public void onMethodEnter() {
+	protected void onMethodEnter() {
 		if (policy != Policy.INLINE) {
 			myStackSize(1);
 			super.push(mid);
@@ -138,13 +150,38 @@ public class MethodInstrumentor extends AdviceAdapter {
 			}
 			// call acquire hook. stack ->
 			super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_ACQUIRE);
+			
+			// start try block.
+			if (policy != Policy.INLINE || isSynchronized) {
+				mv.visitTryCatchBlock(beginTry, endTryBeginHandler, endTryBeginHandler, null);
+				super.mark(beginTry);
+			}
 		}
 	}
-
+	
 	@Override
-	public void onMethodExit(int _) {
+	public void visitMaxs(int maxStack, int maxLocals) {
+		originalMaxLocals = maxLocals;
+		originalMaxStack = maxStack;
+	}
+	
+	@Override
+	public void visitEnd() {
+		// on ICEs, call release and exit hooks as needed and
+		if (policy != Policy.INLINE || isSynchronized) {
+			super.mark(endTryBeginHandler);
+			makeReleaseExitHook(1);
+			super.throwException();
+		}
+		
+		// -- end code -------------
+		super.visitMaxs(originalMaxStack + myMaxStackAdditions, originalMaxLocals);
+		super.visitEnd();
+	}
+	
+	protected void makeReleaseExitHook(int extraStack) {
 		if (isSynchronized) {
-			myStackSize(1);
+			myStackSize(1 + extraStack);
 			if (isStatic) {
 				// get class (lock). stack -> lock
 				super.push(inst.classType);
@@ -158,12 +195,6 @@ public class MethodInstrumentor extends AdviceAdapter {
 		if (policy != Policy.INLINE) {
 			super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_EXIT);
 		}
-	}
-
-	@Override
-	public void visitEnd() {
-		super.visitMaxs(originalMaxStack + myMaxStackAdditions, originalMaxLocals);
-		super.visitEnd();
 	}
 
 	@Override
@@ -194,7 +225,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 				// stack == obj value |
 				// swap (may push 2 past the bar temporarily). stack -> value obj |   
 				super.swap(Instrumentor.OBJECT_TYPE, fieldType);
-				// dup the target twice. stack -> value obj | obj
+				// dup the target. stack -> value obj | obj
 				super.dup();
 				// Get the State for this field. stack -> value obj | state
 				super.getField(ownerType, stateFieldName, Instrumentor.STATE_TYPE);
@@ -234,10 +265,11 @@ public class MethodInstrumentor extends AdviceAdapter {
 					super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PRIVATE_FIRST_WRITE);
 					break;
 				}
+				// stack == value obj | obj state
 				// store the new state. stack -> value obj | 
 				super.putField(ownerType, stateFieldName, Instrumentor.STATE_TYPE);
 				// swap back (may push 2 past the bar temporarily). stack -> obj value |
-				super.swap(Instrumentor.OBJECT_TYPE, fieldType);
+				super.swap(fieldType,  Instrumentor.OBJECT_TYPE);
 				// jump to end. stack -> obj value | 
 				super.goTo(stateDone);
 
@@ -271,7 +303,9 @@ public class MethodInstrumentor extends AdviceAdapter {
 					break;
 				}
 				// swap back (may push 2 past the bar temporarily). stack -> obj value |
-				super.swap(Instrumentor.OBJECT_TYPE, fieldType);
+				super.swap(fieldType,  Instrumentor.OBJECT_TYPE);
+				super.mark(stateDone);
+
 				break;
 			case Opcodes.PUTSTATIC:
 				// Get the State for this field. stack -> state
@@ -288,7 +322,6 @@ public class MethodInstrumentor extends AdviceAdapter {
 				case INLINE:
 					// get the current method ID. stack -> mid
 					super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_MID);
-					// load the readerset. stack -> mid set
 					// do a first write. stack -> state
 					super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PROTECTED_FIRST_WRITE);
 					break;
@@ -345,6 +378,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 					super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PRIVATE_WRITE);
 					break;
 				}
+				super.mark(stateDone);
 
 				break;
 			case Opcodes.GETFIELD:
@@ -379,6 +413,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 				}
 				// Call the read hook. stack -> obj | 
 				super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PROTECTED_READ);
+				super.mark(stateDone);
 
 				break;
 			case Opcodes.GETSTATIC:
@@ -411,11 +446,11 @@ public class MethodInstrumentor extends AdviceAdapter {
 				}
 				// Call the read hook. stack -> 
 				super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PROTECTED_READ);
+				super.mark(stateDone);
 
 				break;
 			}
 			// END
-			super.mark(stateDone);
 		}
 
 		// Do the actual op.
@@ -430,7 +465,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 			myStackSize(2);
 			// put in a try/finally to put in the release if needed...
 			final Label start = super.newLabel(), handler = super.newLabel(), done = super.newLabel();
-			super.visitTryCatchBlock(start, handler, handler, Instrumentor.COMM_EXCEPT_DESC);
+			mv.visitTryCatchBlock(start, handler, handler, Instrumentor.COMM_EXCEPT_TYPE_NAME);
 			
 			// dup the target. stack -> lock | lock
 			super.dup();
@@ -440,7 +475,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 			// dup. stack -> lock lock
 			super.dup();
 			// do the monitorenter. stack -> lock
-			super.monitorEnter();
+			super.visitInsn(opcode);
 			super.mark(start);
 			// get mid. stack -> lock mid
 			switch (policy) {
@@ -472,26 +507,44 @@ public class MethodInstrumentor extends AdviceAdapter {
 			super.dup();
 			// call release hook. stack -> lock |
 			super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_RELEASE);
-			super.monitorExit();
+			super.visitInsn(opcode);
 			break;
+		case Opcodes.IRETURN:
+		case Opcodes.LRETURN:
+		case Opcodes.FRETURN:
+		case Opcodes.DRETURN:
+		case Opcodes.ARETURN:
+		case Opcodes.RETURN:
+			makeReleaseExitHook(0);
+			super.visitInsn(opcode);
 		default:
 			super.visitInsn(opcode);
 			break;			
 		}
 	}
 	
+	@Override
+	public void visitVarInsn(int opcode, int var) {
+		if (opcode == Opcodes.RET) {
+			Util.fail("RET not supported.");
+		} else {
+			super.visitVarInsn(opcode, var);
+		}
+	}
 	
-
+	@Override
+	public void visitJumpInsn(int opcode, Label label) {
+		if (opcode == Opcodes.JSR) {
+			Util.fail("JSR not supported.");
+		} else {
+			super.visitJumpInsn(opcode, label);
+		}
+	}
+	
 	@Override
 	public void visitMultiANewArrayInsn(String arg0, int arg1) {
 		// TODO allocate shadow...?
 		super.visitMultiANewArrayInsn(arg0, arg1);
-	}
-
-	@Override
-	public void visitMaxs(int maxStack, int maxLocals) {
-		originalMaxLocals = maxLocals;
-		originalMaxStack = maxStack;
 	}
 
 }

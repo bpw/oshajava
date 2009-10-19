@@ -1,5 +1,6 @@
 package oshaj.runtime;
 
+import oshaj.util.AbstractMethodSet;
 import oshaj.util.IntSet;
 
 /**
@@ -18,7 +19,7 @@ public class State {
 	/**
 	 * Thread id of the last thread to write to the field.
 	 */
-	protected Thread writerThread;
+	protected volatile Thread writerThread;
 	
 	/**
 	 * Method id of the last method in which the field was written.
@@ -30,16 +31,16 @@ public class State {
 	 */
 	protected IntSet readerSet;
 	
-	protected State(Thread writerTid, int writerMethod, IntSet readerList) {
-		this.writerThread = writerTid;
+	protected State(Thread writerThread, int writerMethod, IntSet readerSet) {
 		this.writerMethod = writerMethod;
-		this.readerSet = readerList;
+		this.readerSet = readerSet;
+		this.writerThread = writerThread;
 	}
 	
 	protected State(Thread writerTid, int writerMethod) {
-		this.writerThread = writerTid;
 		this.writerMethod = writerMethod;
 		this.readerSet = null;
+		this.writerThread = writerTid;
 	}
 	
 }
