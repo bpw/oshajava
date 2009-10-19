@@ -1,6 +1,5 @@
 package oshaj.runtime;
 
-import acme.util.Util;
 
 public class InlinedEntryPointException extends RuntimeException {
 
@@ -11,8 +10,5 @@ public class InlinedEntryPointException extends RuntimeException {
 	
 	public InlinedEntryPointException() {
 		super("A thread entry point was inlined. Please annotate it with a non-inlined policy.");
-		for (StackTraceElement frame : super.getStackTrace()) {
-			Util.log(frame);
-		}
 	}
 }

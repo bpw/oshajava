@@ -40,6 +40,30 @@ import acme.util.identityhash.ConcurrentIdentityHashMap;
  * 6. Inline the writerThread == currentThread check for reads. (i.e. do it outside the
  *    hook and only call the hook if needed.)
  *    
+ *    
+ * TODO Things to fix.
+ * 
+ * + Copy (partial) of java.*
+ * 
+ * + Copy of acme.* (using our copy of java.*)
+ * 
+ * + Copy of asm.* (using our copy of java.*)
+ * 
+ * + Arrays
+ * 
+ * + command line options
+ * 
+ * + Graph recording (as annotation inference? i.e. insert annotations in the bytecode?)
+ * 
+ * + Static spec reading
+ * 
+ * + Separate tool/pass to take a spec in some other format and the bytecode of an
+ *   un@annotated program and insert the proper annotations in the bytecode.
+ *   
+ * + Separate tool/pass to take annotated bytecode and build/dump a MethodRegistry.
+ * 
+ * + measure performance difference of how readerSet is loaded in hooks.
+ *    
  * @author bpw
  */
 public class RuntimeMonitor {
@@ -77,9 +101,32 @@ public class RuntimeMonitor {
 				// by readerThread.
 				final IntSet readerSet = state.readerSet;				
 				if (readerSet == null || ! readerSet.contains(readerMethod)) {
+					// in here, speed is not a big deal.
 					throw new IllegalSharingException(
 							state.writerThread, MethodRegistry.lookup(state.writerMethod), 
 							readerThread, MethodRegistry.lookup(readerMethod)
+					);
+				}
+			}
+		}
+	}
+	
+	// same as sharedRead
+	public static void inlineRead(final State state) {
+		final ThreadState readerThread = threadState.get();
+		// volatile read
+		final ThreadState writerThread = state.writerThread;
+		if (writerThread != readerThread) {
+			synchronized(state) {
+				// Even though readerSet may have been written by a different thread
+				// than writerThread, it is still true that they were not written
+				// by readerThread.
+				final IntSet readerSet = state.readerSet;				
+				if (readerSet == null || ! readerSet.contains(readerThread.currentMethod())) {
+					// in here, speed is not a big deal.
+					throw new IllegalSharingException(
+							state.writerThread, MethodRegistry.lookup(state.writerMethod), 
+							readerThread, MethodRegistry.lookup(readerThread.currentMethod())
 					);
 				}
 			}
@@ -124,7 +171,7 @@ public class RuntimeMonitor {
 		synchronized(state) {
 			if (state.writerMethod != writerMethod) {
 				state.writerMethod = writerMethod;
-				state.readerSet = MethodRegistry.policyTable[writerMethod];
+				state.readerSet = writerThread.currentReaderSet;
 			}
 			state.writerThread = writerThread;
 		}
@@ -132,6 +179,25 @@ public class RuntimeMonitor {
 
 	public static State protectedFirstWrite(final int writerMethod) {
 		return new State(threadState.get(), writerMethod, MethodRegistry.policyTable[writerMethod]);
+	}
+
+	// same as protectedWrite.
+	public static void inlineWrite(final State state) {
+		final ThreadState writerThread = threadState.get();
+		final int writerMethod = writerThread.currentMethod();
+		synchronized(state) {
+			if (state.writerMethod != writerMethod) {
+				state.writerMethod = writerMethod;
+				state.readerSet = writerThread.currentReaderSet;
+			}
+			state.writerThread = writerThread;
+		}
+	}
+
+	// same as protectedFirstWrite.
+	public static State inlineFirstWrite() {
+		final ThreadState writerThread = threadState.get();
+		return new State(threadState.get(), writerThread.currentMethod(), writerThread.currentReaderSet);
 	}
 
 	public static void publicWrite(final State state, final int writerMethod) {
@@ -227,7 +293,7 @@ public class RuntimeMonitor {
 	
 	public static void enter(final int mid) {
 		try {
-			Util.logf("enter %d", mid);
+//			Util.logf("enter %d", mid);
 			threadState.get().enter(mid, MethodRegistry.policyTable[mid]);
 		} catch (Throwable t) {
 			Util.fail(t);
@@ -236,7 +302,7 @@ public class RuntimeMonitor {
 
 	public static void exit() {
 		try {
-			Util.log("exit");
+//			Util.log("exit");
 			threadState.get().exit();
 		} catch (Throwable t) {
 			Util.fail(t);

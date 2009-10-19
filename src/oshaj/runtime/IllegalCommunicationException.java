@@ -2,7 +2,7 @@ package oshaj.runtime;
 
 
 
-public abstract class IllegalCommunicationException extends RuntimeException {
+public abstract class IllegalCommunicationException extends OshaRuntimeException {
 
 	/**
 	 * Auto-generated version ID.
@@ -18,16 +18,6 @@ public abstract class IllegalCommunicationException extends RuntimeException {
 		this.readerMethod = readerMethod;
 		this.writerThread = writerThread;
 		this.readerThread = readerThread;
-		StackTraceElement[] stack = getStackTrace();
-		int i = 0;
-		while (i < stack.length && stack[i].getClassName().equals("oshaj.runtime.RuntimeMonitor")) {
-			i++;
-		}
-		if (i > 0) {
-			StackTraceElement[] fudgedStack = new StackTraceElement[stack.length - i];
-			System.arraycopy(stack, i, fudgedStack, 0, stack.length - i);
-			setStackTrace(fudgedStack);
-		}
 	}
 	
 	protected abstract String actionString();

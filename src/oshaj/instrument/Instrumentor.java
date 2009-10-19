@@ -48,7 +48,7 @@ public class Instrumentor extends ClassAdapter {
 	protected static final String ANNOT_THREAD_PRIVATE_DESC = Type.getDescriptor(oshaj.annotation.ThreadPrivate.class);
 	protected static final String ANNOT_READ_BY_DESC        = Type.getDescriptor(oshaj.annotation.ReadBy.class);
 	protected static final String ANNOT_READ_BY_ALL_DESC    = Type.getDescriptor(oshaj.annotation.ReadByAll.class);
-	protected static final String COMM_EXCEPT_TYPE_NAME     = Type.getInternalName(oshaj.runtime.IllegalCommunicationException.class);
+	protected static final String OSHA_EXCEPT_TYPE_NAME     = Type.getInternalName(oshaj.runtime.OshaRuntimeException.class);
 	protected static final String SHADOW_FIELD_SUFFIX       = "__osha_state";
 	protected static final String STATE_DESC                = STATE_TYPE.getDescriptor();
 

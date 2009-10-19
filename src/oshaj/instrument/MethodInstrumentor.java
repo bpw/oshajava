@@ -471,7 +471,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 			myStackSize(2);
 			// put in a try/finally to put in the release if needed...
 			final Label start = super.newLabel(), handler = super.newLabel(), done = super.newLabel();
-			mv.visitTryCatchBlock(start, handler, handler, Instrumentor.COMM_EXCEPT_TYPE_NAME);
+			mv.visitTryCatchBlock(start, handler, handler, Instrumentor.OSHA_EXCEPT_TYPE_NAME);
 			
 			// dup the target. stack -> lock | lock
 			super.dup();
