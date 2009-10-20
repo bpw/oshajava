@@ -40,6 +40,39 @@ import acme.util.identityhash.ConcurrentIdentityHashMap;
  * 6. Inline the writerThread == currentThread check for reads. (i.e. do it outside the
  *    hook and only call the hook if needed.)
  *    
+ * 7. Cache array and its array of states in ThreadState. Good for when running down an
+ *    array; bad for when copying between/jumping around.
+ *    
+ * 8. Cache lock and lock state in ThreadState.
+ * 
+ * 9. When code is stable, customize and diversify array read/writer hooks.
+ * 
+ * 10. Shadow fields no longer need to be volatile now that State.writerThread is volatile
+ *     and is always read last, written first, even in the constructor.  The double-checked 
+ *     locking cannot expose uninitialized innards of a State because of this invariant.
+ *     This approach increases the possibility of lost updates around conflicting "initial"
+ *     writes, since the write of the State to the shadow field is no longer volatile (and
+ *     may be delayed a bit longer/communicated a bit later as a result).  However, the only
+ *     way to ensure no lost updates is to have a shadow lock as well that is acquired to
+ *     initialize the shadow field (the shadow field must be volatile).  Same problem applies,
+ *     though, since now you have to initialize the lock. (Get inside the constructors somehow?
+ *     If you can do that, then just init the shadow field there and make it final... which
+ *     leads to another thought.)
+ *     
+ * 11. If you can get inside constructors (even if not uniquely), just make the shadow fields
+ *     non-final, but init them in the constructors.  If there are this() calls, no big deal.
+ *     You'll just create an extra State or two and reassign.  To insure that things outside
+ *     the constructor don't get null when they read the shadow field write to writerThread
+ *     again after writing the State to the shadow field. For example:
+ *       final State = new State(...);
+ *       shadowField = state;
+ *       state.writerThread = ...;
+ *     CAVEAT: if this escapes in a constructor, you could be screwed and another thread might
+ *     get a null from the shadow field. However, they're still guaranteed to see a fully
+ *     initialized State if they do see one.
+ *     You won't be able to get all constructors, I'm guessing, so for the ones you can't get, 
+ *     keep the #10 style lazy initialization.
+ *    
  *    
  * TODO Things to fix or add.
  * 
@@ -83,6 +116,17 @@ public class RuntimeMonitor {
 	// protected by the app locks...
 	protected static final ConcurrentIdentityHashMap<Object,LockState> lockStates = 
 		new ConcurrentIdentityHashMap<Object,LockState>();
+	protected static final ConcurrentIdentityHashMap<Object,State[]> arrayStates = 
+		new ConcurrentIdentityHashMap<Object,State[]>();
+		
+	public static void newArray(int length, Object array) {
+		final State[] states = new State[length];
+		for (int i = 0; i < length; i++) {
+			// initially, accept anything.
+			states[i] = new State(null, -1, UniversalIntSet.set);
+		}
+		arrayStates.put(array, states);
+	}
 
 	/**
 	 * Checks a read by a shared reading method, i.e. a method that has in-edges
@@ -136,6 +180,23 @@ public class RuntimeMonitor {
 					);
 				}
 			}
+		}
+	}
+	
+	public static void arrayRead(final Object array, final int index) {
+//		final ThreadState thread = threadState.get();
+//		final State state;
+//		if (array == thread.cachedArray) {
+//			state = thread.cachedArrayStates[index];
+//		} else {
+//			final State[] states = arrayStates.get(array);
+//			state = states[index];
+//			thread.cachedArray = array;
+//			thread.cachedArrayStates = states;
+//		}
+		final State state = arrayStates.get(array)[index];
+		if (state != null) {
+			inlineRead(state);
 		}
 	}
 	
@@ -221,10 +282,15 @@ public class RuntimeMonitor {
 		return new State(threadState.get(), writerMethod, UniversalIntSet.set);
 	}
 
-
-	public static void arrayRead() {}
-
-	public static void arrayWrite() {}
+	public static void arrayWrite(final Object array, int index) {
+		inlineWrite(arrayStates.get(array)[index]);
+	}
+	
+	
+	
+	// TODO current task: instrument code with array hooks.
+	
+	
 
 	/**
 	 * Lock release hook.  Since things are well-scoped in Java, we'll just do all the work

@@ -112,12 +112,9 @@ public class ClassInstrumentor extends ClassAdapter {
 	public FieldVisitor visitField(int access, String name, String desc, String signature, Object value) {
 		// TODO option to ignore final fields.
 		// We make all state fields non-final to be able to set them from outside a constructor
-		// and volatile to support safe double-checked locking for lazy initialization.
-		// TODO this is not optimal, as it enforces more ordering than the application does on its
-		// own.
 		if (shouldInstrumentField(name, desc)) {
 			final FieldVisitor fv = super.visitField(
-					access & ~Opcodes.ACC_FINAL | Opcodes.ACC_VOLATILE, 
+					access & ~(Opcodes.ACC_FINAL | Opcodes.ACC_VOLATILE), // see optimization note in RuntimeMonitor.
 					name + SHADOW_FIELD_SUFFIX, STATE_DESC, signature, null
 			);
 			if (fv != null) {

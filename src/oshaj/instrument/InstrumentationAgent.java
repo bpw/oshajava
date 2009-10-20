@@ -38,6 +38,7 @@ public class InstrumentationAgent implements ClassFileTransformer {
 		public boolean verifyInput = true;
 		public String  bytecodeDump = "oshajdump";
 		public boolean java6 = false;
+		public boolean instrument = true;
 		
 		public boolean verifyOutput() {
 			return debug;
@@ -95,6 +96,7 @@ public class InstrumentationAgent implements ClassFileTransformer {
 	
 	public byte[] transform(ClassLoader loader, String className, Class<?> classBeingRedefined, 
 			ProtectionDomain pd, byte[] bytecode) throws IllegalClassFormatException {
+		if (!opts.instrument) return bytecode;
 		try {
 			final byte[] instrumentedBytecode = instrument(className, bytecode);
 			if (opts.bytecodeDump != null) {

@@ -42,6 +42,10 @@ public final class ThreadState {
 	private int      stackSize      = 0;
 
 	protected IntSet currentReaderSet;
+	
+	// TODO WeakRef
+//	protected Object cachedArray;
+//	protected State[] cachedArrayStates;
 
 	public ThreadState(Thread thread) {
 		threadRef = new WeakReference<Thread>(thread);
