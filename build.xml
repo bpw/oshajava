@@ -29,9 +29,6 @@
 		<pathelement location="${asm.lib}/asm-tree-${asm.version}.jar" />
 		<pathelement location="${asm.lib}/asm-util-${asm.version}.jar" />
 	</path>
-	<manifestclasspath property="jar.classpath" jarfile="${main.jar}">
-		<classpath refid="project.class.path" />
-	</manifestclasspath>
 
 	<target name="build" depends="jars,script" />
 	
@@ -53,6 +50,9 @@ Class-Path: ${jar.classpath}
 	</target>
 		
 	<target name="main.jar" depends="compile,jars.dir,annotation.jar,main.manifest" >
+		<manifestclasspath property="jar.classpath" jarfile="${main.jar}">
+			<classpath refid="project.class.path" />
+		</manifestclasspath>
 		<jar destfile="${main.jar}" index="true" manifest="${classes.dir}/META-INF/MANIFEST.MF">	
 			<fileset dir="${classes.dir}" includes="**/*.class" />
 			<indexjars refid="project.class.path" />
