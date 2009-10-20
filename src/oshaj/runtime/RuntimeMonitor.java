@@ -1,6 +1,6 @@
 package oshaj.runtime;
 
-import oshaj.instrument.MethodRegistry;
+import oshaj.sourceinfo.MethodTable;
 import oshaj.util.IntSet;
 import oshaj.util.UniversalIntSet;
 import acme.util.Util;
@@ -109,8 +109,8 @@ public class RuntimeMonitor {
 				if (readerSet == null || ! readerSet.contains(readerMethod)) {
 					// in here, speed is not a big deal.
 					throw new IllegalSharingException(
-							state.writerThread, MethodRegistry.lookup(state.writerMethod), 
-							readerThread, MethodRegistry.lookup(readerMethod)
+							state.writerThread, MethodTable.lookup(state.writerMethod), 
+							readerThread, MethodTable.lookup(readerMethod)
 					);
 				}
 			}
@@ -131,8 +131,8 @@ public class RuntimeMonitor {
 				if (readerSet == null || ! readerSet.contains(readerThread.currentMethod())) {
 					// in here, speed is not a big deal.
 					throw new IllegalSharingException(
-							state.writerThread, MethodRegistry.lookup(state.writerMethod), 
-							readerThread, MethodRegistry.lookup(readerThread.currentMethod())
+							state.writerThread, MethodTable.lookup(state.writerMethod), 
+							readerThread, MethodTable.lookup(readerThread.currentMethod())
 					);
 				}
 			}
@@ -184,7 +184,7 @@ public class RuntimeMonitor {
 	}
 
 	public static State protectedFirstWrite(final int writerMethod) {
-		return new State(threadState.get(), writerMethod, MethodRegistry.policyTable[writerMethod]);
+		return new State(threadState.get(), writerMethod, MethodTable.policyTable[writerMethod]);
 	}
 
 	// same as protectedWrite.
@@ -260,7 +260,7 @@ public class RuntimeMonitor {
 		try {
 			LockState state = lockStates.get(lock);
 			if (state == null) {
-				state = new LockState(threadState.get(), holderMethod, MethodRegistry.policyTable[holderMethod]);
+				state = new LockState(threadState.get(), holderMethod, MethodTable.policyTable[holderMethod]);
 				state.depth = 1;
 				state = lockStates.put(lock, state);
 				Util.assertTrue(state == null);
@@ -274,15 +274,15 @@ public class RuntimeMonitor {
 				final IntSet readerSet = state.nextMethods;
 				if (state.lastMethod != holderMethod) {
 					state.lastMethod = holderMethod;
-					state.nextMethods = MethodRegistry.policyTable[holderMethod];					
+					state.nextMethods = MethodTable.policyTable[holderMethod];					
 				}
 				state.depth++;
 				if (state.lastThread != holderThread) {
 					state.lastThread = holderThread;
 					if (readerSet == null || ! readerSet.contains(holderMethod)) {
 						throw new IllegalSynchronizationException(
-								state.lastThread, MethodRegistry.lookup(state.lastMethod), 
-								holderThread, MethodRegistry.lookup(holderMethod)
+								state.lastThread, MethodTable.lookup(state.lastMethod), 
+								holderThread, MethodTable.lookup(holderMethod)
 						);
 					}
 				}
@@ -306,7 +306,7 @@ public class RuntimeMonitor {
 	public static void enter(final int mid) {
 		try {
 //			Util.logf("enter %d", mid);
-			threadState.get().enter(mid, MethodRegistry.policyTable[mid]);
+			threadState.get().enter(mid, MethodTable.policyTable[mid]);
 		} catch (Throwable t) {
 			Util.fail(t);
 		}

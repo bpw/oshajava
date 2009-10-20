@@ -3,7 +3,7 @@ package oshaj.runtime;
 import java.lang.ref.WeakReference;
 
 import acme.util.Util;
-import oshaj.instrument.MethodRegistry;
+import oshaj.sourceinfo.MethodTable;
 import oshaj.util.IntSet;
 
 /**
@@ -89,7 +89,7 @@ public final class ThreadState {
 	
 	public int exit() {
 		final int caller = --stackSize;
-		currentReaderSet = MethodRegistry.policyTable[caller];
+		currentReaderSet = MethodTable.policyTable[caller];
 		return caller;
 //		readerSetStack[stackSize - 1] = null;
 	}

@@ -1,3 +1,3 @@
-Premain-Class: oshaj.instrument.Instrumentor
-Agent-Class: oshaj.instrument.Instrumentor
+Premain-Class: oshaj.instrument.InstrumentationAgent
+Agent-Class: oshaj.instrument.InstrumentationAgent
 Class-Path: libs/asm-3.2/lib/all/asm-all-3.2.jar libs/asm-3.2/lib/asm-3.2.jar libs/asm-3.2/lib/asm-commons-3.2.jar libs/asm-3.2/lib/asm-util-3.2.jar libs/acme-10-7-09.jar

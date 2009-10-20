@@ -1,4 +1,4 @@
-package oshaj.instrument;
+package oshaj.sourceinfo;
 
 import java.util.HashMap;
 
@@ -7,7 +7,7 @@ import oshaj.util.BitVectorIntSet;
 import oshaj.util.Cons;
 import oshaj.util.IntSet;
 
-public class MethodRegistry {
+public class MethodTable {
 	
 	/**
 	 * Initial size for the method ID -> signature map.
@@ -31,7 +31,7 @@ public class MethodRegistry {
 	/**
 	 * Map from method ID to method signature.  Non-synchronized access illegal.
 	 */
-	public static String[] methodIDtoSig = new String[INITIAL_METHOD_LIST_SIZE];
+	private static String[] methodIDtoSig = new String[INITIAL_METHOD_LIST_SIZE];
 	
 	public static IntSet[] policyTable = new IntSet[INITIAL_METHOD_LIST_SIZE];
 	
@@ -97,7 +97,7 @@ public class MethodRegistry {
 	public static synchronized IntSet getPolicy(String name) {
 		final Integer id = methodSigToID.get(name);
 		if (id == null) Util.fail("Not in there.");
-		return MethodRegistry.policyTable[id];
+		return MethodTable.policyTable[id];
 	}
 	
 	/**
