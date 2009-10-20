@@ -33,14 +33,17 @@ public class MethodInstrumentor extends AdviceAdapter {
 	// @Inline, @Private, @Self, @Shared, @Global
 	public static enum Policy { INLINE, PRIVATE, PROTECTED, PUBLIC }
 
-	protected Policy policy = Policy.INLINE;
-
+	// TODO make this a command line option, and a per-class option
+	protected static final Policy POLICY_DEFAULT = Policy.INLINE;
+	
+	protected Policy policy = null;
+	
 	protected final Instrumentor inst;
 
 	protected int myMaxStackAdditions = 0;
 
 	protected int originalMaxLocals = UNINITIALIZED, originalMaxStack = UNINITIALIZED;
-
+	
 	public MethodInstrumentor(MethodVisitor next, int access, String name, String desc, Instrumentor inst) {
 		super(next, access, name, desc);
 		this.inst = inst;
@@ -61,7 +64,9 @@ public class MethodInstrumentor extends AdviceAdapter {
 
 	@Override
 	public AnnotationVisitor visitAnnotation(String desc, boolean visible) {
-		// TODO if isMain, don't inline! 
+		// Only one osha annotation allowed per method.
+		Util.assertTrue(policy == null, "Only one policy allowed per method.");
+		
 		if (desc.equals(Instrumentor.ANNOT_INLINE_DESC)) {
 			policy = Policy.INLINE;
 			return null;
@@ -113,9 +118,20 @@ public class MethodInstrumentor extends AdviceAdapter {
 	
 	@Override
 	public void visitCode() {
-		if (mid == UNINITIALIZED && (isMain || isClinit)) {
-			policy = Policy.PUBLIC;
-			mid = MethodRegistry.register(fullNameAndDesc, UniversalIntSet.set);
+		if (policy == null) {
+			if (isMain || isClinit) {
+				policy = Policy.PUBLIC;
+				mid = MethodRegistry.register(fullNameAndDesc, UniversalIntSet.set);
+			} else {
+				policy = POLICY_DEFAULT;
+			}
+			
+			
+			/////////////////////// TODO pull mid init from visitAnnotation????????
+			
+			
+			
+			
 		}
 		super.visitCode();
 	}
@@ -131,7 +147,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 			super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_ENTER);
 		}
 		if (isSynchronized) {
-			myStackSize(2);
+			myStackSize(1);
 			if (isStatic) {
 				// get class (lock). stack -> lock
 				super.push(inst.classType);
@@ -139,19 +155,16 @@ public class MethodInstrumentor extends AdviceAdapter {
 				// get object (lock). stack -> lock
 				super.loadThis();
 			}
-			// get mid. stack -> lock mid
-			switch (policy) {
-			case INLINE:
-				super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_MID);
-				break;
-			case PRIVATE:
-			case PROTECTED:
-			case PUBLIC:
+			if (policy == Policy.INLINE) {
+				// call acquire hook. stack ->
+				super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_INLINE_ACQUIRE);
+			} else {
+				myStackSize(2);
+				// pus mid. stack -> lock mid
 				super.push(mid);
-				break;
+				// call acquire hook. stack ->
+				super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_ACQUIRE);
 			}
-			// call acquire hook. stack ->
-			super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_ACQUIRE);
 			
 			// start try block.
 			if (policy != Policy.INLINE || isSynchronized) {
@@ -247,10 +260,8 @@ public class MethodInstrumentor extends AdviceAdapter {
 				super.dup();
 				switch (policy) {
 				case INLINE:
-					// get the current method ID. stack -> value obj | obj mid
-					super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_MID);
 					// do a first write. stack -> value obj | obj state
-					super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PROTECTED_FIRST_WRITE);
+					super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_INLINE_FIRST_WRITE);
 					break;
 				case PROTECTED:
 					// Push the current method id. stack -> value obj | obj mid
@@ -284,10 +295,8 @@ public class MethodInstrumentor extends AdviceAdapter {
 				super.mark(nonNullState);
 				switch (policy) {
 				case INLINE:
-					// Push the current method id. stack -> value obj | state mid
-					super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_MID);
 					// Call the write hook. stack -> value obj | 
-					super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PROTECTED_WRITE);
+					super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_INLINE_WRITE);
 					break;
 				case PROTECTED:
 					// Push the current method id. stack -> value obj | state mid
@@ -326,10 +335,8 @@ public class MethodInstrumentor extends AdviceAdapter {
 				super.pop();
 				switch (policy) {
 				case INLINE:
-					// get the current method ID. stack -> mid
-					super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_MID);
 					// do a first write. stack -> state
-					super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PROTECTED_FIRST_WRITE);
+					super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_INLINE_FIRST_WRITE);
 					break;
 				case PROTECTED:
 					// Push the current method id. stack -> mid
@@ -360,10 +367,8 @@ public class MethodInstrumentor extends AdviceAdapter {
 				super.mark(nonNullState);
 				switch (policy) {
 				case INLINE:
-					// Push the current method id. stack -> state mid
-					super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_MID);
 					// Call the write hook. stack -> 
-					super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PROTECTED_WRITE);
+					super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_INLINE_WRITE);
 					break;
 				case PROTECTED:
 					// Push the current method id. stack -> state mid
@@ -406,19 +411,15 @@ public class MethodInstrumentor extends AdviceAdapter {
 				// NON-NULL CASE: regular communication
 				// stack == obj | state
 				super.mark(nonNullState);
-				// Push the current method id. stack -> obj | state mid
-				switch (policy) {
-				case INLINE:
-					super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_MID);
-					break;
-				case PRIVATE:
-				case PROTECTED:
-				case PUBLIC:
+				if (policy == Policy.INLINE) {
+					// call the read hook. stack -> obj | 
+					super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_INLINE_READ);
+				} else {
+					// push mid. stack -> obj | state mid
 					super.push(mid);
-					break;
+					// call the read hook. stack -> obj | 
+					super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PROTECTED_READ);
 				}
-				// Call the read hook. stack -> obj | 
-				super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PROTECTED_READ);
 				super.mark(stateDone);
 
 				break;
@@ -439,19 +440,15 @@ public class MethodInstrumentor extends AdviceAdapter {
 				// NON-NULL CASE: regular communication
 				// stack == state
 				super.mark(nonNullState);
-				// Push the current method id. stack -> state mid
-				switch (policy) {
-				case INLINE:
-					super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_MID);
-					break;
-				case PRIVATE:
-				case PROTECTED:
-				case PUBLIC:
+				if (policy == Policy.INLINE) {
+					// call the read hook. stack -> 
+					super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_INLINE_READ);
+				} else {
+					// push mid. stack ->  state mid
 					super.push(mid);
-					break;
+					// call the read hook. stack -> 
+					super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PROTECTED_READ);
 				}
-				// Call the read hook. stack -> 
-				super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_PROTECTED_READ);
 				super.mark(stateDone);
 
 				break;
@@ -482,21 +479,19 @@ public class MethodInstrumentor extends AdviceAdapter {
 			super.dup();
 			// do the monitorenter. stack -> lock
 			super.visitInsn(opcode);
+
 			super.mark(start);
-			// get mid. stack -> lock mid
-			switch (policy) {
-			case INLINE:
-				super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_MID);
-				break;
-			case PRIVATE:
-			case PROTECTED:
-			case PUBLIC:
+			if (policy == Policy.INLINE) {
+				// call acquire hook. stack ->
+				super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_INLINE_ACQUIRE);
+			} else {
+				// push mid. stack -> lock mid
 				super.push(mid);
-				break;
+				// call acquire hook. stack ->
+				super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_ACQUIRE);
 			}
-			// call acquire hook. stack -> 
-			super.invokeStatic(Instrumentor.RUNTIME_MONITOR_TYPE, Instrumentor.HOOK_ACQUIRE);
 			super.goTo(done);
+			
 			// handler. We get thee exception on the stack. stack -> e
 			super.mark(handler);
 			// reload lock. stack -> e lock

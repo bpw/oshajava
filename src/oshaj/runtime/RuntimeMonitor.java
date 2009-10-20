@@ -41,7 +41,7 @@ import acme.util.identityhash.ConcurrentIdentityHashMap;
  *    hook and only call the hook if needed.)
  *    
  *    
- * TODO Things to fix.
+ * TODO Things to fix or add.
  * 
  * + Copy (partial) of java.*
  * 
@@ -63,6 +63,12 @@ import acme.util.identityhash.ConcurrentIdentityHashMap;
  * + Separate tool/pass to take annotated bytecode and build/dump a MethodRegistry.
  * 
  * + measure performance difference of how readerSet is loaded in hooks.
+ * 
+ * + @Default annotation on class tells default annotation to use on unannotated methods. 
+ * 
+ * + way to annotate clinit
+ * 
+ * + see javax.annotation.processing and apt if you want source-level...
  *    
  * @author bpw
  */
@@ -289,6 +295,12 @@ public class RuntimeMonitor {
 		} catch (Throwable t) {
 			Util.fail(t);
 		}
+	}
+	
+	public static void inlineAcquire(final Object lock) {
+		// TODO when code stabilizes, make this a copy of acquire, to avoid loading from
+		// threadState.get() twice.
+		acquire(lock, threadState.get().currentMethod());
 	}
 	
 	public static void enter(final int mid) {

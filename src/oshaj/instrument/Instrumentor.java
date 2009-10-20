@@ -54,25 +54,29 @@ public class Instrumentor extends ClassAdapter {
 
 	protected static final Type[] ARGS_NONE      = new Type[0];
 	protected static final Type[] ARGS_INT       = { Type.INT_TYPE };
-	protected static final Type[] ARGS_STATE_INT = { STATE_TYPE, Type.INT_TYPE  };
+	protected static final Type[] ARGS_STATE     = { STATE_TYPE };
+	protected static final Type[] ARGS_STATE_INT = { STATE_TYPE, Type.INT_TYPE };
+	protected static final Type[] ARGS_OBJECT    = { OBJECT_TYPE };
 
 	protected static final Method HOOK_ENTER = new Method("enter", Type.VOID_TYPE, ARGS_INT);
 	protected static final Method HOOK_EXIT  = new Method("exit",  Type.VOID_TYPE, ARGS_NONE);
-	protected static final Method HOOK_MID   = new Method("currentMid",  Type.INT_TYPE, ARGS_NONE);
 
 	protected static final Method HOOK_PRIVATE_READ   = new Method("privateRead", Type.VOID_TYPE, ARGS_STATE_INT);
-	protected static final Method HOOK_PROTECTED_READ = new Method("sharedRead", Type.VOID_TYPE, ARGS_STATE_INT);
+	protected static final Method HOOK_PROTECTED_READ = new Method("sharedRead",  Type.VOID_TYPE, ARGS_STATE_INT);
+	protected static final Method HOOK_INLINE_READ    = new Method("inlineRead",  Type.VOID_TYPE, ARGS_STATE);
 
-	protected static final Method HOOK_PRIVATE_WRITE         = new Method("privateWrite", Type.VOID_TYPE, ARGS_STATE_INT);
-	protected static final Method HOOK_PRIVATE_FIRST_WRITE   = new Method("privateFirstWrite", STATE_TYPE, ARGS_INT);
-	protected static final Method HOOK_PROTECTED_WRITE       = new Method("protectedWrite", Type.VOID_TYPE, ARGS_STATE_INT);
-	protected static final Method HOOK_PROTECTED_FIRST_WRITE = new Method("protectedFirstWrite", STATE_TYPE, ARGS_INT);
-	protected static final Method HOOK_PUBLIC_WRITE          = new Method("publicWrite", Type.VOID_TYPE, ARGS_STATE_INT);
-	protected static final Method HOOK_PUBLIC_FIRST_WRITE    = new Method("publicFirstWrite", STATE_TYPE, ARGS_INT);
+	protected static final Method HOOK_PRIVATE_WRITE         = new Method("privateWrite",      Type.VOID_TYPE, ARGS_STATE_INT);
+	protected static final Method HOOK_PRIVATE_FIRST_WRITE   = new Method("privateFirstWrite", STATE_TYPE,     ARGS_INT);
+	protected static final Method HOOK_PROTECTED_WRITE       = new Method("protectedWrite",    Type.VOID_TYPE, ARGS_STATE_INT);
+	protected static final Method HOOK_PROTECTED_FIRST_WRITE = new Method("protectedFirstWrite", STATE_TYPE,   ARGS_INT);
+	protected static final Method HOOK_PUBLIC_WRITE          = new Method("publicWrite",       Type.VOID_TYPE, ARGS_STATE_INT);
+	protected static final Method HOOK_PUBLIC_FIRST_WRITE    = new Method("publicFirstWrite",  STATE_TYPE,     ARGS_INT);
+	protected static final Method HOOK_INLINE_WRITE          = new Method("inlineWrite",       Type.VOID_TYPE, ARGS_STATE);
+	protected static final Method HOOK_INLINE_FIRST_WRITE    = new Method("inlineFirstWrite",  Type.VOID_TYPE, ARGS_NONE);
 
-	protected static final Method HOOK_ACQUIRE = 
-		new Method("acquire", Type.VOID_TYPE, new Type[] { OBJECT_TYPE, Type.INT_TYPE });
-	protected static final Method HOOK_RELEASE = new Method("release",  Type.VOID_TYPE, new Type[] { OBJECT_TYPE });
+	protected static final Method HOOK_ACQUIRE        = new Method("acquire", Type.VOID_TYPE, new Type[] { OBJECT_TYPE, Type.INT_TYPE });
+	protected static final Method HOOK_INLINE_ACQUIRE = new Method("acquire", Type.VOID_TYPE, ARGS_OBJECT);
+	protected static final Method HOOK_RELEASE        = new Method("release", Type.VOID_TYPE, ARGS_OBJECT);
 
 	/****************************************************************************/
 
