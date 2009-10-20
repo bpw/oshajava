@@ -59,10 +59,10 @@ public class ClassInstrumentor extends ClassAdapter {
 	protected static final Method HOOK_PUBLIC_WRITE          = new Method("publicWrite",       Type.VOID_TYPE, ARGS_STATE_INT);
 	protected static final Method HOOK_PUBLIC_FIRST_WRITE    = new Method("publicFirstWrite",  STATE_TYPE,     ARGS_INT);
 	protected static final Method HOOK_INLINE_WRITE          = new Method("inlineWrite",       Type.VOID_TYPE, ARGS_STATE);
-	protected static final Method HOOK_INLINE_FIRST_WRITE    = new Method("inlineFirstWrite",  Type.VOID_TYPE, ARGS_NONE);
+	protected static final Method HOOK_INLINE_FIRST_WRITE    = new Method("inlineFirstWrite",  STATE_TYPE, ARGS_NONE);
 
 	protected static final Method HOOK_ACQUIRE        = new Method("acquire", Type.VOID_TYPE, new Type[] { OBJECT_TYPE, Type.INT_TYPE });
-	protected static final Method HOOK_INLINE_ACQUIRE = new Method("acquire", Type.VOID_TYPE, ARGS_OBJECT);
+	protected static final Method HOOK_INLINE_ACQUIRE = new Method("inlineAcquire", Type.VOID_TYPE, ARGS_OBJECT);
 	protected static final Method HOOK_RELEASE        = new Method("release", Type.VOID_TYPE, ARGS_OBJECT);
 
 	/****************************************************************************/
