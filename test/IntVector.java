@@ -1,4 +1,3 @@
-package oshaj.util;
 
 public class IntVector {
 
