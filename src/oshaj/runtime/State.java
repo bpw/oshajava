@@ -1,6 +1,6 @@
 package oshaj.runtime;
 
-import oshaj.util.IntSet;
+import oshaj.sourceinfo.IntSet;
 
 /**
  * A representation of the state of a field as a channel for communication

@@ -3,9 +3,6 @@ package oshaj.sourceinfo;
 import java.util.HashMap;
 
 import acme.util.Util;
-import oshaj.util.BitVectorIntSet;
-import oshaj.util.Cons;
-import oshaj.util.IntSet;
 
 public class MethodTable {
 	

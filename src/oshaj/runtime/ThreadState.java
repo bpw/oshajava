@@ -3,8 +3,8 @@ package oshaj.runtime;
 import java.lang.ref.WeakReference;
 
 import acme.util.Util;
+import oshaj.sourceinfo.IntSet;
 import oshaj.sourceinfo.MethodTable;
-import oshaj.util.IntSet;
 
 /**
  * All non-final fields are for thread private access only.

@@ -1,4 +1,4 @@
-package oshaj.util;
+package oshaj.sourceinfo;
 
 public class Cons<T> {
 	public final T head;

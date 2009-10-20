@@ -1,6 +1,6 @@
 package oshaj.runtime;
 
-import oshaj.util.IntSet;
+import oshaj.sourceinfo.IntSet;
 
 public class LockState {
 	

@@ -7,9 +7,9 @@ import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.AdviceAdapter;
 
+import oshaj.sourceinfo.BitVectorIntSet;
 import oshaj.sourceinfo.MethodTable;
-import oshaj.util.BitVectorIntSet;
-import oshaj.util.UniversalIntSet;
+import oshaj.sourceinfo.UniversalIntSet;
 import acme.util.Util;
 
 // TODO allow annotations on interface methods, applied to all their

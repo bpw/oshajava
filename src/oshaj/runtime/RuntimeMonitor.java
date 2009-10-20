@@ -1,8 +1,8 @@
 package oshaj.runtime;
 
+import oshaj.sourceinfo.IntSet;
 import oshaj.sourceinfo.MethodTable;
-import oshaj.util.IntSet;
-import oshaj.util.UniversalIntSet;
+import oshaj.sourceinfo.UniversalIntSet;
 import acme.util.Util;
 import acme.util.identityhash.ConcurrentIdentityHashMap;
 
