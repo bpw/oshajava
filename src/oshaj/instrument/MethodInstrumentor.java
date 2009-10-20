@@ -125,13 +125,19 @@ public class MethodInstrumentor extends AdviceAdapter {
 			} else {
 				policy = POLICY_DEFAULT;
 			}
-			
-			
-			/////////////////////// TODO pull mid init from visitAnnotation????????
-			
-			
-			
-			
+			switch(policy) {
+			case PUBLIC:
+				mid = MethodRegistry.register(fullNameAndDesc, UniversalIntSet.set);
+				break;
+			case PROTECTED:
+				Util.fail("not sure what to do here. think this is prohibited.");
+				break;
+			case PRIVATE:
+				mid = MethodRegistry.register(fullNameAndDesc, null);
+				break;
+			case INLINE:
+				break;
+			}
 		}
 		super.visitCode();
 	}
