@@ -9,6 +9,7 @@ import java.lang.instrument.Instrumentation;
 import java.security.ProtectionDomain;
 
 import org.objectweb.asm.ClassReader;
+import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.util.CheckClassAdapter;
 
@@ -29,48 +30,87 @@ import acme.util.Util;
  *
  */
 public class InstrumentationAgent implements ClassFileTransformer {
+	
+	protected static final String DEBUG_KEY = "instrument";
+	
+	static class Options {	
+		public boolean debug = true;
+		public boolean verifyInput = true;
+		public String  bytecodeDump = "oshajdump";
+		public boolean java6 = false;
+		
+		public boolean verifyOutput() {
+			return debug;
+		}
+		public boolean frames() {
+			return java6;
+		}
+	}
+	
+	public final Options opts;
+	
+	public InstrumentationAgent(Options opts) {
+		this.opts = opts;
+	}
+	
+	public byte[] instrument(String className, byte[] bytecode) {
+		if (ClassInstrumentor.shouldInstrument(className)) {
+			final ClassReader in = new ClassReader(bytecode);
+			final ClassWriter out = new ClassWriter(in, opts.frames() ? ClassWriter.COMPUTE_FRAMES : 0);
+			ClassVisitor chain = out;
+			// Build a chain according to the options.
+			if (opts.verifyOutput()) {
+				chain = new CheckClassAdapter(chain);
+			}
+			chain = new ClassInstrumentor(chain);
+			if (!opts.java6) {
+				chain = new RemoveJava6Adapter(chain);
+			}
+			if (opts.verifyInput) {
+				chain = new CheckClassAdapter(chain);
+			}
+			Util.debugf(DEBUG_KEY, "Instrumenting %s", className);
+			in.accept(new ClassInstrumentor(new CheckClassAdapter(out)), ClassReader.SKIP_FRAMES);
+			return out.toByteArray();
+		} else {
+			Util.debugf(DEBUG_KEY, "Ignored %s", className);
+			return bytecode;
+		}
+
+	}
+
+	/*********************************************************************************************/
 
 	public static void premain(String agentArgs, Instrumentation inst) {
 		try {
-			Util.log("Loading oshaj");
+			Util.debug(DEBUG_KEY, "Loading oshaj");
 			// Register the instrumentor with the jvm as a class file transformer.
-			inst.addTransformer(new InstrumentationAgent());
-			Util.log("Starting application");
+			inst.addTransformer(new InstrumentationAgent(new Options()));
+			Util.debug(DEBUG_KEY, "Starting application");
 		} catch (Throwable e) {
 			Util.log("Problem installing oshaj class transformer.");
 			Util.fail(e);
 		}
 	}
-
-
-	public byte[] transform(ClassLoader loader, String className, Class<?> classBeingRedefined, ProtectionDomain pd, byte[] classFileBuffer) throws IllegalClassFormatException {
+	
+	public byte[] transform(ClassLoader loader, String className, Class<?> classBeingRedefined, 
+			ProtectionDomain pd, byte[] bytecode) throws IllegalClassFormatException {
 		try {
-			if (ClassInstrumentor.shouldInstrument(className)) {
-				// Use ASM to insert hooks for all the sorts of accesses, acquire, release, maybe fork, join, volatiles, etc.
-				final ClassReader cr = new ClassReader(classFileBuffer);
-				final ClassWriter cw = new ClassWriter(cr, 0); //ClassWriter.COMPUTE_FRAMES); 
-				// TODO figure out how to do frames manually. COMPUTE_MAXS is a 2x cost!
-				// For now we just drop them and change the version to 5 (no other
-				// differences with 6...)
-				Util.log("Instrumenting " + className);
-				cr.accept(new ClassInstrumentor(new CheckClassAdapter(cw)), ClassReader.SKIP_FRAMES);
-				classFileBuffer = cw.toByteArray();
-				File f = new File("oshajdump/" + className + ".class");
+			final byte[] instrumentedBytecode = instrument(className, bytecode);
+			if (opts.bytecodeDump != null) {
+				File f = new File(opts.bytecodeDump + File.separator + className + ".class");
 				f.getParentFile().mkdirs();
 				BufferedOutputStream insFile = new BufferedOutputStream(new FileOutputStream(f));
-				insFile.write(classFileBuffer);
+				insFile.write(bytecode);
 				insFile.flush();
 				insFile.close();
-				return classFileBuffer;
-			} else {
-				Util.log("Ignored " + className);
-				return classFileBuffer;
 			}
+			return instrumentedBytecode;
 		} catch (Throwable e) {
 			Util.log("Problem running oshaj class transformer.");
 			Util.fail(e);
+			return bytecode;
 		}
-		return classFileBuffer;
 	}
 
 }
