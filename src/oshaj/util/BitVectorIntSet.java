@@ -58,7 +58,7 @@ public class BitVectorIntSet extends IntSet implements Serializable {
 		String s = "";
 		for (int i = 0; i <= maxBitIndex; i++) {
 			if (contains(i)) {
-				if (!s.isEmpty()) {
+				if (s.length() != 0) {
 					s += ", ";
 				}
 				s += i;
