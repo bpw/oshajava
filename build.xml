@@ -1,85 +1,86 @@
 <project name="oshaj" default="build">
 	
-	<property name="src.dir" value="${basedir}/src" />
-	<property name="libs.dir" value="${basedir}/libs" />
+	<!-- properties -->
+	
+	<property name="src.dir"  value="src" />
+	<property name="libs.dir" value="libs" />
 	
 	<property name="asm.version" value="3.2" />
-	<property name="asm.lib" value="${libs.dir}/asm-${asm.version}/lib" />
+	<property name="asm.lib"     value="${libs.dir}/asm-${asm.version}/lib" />
 	
-	<property name="build.dir" value="${basedir}/build" />
-	<property name="setup.script" value="${build.dir}/setup.sh" />
-	<property name="classes.dir" value="${build.dir}/classes" />
-	<property name="jars.dir" value="${build.dir}" />
+	<property name="build.dir"    value="build" />
+	<property name="classes.dir"  value="${build.dir}/classes" />
+	<property name="bin.dir"      value="bin" />
+	<property name="runtime.bin"  value="${bin.dir}/oshajava" />
+	<property name="compiler.bin" value="${bin.dir}/oshajavac" />
+	<property name="paths.script" value="setup.sh" />
 	
-	<property name="annotation.jar" value="${jars.dir}/${ant.project.name}-annotation.jar" />
-	<property name="main.jar" value="${jars.dir}/${ant.project.name}.jar" />
-	<!--
-	<property name="instrument.jar" value="${jars.dir}/${project.name}-instrument.jar" />
-	<property name="runtime.jar" value="${jars.dir}/${project.name}-runtime.jar" />
-	<property name="sourceinfo.jar" value="${jars.dir}/${project.name}-sourceinfo.jar" />
-	-->
+	<property name="agent.jar"      value="${build.dir}/${ant.project.name}.jar" />
+	<property name="annotation.jar" value="${build.dir}/${ant.project.name}-annotation.jar" />
 	
-	<property name="instrument.agent" value="oshaj.instrument.InstrumentationAgent" />
+	<property name="agent.class" value="oshaj.instrument.InstrumentationAgent" />
 	
-	<path id="project.class.path" >
-		<pathelement location="${libs.dir}/acme-10-7-09.jar" />
-		<pathelement location="${asm.lib}/asm-${asm.version}.jar" />
-		<pathelement location="${asm.lib}/asm-analysis-${asm.version}.jar" />
-		<pathelement location="${asm.lib}/asm-commons-${asm.version}.jar" />
-		<pathelement location="${asm.lib}/asm-tree-${asm.version}.jar" />
-		<pathelement location="${asm.lib}/asm-util-${asm.version}.jar" />
+	<path id="libs.classpath" >
+		<pathelement location="${basedir}/${libs.dir}/acme-10-7-09.jar" />
+		<pathelement location="${basedir}/${asm.lib}/asm-${asm.version}.jar" />
+		<pathelement location="${basedir}/${asm.lib}/asm-analysis-${asm.version}.jar" />
+		<pathelement location="${basedir}/${asm.lib}/asm-commons-${asm.version}.jar" />
+		<pathelement location="${basedir}/${asm.lib}/asm-tree-${asm.version}.jar" />
+		<pathelement location="${basedir}/${asm.lib}/asm-util-${asm.version}.jar" />
 	</path>
-
-	<target name="build" depends="jars,script" />
 	
-	<target name="jars" depends="main.jar,annotation.jar" />
-
-	<target name="annotation.jar" depends="compile,jars.dir" >
-		<jar destfile="${annotation.jar}">
-			<fileset dir="${classes.dir}/oshaj/annotation" includes="*.class" />	
-		</jar>
-	</target>
+	<!-- build targets -->
 	
-	<target name="main.manifest">
-		<mkdir dir="${classes.dir}/META-INF" />
-		<echo file="${classes.dir}/META-INF/MANIFEST.MF">Premain-Class: ${instrument.agent}
-Agent-Class: ${instrument.agent}
-Class-Path: ${jar.classpath}
-
-</echo>
-	</target>
+	<target name="build" depends="jar" description="Build the ${ant.project.name} jar." />
 		
-	<target name="main.jar" depends="compile,jars.dir,annotation.jar,main.manifest" >
-		<manifestclasspath property="jar.classpath" jarfile="${main.jar}">
-			<classpath refid="project.class.path" />
-		</manifestclasspath>
-		<jar destfile="${main.jar}" index="true" manifest="${classes.dir}/META-INF/MANIFEST.MF">	
-			<fileset dir="${classes.dir}" includes="**/*.class" />
-			<indexjars refid="project.class.path" />
-		</jar>
-	</target>
-		
-		
-	<target name="jars.dir">
-		<mkdir dir="${jars.dir}" />
+	<target name="clean" description="Clean build files.">
+		<delete dir="${build.dir}" />
 	</target>
 	
 	<target name="compile">
 		<mkdir dir="${classes.dir}" />
 		<javac srcdir="${src.dir}" destdir="${classes.dir}">
-			<classpath refid="project.class.path" />
+			<classpath refid="libs.classpath" />
 		</javac>
 	</target>
 		
-	<target name="script">
-		<echo file="${setup.script}">
-			alias oshaj='java -javaagent:${main.jar}'
-			export CLASSPATH=$$CLASSPATH:${annotation.jar}
-		</echo>
+	<target name="jar" depends="compile">
+		<!-- annotations jar (for compile time) -->
+		<jar destfile="${annotation.jar}">	
+			<fileset dir="${classes.dir}" includes="oshaj/annotation/*.class" />
+		</jar>
+		<!-- agent jar (for instrument and runtime) -->
+		<manifestclasspath property="jar.classpath" jarfile="${jarfile}">
+			<classpath refid="libs.classpath" />
+		</manifestclasspath>
+		<property name="manifest" value="${classes.dir}/Manifest.mf" />
+<echo file="${manifest}">Premain-Class: ${agent.class}
+Agent-Class: ${agent.class}
+Class-Path: ${jar.classpath}
+</echo>
+		<jar destfile="${agent.jar}" index="true" manifest="${manifest}">	
+			<fileset dir="${classes.dir}" includes="**/*.class" />
+			<indexjars refid="libs.classpath" />
+		</jar>
+	</target>
+
+	<target name="bin">
+<echo file="${paths.script}">export PATH=$$PATH:${basedir}/${bin.dir}
+export OSHAJAVA_CLASSPATH=${basedir}/${annotation.jar}
+</echo>
+<echo file="${compiler.bin}">#!/bin/sh
+export CLASSPATH=$$CLASSPATH:${basedir}/${annotation.jar}
+javac $@
+</echo>
+<echo file="${runtime.bin}">#!/bin/sh
+export CLASSPATH=$$CLASSPATH:${libs.classpath}
+java -javaagent:${basedir}/${agent.jar} $@
+</echo>
+		<chmod perm="a+x" type="file">
+			<fileset dir="${dist.dir}/${bin.dir}" includes="*" />	
+		</chmod>
 	</target>
 	
-	<target name="clean">
-		<delete dir="${build.dir}" />
-	</target>
+	<target name="install" depends="build,bin" description="Install ${ant.project.name}." />
 	
 </project>
