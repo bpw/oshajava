@@ -10,7 +10,7 @@
 	
 	<property name="build.dir"    value="build" />
 	<property name="classes.dir"  value="${build.dir}/classes" />
-	<property name="bin.dir"      value="bin" />
+	<property name="bin.dir"      value="${build.dir}/bin" />
 	<property name="runtime.bin"  value="${bin.dir}/oshajava" />
 	<property name="compiler.bin" value="${bin.dir}/oshajavac" />
 	<property name="paths.script" value="setup.sh" />
@@ -65,6 +65,7 @@ Class-Path: ${jar.classpath}
 	</target>
 
 	<target name="bin">
+		<mkdir dir="${bin.dir}" />
 <echo file="${paths.script}">export PATH=$$PATH:${basedir}/${bin.dir}
 export OSHAJAVA_CLASSPATH=${basedir}/${annotation.jar}
 </echo>
@@ -77,7 +78,7 @@ export CLASSPATH=$$CLASSPATH:${libs.classpath}
 java -javaagent:${basedir}/${agent.jar} $@
 </echo>
 		<chmod perm="a+x" type="file">
-			<fileset dir="${dist.dir}/${bin.dir}" includes="*" />	
+			<fileset dir="${bin.dir}" includes="*" />	
 		</chmod>
 	</target>
 	
