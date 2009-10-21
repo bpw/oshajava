@@ -104,6 +104,16 @@ import acme.util.identityhash.ConcurrentIdentityHashMap;
  * + way to annotate clinit
  * 
  * + see javax.annotation.processing and apt if you want source-level...
+ * 
+ * + How we check for null when dereferencing fields and array shadows? Unless the null pointer
+ *   exception comes from in the RuntimeMonitor, it will look like it came from user code
+ *   (which it would have anyway if it was not instrumented).  In fact, we're functionally
+ *   OK now, but could improve performance by changing order of things...
+ *   1. All shadow field gets/puts are done outside the RuntimeMonitor, so they're OK.
+ *   2. Array shadow lookups in reads will cause an unneeded hook,  but we're about to throw a
+ *      NullPointerException anyway, so it's OK not to optimize. :-)  We do a null check for
+ *      array writes only in the lazy initialization case (where it would muck up a reflection call to
+ *      get the length of the array to allocate a shadow of the same length).
  *    
  * @author bpw
  */
@@ -300,6 +310,15 @@ public class RuntimeMonitor {
 	public static void arrayWrite(final Object array, int index) {
 		State[] states = arrayStates.get(array);
 		if (states == null) {
+			// if array == null, we don't want to do anything more.
+			// the user code will throw the NullPointerException.
+			// by returning here, we also prevent the null key from
+			// getting into arrayStates and causing false commmunication
+			// ("collisions...")
+			// Since this is the init case, we can afford to pay. ;-)
+			if (array == null) {
+				return;
+			}
 			states = new State[Array.getLength(array)];
 			State[] old = arrayStates.putIfAbsent(array, states);
 			if (old != null) {

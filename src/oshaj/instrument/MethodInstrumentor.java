@@ -517,10 +517,10 @@ public class MethodInstrumentor extends AdviceAdapter {
 		case Opcodes.LALOAD:			
 		case Opcodes.SALOAD:
 			myStackSize(2);
-			// dup both args. stack -> array index
+			// dup both args. stack -> array index array index
 			super.dup2();
 			// TODO option for array granularity.
-			// call array laod hook. stack ->
+			// call array laod hook. stack -> array index
 			super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_ARRAY_LOAD);
 			super.visitInsn(opcode);
 			break;
