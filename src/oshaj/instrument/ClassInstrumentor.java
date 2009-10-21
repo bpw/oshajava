@@ -63,8 +63,8 @@ public class ClassInstrumentor extends ClassAdapter {
 	protected static final Method HOOK_INLINE_WRITE          = new Method("inlineWrite",       Type.VOID_TYPE, ARGS_STATE);
 	protected static final Method HOOK_INLINE_FIRST_WRITE    = new Method("inlineFirstWrite",  STATE_TYPE, ARGS_NONE);
 
-	protected static final Method HOOK_NEW_ARRAY       = new Method("newArray",      Type.VOID_TYPE, ARGS_INT_OBJECT);
-	protected static final Method HOOK_NEW_MULTI_ARRAY = new Method("newMultiArray", Type.VOID_TYPE, ARGS_OBJECT_INT);
+//	protected static final Method HOOK_NEW_ARRAY       = new Method("newArray",      Type.VOID_TYPE, ARGS_INT_OBJECT);
+//	protected static final Method HOOK_NEW_MULTI_ARRAY = new Method("newMultiArray", Type.VOID_TYPE, ARGS_OBJECT_INT);
 	protected static final Method HOOK_ARRAY_LOAD      = new Method("arrayRead",     Type.VOID_TYPE, ARGS_OBJECT_INT);
 	protected static final Method HOOK_ARRAY_STORE     = new Method("arrayWrite",    Type.VOID_TYPE, ARGS_OBJECT_INT);
 

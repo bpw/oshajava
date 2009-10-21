@@ -1,5 +1,7 @@
 package oshaj.runtime;
 
+import java.lang.reflect.Array;
+
 import oshaj.sourceinfo.IntSet;
 import oshaj.sourceinfo.MethodTable;
 import oshaj.sourceinfo.UniversalIntSet;
@@ -119,18 +121,24 @@ public class RuntimeMonitor {
 	protected static final ConcurrentIdentityHashMap<Object,State[]> arrayStates = 
 		new ConcurrentIdentityHashMap<Object,State[]>();
 		
-	public static void newArray(int length, Object array) {
-		final State[] states = new State[length];
-		for (int i = 0; i < length; i++) {
-			// initially, accept anything.
-			states[i] = new State(null, -1, UniversalIntSet.set);
-		}
-		arrayStates.put(array, states);
-	}
+//	public static void newArray(int length, Object array) {
+//		final State[] states = new State[length];
+//		for (int i = 0; i < length; i++) {
+//			// initially, accept anything.
+//			states[i] = new State(null, -1, UniversalIntSet.set);
+//		}
+//		arrayStates.put(array, states);
+//	}
 	
-	public static void newMultiArray(Object array, int dims) {
-		// TODO for now just barf later.
-	}
+//	public static void newMultiArray(final Object array, final int dims) {
+//		int length = Array.getLength(array);
+//		newArray(length, array);
+//		if (dims > 0) {
+//			for (int i = 0; i < length; i++) {
+//				newMultiArray(Array.get(array, i), dims - 1);
+//			}
+//		}
+//	}
 
 	/**
 	 * Checks a read by a shared reading method, i.e. a method that has in-edges
@@ -198,7 +206,6 @@ public class RuntimeMonitor {
 //			thread.cachedArray = array;
 //			thread.cachedArrayStates = states;
 //		}
-		// TODO fix multdim array inits to get rid of this outer check.
 		final State[] states = arrayStates.get(array);
 		if (states != null) {
 			final State state = states[index];
@@ -291,17 +298,24 @@ public class RuntimeMonitor {
 	}
 
 	public static void arrayWrite(final Object array, int index) {
-		// TODO fix multidim array inits to get rid of this check.
-		final State[] states = arrayStates.get(array);
-		if (states != null) {
-			inlineWrite(states[index]);
+		State[] states = arrayStates.get(array);
+		if (states == null) {
+			states = new State[Array.getLength(array)];
+			State[] old = arrayStates.putIfAbsent(array, states);
+			if (old != null) {
+				old[index] = inlineFirstWrite();
+			} else {
+				states[index] = inlineFirstWrite();
+			}
+		} else {
+			final State state = states[index];
+			if (state != null) {
+				inlineWrite(state);
+			} else {
+				states[index] = inlineFirstWrite();
+			}
 		}
 	}
-	
-	
-	
-	// TODO current task: instrument code with array hooks.
-	
 	
 
 	/**

@@ -624,54 +624,54 @@ public class MethodInstrumentor extends AdviceAdapter {
 		}
 	}
 	
-	@Override
-	public void visitIntInsn(int opcode, int operand) {
-		if (opcode == Opcodes.NEWARRAY) {
-			myStackSize(1);
-			// stack == length
-			// stack -> length length
-			super.dup();
-			// stack -> length array
-			super.visitIntInsn(opcode, operand);
-			// stack -> array length array
-			super.dupX1();
-			// stack -> array
-			super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_NEW_ARRAY);
-		} else {
-			super.visitIntInsn(opcode, operand);
-		}
-	}
+//	@Override
+//	public void visitIntInsn(int opcode, int operand) {
+//		if (opcode == Opcodes.NEWARRAY) {
+//			myStackSize(1);
+//			// stack == length
+//			// stack -> length length
+//			super.dup();
+//			// stack -> length array
+//			super.visitIntInsn(opcode, operand);
+//			// stack -> array length array
+//			super.dupX1();
+//			// stack -> array
+//			super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_NEW_ARRAY);
+//		} else {
+//			super.visitIntInsn(opcode, operand);
+//		}
+//	}
 	
-	@Override
-	public void visitTypeInsn(int opcode, String type) {
-		if (opcode == Opcodes.ANEWARRAY) {
-			myStackSize(1);
-			// stack == length
-			// stack -> length length
-			super.dup();
-			// stack -> length array
-			super.visitTypeInsn(opcode, type);
-			// stack -> array length array
-			super.dupX1();
-			// stack -> array
-			super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_NEW_ARRAY);
-		} else {
-			super.visitTypeInsn(opcode, type);
-		}
-	}
+//	@Override
+//	public void visitTypeInsn(int opcode, String type) {
+//		if (opcode == Opcodes.ANEWARRAY) {
+//			myStackSize(1);
+//			// stack == length
+//			// stack -> length length
+//			super.dup();
+//			// stack -> length array
+//			super.visitTypeInsn(opcode, type);
+//			// stack -> array length array
+//			super.dupX1();
+//			// stack -> array
+//			super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_NEW_ARRAY);
+//		} else {
+//			super.visitTypeInsn(opcode, type);
+//		}
+//	}
 	
-	@Override
-	public void visitMultiANewArrayInsn(String desc, int dims) {
-		// stack -> array
-		super.visitMultiANewArrayInsn(desc, dims);
-		// stack -> array array
-		super.dup();
-		// stack -> array array dims
-		super.push(dims);
-		// stack -> array
-		super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_NEW_MULTI_ARRAY);
-		
-	}
+//	@Override
+//	public void visitMultiANewArrayInsn(String desc, int dims) {
+//		// stack -> array
+//		super.visitMultiANewArrayInsn(desc, dims);
+//		// stack -> array array
+//		super.dup();
+//		// stack -> array array dims
+//		super.push(dims);
+//		// stack -> array
+//		super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_NEW_MULTI_ARRAY);
+//		
+//	}
 
 	@Override
 	public void visitVarInsn(int opcode, int var) {

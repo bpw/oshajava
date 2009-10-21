@@ -67,11 +67,10 @@ Class-Path: ${jar.classpath}
 	<target name="bin">
 		<mkdir dir="${bin.dir}" />
 <echo file="${paths.script}">export PATH=$$PATH:${basedir}/${bin.dir}
-export OSHAJAVA_CLASSPATH=${basedir}/${annotation.jar}
+export OSHAJAVA_ANNOTATION_CLASSPATH=${basedir}/${annotation.jar}
 </echo>
 <echo file="${compiler.bin}">#!/bin/sh
-export CLASSPATH=$$CLASSPATH:${basedir}/${annotation.jar}
-javac $@
+javac -Xbootclasspath/a:${basedir}/${annotation.jar} $@
 </echo>
 <echo file="${runtime.bin}">#!/bin/sh
 java -javaagent:${basedir}/${agent.jar} $@
