@@ -39,6 +39,8 @@ public class InstrumentationAgent implements ClassFileTransformer {
 		public String  bytecodeDump = "oshajdump";
 		public boolean java6 = false;
 		public boolean instrument = true;
+		public boolean coarseArrayStates = true;
+		public boolean coarseFieldStates = false;
 		
 		public boolean verifyOutput() {
 			return debug;
@@ -63,7 +65,7 @@ public class InstrumentationAgent implements ClassFileTransformer {
 			if (opts.verifyOutput()) {
 				chain = new CheckClassAdapter(chain);
 			}
-			chain = new ClassInstrumentor(chain);
+			chain = new ClassInstrumentor(chain, opts);
 			if (!opts.java6) {
 				chain = new RemoveJava6Adapter(chain);
 			}
@@ -71,7 +73,7 @@ public class InstrumentationAgent implements ClassFileTransformer {
 				chain = new CheckClassAdapter(chain);
 			}
 			Util.debugf(DEBUG_KEY, "Instrumenting %s", className);
-			in.accept(new ClassInstrumentor(new CheckClassAdapter(out)), ClassReader.SKIP_FRAMES);
+			in.accept(chain, ClassReader.SKIP_FRAMES);
 			return out.toByteArray();
 		} else {
 			Util.debugf(DEBUG_KEY, "Ignored %s", className);

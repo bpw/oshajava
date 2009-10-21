@@ -74,6 +74,11 @@ import acme.util.identityhash.ConcurrentIdentityHashMap;
  *     initialized State if they do see one.
  *     You won't be able to get all constructors, I'm guessing, so for the ones you can't get, 
  *     keep the #10 style lazy initialization.
+ *     
+ * 12. Choose array granularity on some level other than "yes or no for all."  Asin coarse for
+ *     some, fine for others.
+ *     
+ * 13. RuntimeMonitor.flush - a voltile static field available for where it's needed to sync?
  *    
  *    
  * TODO Things to fix or add.
@@ -130,6 +135,8 @@ public class RuntimeMonitor {
 		new ConcurrentIdentityHashMap<Object,LockState>();
 	protected static final ConcurrentIdentityHashMap<Object,State[]> arrayStates = 
 		new ConcurrentIdentityHashMap<Object,State[]>();
+		protected static final ConcurrentIdentityHashMap<Object,State> coarseArrayStates = 
+			new ConcurrentIdentityHashMap<Object,State>();
 		
 //	public static void newArray(int length, Object array) {
 //		final State[] states = new State[length];
@@ -222,6 +229,12 @@ public class RuntimeMonitor {
 			if (state != null) {
 				inlineRead(state);
 			}
+		}
+	}
+	public static void coarseArrayRead(final Object array, final int index) {
+		final State state = coarseArrayStates.get(array);
+		if (state != null) {
+			inlineRead(state);
 		}
 	}
 	
@@ -333,6 +346,15 @@ public class RuntimeMonitor {
 			} else {
 				states[index] = inlineFirstWrite();
 			}
+		}
+	}
+	
+	public static void coarseArrayWrite(final Object array, final int index) {
+		State state = coarseArrayStates.get(array);
+		if (state != null) {
+			inlineWrite(state);
+		} else {
+			coarseArrayStates.putIfAbsent(array, inlineFirstWrite());
 		}
 	}
 	

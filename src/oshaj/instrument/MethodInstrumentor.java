@@ -6,6 +6,7 @@ import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.AdviceAdapter;
+import org.objectweb.asm.commons.Method;
 
 import oshaj.sourceinfo.BitVectorIntSet;
 import oshaj.sourceinfo.MethodTable;
@@ -45,6 +46,8 @@ public class MethodInstrumentor extends AdviceAdapter {
 
 	protected int originalMaxLocals = UNINITIALIZED, originalMaxStack = UNINITIALIZED;
 	
+	protected final Method arrayLoadHook, arrayStoreHook;
+	
 	public MethodInstrumentor(MethodVisitor next, int access, String name, String desc, ClassInstrumentor inst) {
 		super(next, access, name, desc);
 		this.inst = inst;
@@ -55,6 +58,8 @@ public class MethodInstrumentor extends AdviceAdapter {
 		isConstructor = name.equals("<init>");
 		isClinit = name.equals("<clinit>");
 		fullNameAndDesc = inst.className + "." + name + desc;
+		arrayLoadHook = inst.opts.coarseArrayStates ? ClassInstrumentor.HOOK_COARSE_ARRAY_LOAD : ClassInstrumentor.HOOK_ARRAY_LOAD;
+		arrayStoreHook = inst.opts.coarseArrayStates ? ClassInstrumentor.HOOK_COARSE_ARRAY_STORE : ClassInstrumentor.HOOK_ARRAY_STORE;
 	}
 
 	protected void myStackSize(int size) {
@@ -486,7 +491,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 		// stack -> array index array index
 		super.dup2();
 		// stack -> array index _
-		super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_ARRAY_STORE);
+		super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, arrayStoreHook);
 		// stack -> array index value |
 		super.loadLocal(local);
 	}
@@ -521,7 +526,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 			super.dup2();
 			// TODO option for array granularity.
 			// call array laod hook. stack -> array index
-			super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_ARRAY_LOAD);
+			super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, arrayLoadHook);
 			super.visitInsn(opcode);
 			break;
 		case Opcodes.AASTORE:
