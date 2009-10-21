@@ -466,11 +466,104 @@ public class MethodInstrumentor extends AdviceAdapter {
 		// Do the actual op.
 		super.visitFieldInsn(opcode, owner, name, desc);
 	}
+	
+	protected Integer tempLocalAddress = null;
+	protected Integer tempLocalByte = null;
+	protected Integer tempLocalChar = null;
+	protected Integer tempLocalDouble = null;
+	protected Integer tempLocalFloat = null;
+	protected Integer tempLocalInt = null;
+	protected Integer tempLocalLong = null;
+	protected Integer tempLocalShort = null;
+//	protected Integer tempWordLocal = null;
+//	protected Integer tempLongWordLocal = null;
+	
+	private void aastore(int local, int width) {
+		myStackSize(width - 1);
+		// stack == array index value
+		// stack -> array index _
+		super.storeLocal(local);
+		// stack -> array index array index
+		super.dup2();
+		// stack -> array index _
+		super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_ARRAY_STORE);
+		// stack -> array index value |
+		super.loadLocal(local);
+	}
+
+//	private void aastore(Type t) {
+//		final boolean wide = t == Type.LONG_TYPE || t == Type.DOUBLE_TYPE;
+//		myStackSize(wide ? 1 : 0);
+//		// stack == array index word1 word2
+//		// stack -> array index
+//		super.storeLocal(wide ? tempLongWordLocal : tempWordLocal, t);
+//		// stack -> array index array index
+//		super.dup2();
+//		// stack -> array index
+//		super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_ARRAY_STORE);
+//		// stack -> array index value |
+//		super.loadLocal(wide ? tempLongWordLocal : tempWordLocal, t);
+//	}
 
 	@Override
 	public void visitInsn(int opcode) { 
-		// TODO array load and store: {a,b,c,d,f,i,l,s}a{load,store}
 		switch (opcode) {
+		case Opcodes.AALOAD:
+		case Opcodes.BALOAD:
+		case Opcodes.CALOAD:
+		case Opcodes.DALOAD:
+		case Opcodes.FALOAD:
+		case Opcodes.IALOAD:
+		case Opcodes.LALOAD:			
+		case Opcodes.SALOAD:
+			myStackSize(2);
+			// dup both args. stack -> array index
+			super.dup2();
+			// TODO option for array granularity.
+			// call array laod hook. stack ->
+			super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_ARRAY_LOAD);
+			super.visitInsn(opcode);
+			break;
+		case Opcodes.AASTORE:
+			if (tempLocalAddress == null) tempLocalAddress = super.newLocal(ClassInstrumentor.OBJECT_TYPE);
+			aastore(tempLocalAddress, 1);
+			super.visitInsn(opcode);
+			break;
+		case Opcodes.BASTORE:
+			if (tempLocalByte == null) tempLocalByte = super.newLocal(Type.BYTE_TYPE);
+			aastore(tempLocalByte, 1);
+			super.visitInsn(opcode);
+			break;
+		case Opcodes.CASTORE:
+			if (tempLocalChar == null) tempLocalChar = super.newLocal(Type.CHAR_TYPE);
+			aastore(tempLocalChar, 1);
+			super.visitInsn(opcode);
+			break;
+		case Opcodes.FASTORE:
+			if (tempLocalFloat == null) tempLocalFloat = super.newLocal(Type.FLOAT_TYPE);
+			aastore(tempLocalFloat, 1);
+			super.visitInsn(opcode);
+			break;
+		case Opcodes.IASTORE:
+			if (tempLocalInt == null) tempLocalInt = super.newLocal(Type.INT_TYPE);
+			aastore(tempLocalInt, 1);
+			super.visitInsn(opcode);
+			break;
+		case Opcodes.SASTORE:
+			if (tempLocalShort == null) tempLocalShort = super.newLocal(Type.SHORT_TYPE);
+			aastore(tempLocalShort, 1);
+			super.visitInsn(opcode);
+			break;
+		case Opcodes.DASTORE:
+			if (tempLocalDouble == null) tempLocalDouble = super.newLocal(Type.DOUBLE_TYPE);
+			aastore(tempLocalDouble, 2);
+			super.visitInsn(opcode);
+			break;
+		case Opcodes.LASTORE:
+			if (tempLocalLong == null) tempLocalLong = super.newLocal(Type.LONG_TYPE);
+			aastore(tempLocalLong, 2);
+			super.visitInsn(opcode);
+			break;
 		case Opcodes.MONITORENTER:
 			myStackSize(2);
 			// put in a try/finally to put in the release if needed...
@@ -532,6 +625,55 @@ public class MethodInstrumentor extends AdviceAdapter {
 	}
 	
 	@Override
+	public void visitIntInsn(int opcode, int operand) {
+		if (opcode == Opcodes.NEWARRAY) {
+			myStackSize(1);
+			// stack == length
+			// stack -> length length
+			super.dup();
+			// stack -> length array
+			super.visitIntInsn(opcode, operand);
+			// stack -> array length array
+			super.dupX1();
+			// stack -> array
+			super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_NEW_ARRAY);
+		} else {
+			super.visitIntInsn(opcode, operand);
+		}
+	}
+	
+	@Override
+	public void visitTypeInsn(int opcode, String type) {
+		if (opcode == Opcodes.ANEWARRAY) {
+			myStackSize(1);
+			// stack == length
+			// stack -> length length
+			super.dup();
+			// stack -> length array
+			super.visitTypeInsn(opcode, type);
+			// stack -> array length array
+			super.dupX1();
+			// stack -> array
+			super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_NEW_ARRAY);
+		} else {
+			super.visitTypeInsn(opcode, type);
+		}
+	}
+	
+	@Override
+	public void visitMultiANewArrayInsn(String desc, int dims) {
+		// stack -> array
+		super.visitMultiANewArrayInsn(desc, dims);
+		// stack -> array array
+		super.dup();
+		// stack -> array array dims
+		super.push(dims);
+		// stack -> array
+		super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_NEW_MULTI_ARRAY);
+		
+	}
+
+	@Override
 	public void visitVarInsn(int opcode, int var) {
 		if (opcode == Opcodes.RET) {
 			Util.fail("RET not supported.");
@@ -549,10 +691,4 @@ public class MethodInstrumentor extends AdviceAdapter {
 		}
 	}
 	
-	@Override
-	public void visitMultiANewArrayInsn(String arg0, int arg1) {
-		// TODO allocate shadow...?
-		super.visitMultiANewArrayInsn(arg0, arg1);
-	}
-
 }

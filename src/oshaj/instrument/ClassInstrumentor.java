@@ -43,8 +43,10 @@ public class ClassInstrumentor extends ClassAdapter {
 	protected static final Type[] ARGS_INT       = { Type.INT_TYPE };
 	protected static final Type[] ARGS_STATE     = { STATE_TYPE };
 	protected static final Type[] ARGS_STATE_INT = { STATE_TYPE, Type.INT_TYPE };
+	protected static final Type[] ARGS_OBJECT_INT = { OBJECT_TYPE, Type.INT_TYPE };
+	protected static final Type[] ARGS_INT_OBJECT = { Type.INT_TYPE, OBJECT_TYPE };
 	protected static final Type[] ARGS_OBJECT    = { OBJECT_TYPE };
-
+	
 	protected static final Method HOOK_ENTER = new Method("enter", Type.VOID_TYPE, ARGS_INT);
 	protected static final Method HOOK_EXIT  = new Method("exit",  Type.VOID_TYPE, ARGS_NONE);
 
@@ -61,7 +63,12 @@ public class ClassInstrumentor extends ClassAdapter {
 	protected static final Method HOOK_INLINE_WRITE          = new Method("inlineWrite",       Type.VOID_TYPE, ARGS_STATE);
 	protected static final Method HOOK_INLINE_FIRST_WRITE    = new Method("inlineFirstWrite",  STATE_TYPE, ARGS_NONE);
 
-	protected static final Method HOOK_ACQUIRE        = new Method("acquire", Type.VOID_TYPE, new Type[] { OBJECT_TYPE, Type.INT_TYPE });
+	protected static final Method HOOK_NEW_ARRAY       = new Method("newArray",      Type.VOID_TYPE, ARGS_INT_OBJECT);
+	protected static final Method HOOK_NEW_MULTI_ARRAY = new Method("newMultiArray", Type.VOID_TYPE, ARGS_OBJECT_INT);
+	protected static final Method HOOK_ARRAY_LOAD      = new Method("arrayRead",     Type.VOID_TYPE, ARGS_OBJECT_INT);
+	protected static final Method HOOK_ARRAY_STORE     = new Method("arrayWrite",    Type.VOID_TYPE, ARGS_OBJECT_INT);
+
+	protected static final Method HOOK_ACQUIRE        = new Method("acquire", Type.VOID_TYPE, ARGS_OBJECT_INT);
 	protected static final Method HOOK_INLINE_ACQUIRE = new Method("inlineAcquire", Type.VOID_TYPE, ARGS_OBJECT);
 	protected static final Method HOOK_RELEASE        = new Method("release", Type.VOID_TYPE, ARGS_OBJECT);
 

@@ -127,6 +127,10 @@ public class RuntimeMonitor {
 		}
 		arrayStates.put(array, states);
 	}
+	
+	public static void newMultiArray(Object array, int dims) {
+		// TODO for now just barf later.
+	}
 
 	/**
 	 * Checks a read by a shared reading method, i.e. a method that has in-edges
@@ -194,9 +198,13 @@ public class RuntimeMonitor {
 //			thread.cachedArray = array;
 //			thread.cachedArrayStates = states;
 //		}
-		final State state = arrayStates.get(array)[index];
-		if (state != null) {
-			inlineRead(state);
+		// TODO fix multdim array inits to get rid of this outer check.
+		final State[] states = arrayStates.get(array);
+		if (states != null) {
+			final State state = states[index];
+			if (state != null) {
+				inlineRead(state);
+			}
 		}
 	}
 	
@@ -283,7 +291,11 @@ public class RuntimeMonitor {
 	}
 
 	public static void arrayWrite(final Object array, int index) {
-		inlineWrite(arrayStates.get(array)[index]);
+		// TODO fix multidim array inits to get rid of this check.
+		final State[] states = arrayStates.get(array);
+		if (states != null) {
+			inlineWrite(states[index]);
+		}
 	}
 	
 	

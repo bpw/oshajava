@@ -50,7 +50,7 @@
 			<fileset dir="${classes.dir}" includes="oshaj/annotation/*.class" />
 		</jar>
 		<!-- agent jar (for instrument and runtime) -->
-		<manifestclasspath property="jar.classpath" jarfile="${jarfile}">
+		<manifestclasspath property="jar.classpath" jarfile="${agent.jar}">
 			<classpath refid="libs.classpath" />
 		</manifestclasspath>
 		<property name="manifest" value="${classes.dir}/Manifest.mf" />
@@ -74,7 +74,6 @@ export CLASSPATH=$$CLASSPATH:${basedir}/${annotation.jar}
 javac $@
 </echo>
 <echo file="${runtime.bin}">#!/bin/sh
-export CLASSPATH=$$CLASSPATH:${libs.classpath}
 java -javaagent:${basedir}/${agent.jar} $@
 </echo>
 		<chmod perm="a+x" type="file">
