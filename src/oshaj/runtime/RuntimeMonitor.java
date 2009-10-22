@@ -260,14 +260,9 @@ public class RuntimeMonitor {
 	public static State write() {
 		return threadState.get().currentState;
 	}
-
+	
 	public static void arrayWrite(final Object array, int index) {
-		State[] states;
-		try {
-			states = arrayStates.get(array);
-		} catch (NullPointerException e) {
-			throw fudgeTrace(e);
-		}
+		State[] states = arrayStates.get(array);
 		if (states == null) {
 			// if array == null, we don't want to do anything more.
 			// the user code will throw the NullPointerException.
@@ -287,12 +282,11 @@ public class RuntimeMonitor {
 		states[index] = threadState.get().currentState;
 	}
 
+	// DO NOT CALL ON PUBLIC WRITES (i.e. when currentstate is null)
+	// concurrent hash map doesn't handle nulls, plus it's faster to
+	// just skip it in the first place anyway.
 	public static void coarseArrayWrite(final Object array) {
-		try {
-			coarseArrayStates.put(array, threadState.get().currentState);
-		} catch (NullPointerException e) {
-			throw fudgeTrace(e);
-		}
+		coarseArrayStates.put(array, threadState.get().currentState);
 	}
 
 

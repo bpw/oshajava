@@ -36,7 +36,7 @@ public class InstrumentationAgent implements ClassFileTransformer {
 	protected static final String DEBUG_KEY = "instrument";
 	
 	static class Options {	
-		public boolean debug = false;
+		public boolean debug = true;
 		public boolean verifyInput = true;
 		public String  bytecodeDump = "oshajdump";
 		public boolean java6 = false;
