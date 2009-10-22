@@ -284,9 +284,11 @@ public class RuntimeMonitor {
 
 	// DO NOT CALL ON PUBLIC WRITES (i.e. when currentstate is null)
 	// concurrent hash map doesn't handle nulls, plus it's faster to
-	// just skip it in the first place anyway.
+	// just skip it in the first place anyway. We do have to check null
+	// for inlined cases.
 	public static void coarseArrayWrite(final Object array) {
-		coarseArrayStates.put(array, threadState.get().currentState);
+		final State currentState = threadState.get().currentState;
+		if (currentState != null) coarseArrayStates.put(array, threadState.get().currentState);
 	}
 
 
