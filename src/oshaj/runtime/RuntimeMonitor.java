@@ -1,11 +1,9 @@
 package oshaj.runtime;
 
-import java.lang.ref.WeakReference;
 import java.lang.reflect.Array;
 
 import oshaj.sourceinfo.IntSet;
 import oshaj.sourceinfo.MethodTable;
-import oshaj.sourceinfo.UniversalIntSet;
 import acme.util.Util;
 import acme.util.identityhash.ConcurrentIdentityHashMap;
 
@@ -82,6 +80,9 @@ import acme.util.identityhash.ConcurrentIdentityHashMap;
  * 13. RuntimeMonitor.flush - a voltile static field available for where it's needed to sync?
  * 
  * 14. Create all possible States. Give each an ID. DUH!!!!!!! 
+ * 
+ * 15. Store thread id in a local at the beginning of each method and do the "same thread?"
+ *     check in the bytecode stream before calling the hook.
  *    
  *    
  * TODO Things to fix or add.
@@ -126,46 +127,68 @@ import acme.util.identityhash.ConcurrentIdentityHashMap;
  * @author bpw
  */
 public class RuntimeMonitor {
-	
-	protected static final ThreadLocal<ThreadState> threadState = new ThreadLocal<ThreadState>() {
-		@Override protected ThreadState initialValue() { return new ThreadState(Thread.currentThread()); }
-	};
-	
+
+	private static final ThreadLocal<ThreadState> threadState = new ThreadLocal<ThreadState>(); //{
+//		@Override protected ThreadState initialValue() { return newThread(); }
+//	};
+
 	protected static final int MAX_THREADS = 32;
-	
+
 	// TODO must be resize if too many threads.
 	// TODO each entry must be resized if MethodTable.policyTable gets resized.
 	// TODO GC when a thread exits.
-	protected static final State[][] stateTable = new State[MAX_THREADS][];
+	private static int lastMethodTableSize = 0;
+	private static final ThreadState[] threadTable = new ThreadState[MAX_THREADS];
+	private static int maxThreadId = 0;
 
 	// TODO fix WeakConcurrentIdentityHashMap and replace with that..
 	// we need a concurrent hash map b/c access for multiple locks at once is not
 	// protected by the app locks...
-	protected static final ConcurrentIdentityHashMap<Object,LockState> lockStates = 
-		new ConcurrentIdentityHashMap<Object,LockState>();
-	protected static final ConcurrentIdentityHashMap<Object,State[]> arrayStates = 
-		new ConcurrentIdentityHashMap<Object,State[]>();
-		protected static final ConcurrentIdentityHashMap<Object,State> coarseArrayStates = 
-			new ConcurrentIdentityHashMap<Object,State>();
-		
-//	public static void newArray(int length, Object array) {
-//		final State[] states = new State[length];
-//		for (int i = 0; i < length; i++) {
-//			// initially, accept anything.
-//			states[i] = new State(null, -1, UniversalIntSet.set);
-//		}
-//		arrayStates.put(array, states);
-//	}
+	protected static final ConcurrentIdentityHashMap<Object,LockState> lockStates = new ConcurrentIdentityHashMap<Object,LockState>();
+	protected static final ConcurrentIdentityHashMap<Object,State[]> arrayStates = new ConcurrentIdentityHashMap<Object,State[]>();
+	protected static final ConcurrentIdentityHashMap<Object,State> coarseArrayStates = new ConcurrentIdentityHashMap<Object,State>();
+
+	// called lazily - from threadState's lazy initializer, so whenever this thread's
+	// first action is.
+	private static synchronized ThreadState newThread() {
+		final ThreadState ts = new ThreadState(Thread.currentThread(), MethodTable.capacity());
+		Util.assertTrue(ts.id < MAX_THREADS, "MAX_THREADS exceeded.");
+		maxThreadId = ts.id;
+		threadTable[ts.id] = ts;
+		return ts;
+	}
 	
-//	public static void newMultiArray(final Object array, final int dims) {
-//		int length = Array.getLength(array);
-//		newArray(length, array);
-//		if (dims > 0) {
-//			for (int i = 0; i < length; i++) {
-//				newMultiArray(Array.get(array, i), dims - 1);
-//			}
-//		}
-//	}
+	public static synchronized void loadNewMethods() {
+		final int first = lastMethodTableSize;
+		lastMethodTableSize = MethodTable.size();
+		for (int t = 0; t <= maxThreadId; t++) {
+			final ThreadState ts = threadTable[t];
+			if (ts != null) {
+				ts.loadNewMethods(first, lastMethodTableSize);
+			}
+		}
+	}
+	
+	/*******************************************************************/
+
+	//	public static void newArray(int length, Object array) {
+	//		final State[] states = new State[length];
+	//		for (int i = 0; i < length; i++) {
+	//			// initially, accept anything.
+	//			states[i] = new State(null, -1, UniversalIntSet.set);
+	//		}
+	//		arrayStates.put(array, states);
+	//	}
+
+	//	public static void newMultiArray(final Object array, final int dims) {
+	//		int length = Array.getLength(array);
+	//		newArray(length, array);
+	//		if (dims > 0) {
+	//			for (int i = 0; i < length; i++) {
+	//				newMultiArray(Array.get(array, i), dims - 1);
+	//			}
+	//		}
+	//	}
 
 	/**
 	 * Checks a read by a shared reading method, i.e. a method that has in-edges
@@ -179,159 +202,72 @@ public class RuntimeMonitor {
 	 * @param state
 	 * @param readerMethod
 	 */
-	public static void sharedRead(final State state, final int readerMethod) {
-		final ThreadState readerThread = threadState.get();
-		// volatile read
-		final ThreadState writerThread = state.writerThread;
-		if (writerThread != readerThread) {
-			synchronized(state) {
-				// Even though readerSet may have been written by a different thread
-				// than writerThread, it is still true that they were not written
-				// by readerThread.
-				final IntSet readerSet = state.readerSet;				
-				if (readerSet == null || ! readerSet.contains(readerMethod)) {
-					// in here, speed is not a big deal.
-					throw new IllegalSharingException(
-							state.writerThread, MethodTable.lookup(state.writerMethod), 
-							readerThread, MethodTable.lookup(readerMethod)
-					);
-				}
+	public static void read(final State write) {
+		final ThreadState reader = threadState.get();
+		if (write.writerThread != reader) {
+			final IntSet readerSet = write.readerSet;
+			if (readerSet == null || ! readerSet.contains(reader.currentMethod)) {
+				throw new IllegalSharingException(write.writerThread, MethodTable.lookup(write.writerMethod), 
+						reader, MethodTable.lookup(reader.currentMethod));
 			}
 		}
 	}
-	
-	// same as sharedRead
-	public static void inlineRead(final State state) {
-		final ThreadState readerThread = threadState.get();
-		// volatile read
-		final ThreadState writerThread = state.writerThread;
-		if (writerThread != readerThread) {
-			synchronized(state) {
-				// Even though readerSet may have been written by a different thread
-				// than writerThread, it is still true that they were not written
-				// by readerThread.
-				final IntSet readerSet = state.readerSet;				
-				if (readerSet == null || ! readerSet.contains(readerThread.currentMethod())) {
-					// in here, speed is not a big deal.
-					throw new IllegalSharingException(
-							state.writerThread, MethodTable.lookup(state.writerMethod), 
-							readerThread, MethodTable.lookup(readerThread.currentMethod())
-					);
-				}
-			}
-		}
-	}
-	
+
+	// OK if array == null. Slower, but the program is about to throw a NullPointerException anyway.
 	public static void arrayRead(final Object array, final int index) {
-//		final ThreadState thread = threadState.get();
-//		final State state;
-//		if (array == thread.cachedArray) {
-//			state = thread.cachedArrayStates[index];
-//		} else {
-//			final State[] states = arrayStates.get(array);
-//			state = states[index];
-//			thread.cachedArray = array;
-//			thread.cachedArrayStates = states;
-//		}
-		final State[] states = arrayStates.get(array);
+		//		final ThreadState thread = threadState.get();
+		//		final State state;
+		//		if (array == thread.cachedArray) {
+		//			state = thread.cachedArrayStates[index];
+		//		} else {
+		//			final State[] states = arrayStates.get(array);
+		//			state = states[index];
+		//			thread.cachedArray = array;
+		//			thread.cachedArrayStates = states;
+		//		}
+		final State[] states;
+		try {
+			states = arrayStates.get(array);
+		} catch (NullPointerException e) {
+			throw fudgeTrace(e);
+		}
 		if (states != null) {
-			final State state = states[index];
-			if (state != null) {
-				inlineRead(state);
+			final State write = states[index];
+			if (write != null) {
+				read(write);
 			}
 		}
 	}
-	public static void coarseArrayRead(final Object array, final int index) {
-		final State state = coarseArrayStates.get(array);
-		if (state != null) {
-			inlineRead(state);
+	// OK if array == null. Slower, but the program is about to throw a NullPointerException anyway.
+	public static void coarseArrayRead(final Object array) {
+		final State write;
+		try {
+			write = coarseArrayStates.get(array);
+		} catch (NullPointerException e) {
+			throw fudgeTrace(e);
+		}
+		if (write != null) {
+			read(write);
 		}
 	}
-	
+
 	/**
 	 * Updates the state to reflect a write by a method with no out-edges.
 	 * 
-	 * This method must be synchronized to prevent bad interleavings with
-	 * sharedRead or sharedWrite.
-	 *  
 	 * @param state
 	 * @param writerMethod
 	 */
-	public static void privateWrite(final State state, final int writerMethod) {
-		final ThreadState writerThread = threadState.get();
-		synchronized(state) {
-			if (state.writerMethod != writerMethod) { 
-				state.writerMethod = writerMethod;
-				state.readerSet = null;
-			}
-			state.writerThread = writerThread; // sync edge to volatile read in privateRead()
-		}
-	}
-
-	public static State privateFirstWrite(final int writerMethod) {
-		return new State(threadState.get(), writerMethod);
-	}
-
-	/**
-	 * Updates the state to reflect a write by a method with >0 out-edges.
-	 * 
-	 * This method must be synchronized to prevent bad interleavings with
-	 * sharedRead or sharedWrite.
-	 *  
-	 * @param state
-	 * @param writerMethod
-	 */
-	public static void protectedWrite(final State state, final int writerMethod) {
-		final ThreadState writerThread = threadState.get();
-		synchronized(state) {
-			if (state.writerMethod != writerMethod) {
-				state.writerMethod = writerMethod;
-				state.readerSet = writerThread.currentReaderSet;
-			}
-			state.writerThread = writerThread;
-		}
-	}
-
-	public static State protectedFirstWrite(final int writerMethod) {
-		return new State(threadState.get(), writerMethod, MethodTable.policyTable[writerMethod]);
-	}
-
-	// same as protectedWrite.
-	public static void inlineWrite(final State state) {
-		final ThreadState writerThread = threadState.get();
-		final int writerMethod = writerThread.currentMethod();
-		synchronized(state) {
-			if (state.writerMethod != writerMethod) {
-				state.writerMethod = writerMethod;
-				state.readerSet = writerThread.currentReaderSet;
-			}
-			state.writerThread = writerThread;
-		}
-	}
-
-	// same as protectedFirstWrite.
-	public static State inlineFirstWrite() {
-		final ThreadState writerThread = threadState.get();
-		return new State(threadState.get(), writerThread.currentMethod(), writerThread.currentReaderSet);
-	}
-
-	public static void publicWrite(final State state, final int writerMethod) {
-		final ThreadState writerThread = threadState.get();
-		synchronized(state) {
-			if (state.writerMethod != writerMethod) {
-				state.writerMethod = writerMethod;
-				state.readerSet = UniversalIntSet.set;
-			}
-			state.writerThread = writerThread;
-		}
-	}
-
-	public static State publicFirstWrite(final int writerMethod) {
-		return new State(threadState.get(), writerMethod, UniversalIntSet.set);
+	public static State write() {
+		return threadState.get().currentState;
 	}
 
 	public static void arrayWrite(final Object array, int index) {
-		State[] states = arrayStates.get(array);
+		State[] states;
+		try {
+			states = arrayStates.get(array);
+		} catch (NullPointerException e) {
+			throw fudgeTrace(e);
+		}
 		if (states == null) {
 			// if array == null, we don't want to do anything more.
 			// the user code will throw the NullPointerException.
@@ -345,29 +281,20 @@ public class RuntimeMonitor {
 			states = new State[Array.getLength(array)];
 			State[] old = arrayStates.putIfAbsent(array, states);
 			if (old != null) {
-				old[index] = inlineFirstWrite();
-			} else {
-				states[index] = inlineFirstWrite();
-			}
-		} else {
-			final State state = states[index];
-			if (state != null) {
-				inlineWrite(state);
-			} else {
-				states[index] = inlineFirstWrite();
+				states = old;
 			}
 		}
+		states[index] = threadState.get().currentState;
 	}
-	
-	public static void coarseArrayWrite(final Object array, final int index) {
-		State state = coarseArrayStates.get(array);
-		if (state != null) {
-			inlineWrite(state);
-		} else {
-			coarseArrayStates.putIfAbsent(array, inlineFirstWrite());
+
+	public static void coarseArrayWrite(final Object array) {
+		try {
+			coarseArrayStates.put(array, threadState.get().currentState);
+		} catch (NullPointerException e) {
+			throw fudgeTrace(e);
 		}
 	}
-	
+
 
 	/**
 	 * Lock release hook.  Since things are well-scoped in Java, we'll just do all the work
@@ -385,7 +312,7 @@ public class RuntimeMonitor {
 			final LockState state = lockStates.get(lock);
 			if (state.depth <= 0) Util.fail("Bad lock scoping");
 			state.depth--;
-		} catch (Throwable t) {
+		} catch (Exception t) {
 			Util.fail(t);
 		}
 	}
@@ -399,35 +326,39 @@ public class RuntimeMonitor {
 	 * @param holderMethod
 	 * @param lock
 	 */
-	public static void acquire(final Object lock, final int holderMethod) {
+	public static void acquire(final Object lock) {
 		try {
 			LockState state = lockStates.get(lock);
 			if (state == null) {
-				state = new LockState(threadState.get(), holderMethod, MethodTable.policyTable[holderMethod]);
+				state = new LockState(threadState.get().currentState);
 				state.depth = 1;
-				state = lockStates.put(lock, state);
+				state = lockStates.putIfAbsent(lock, state);
 				Util.assertTrue(state == null);
 			} else if (state.depth < 0) {
 				Util.fail("Bad lock scoping.");
 			} else if (state.depth == 0) {
 				// First (non-reentrant) acquire by this thread.
-				// NOTE: this is all atomic, because we hold lock and no other thread can call
+				// NOTE: this is atomic, because we hold lock and no other thread can call
 				// the acquire or release hooks until they hold the lock.
-				final ThreadState holderThread = threadState.get();
-				final IntSet readerSet = state.nextMethods;
-				if (state.lastMethod != holderMethod) {
-					state.lastMethod = holderMethod;
-					state.nextMethods = MethodTable.policyTable[holderMethod];					
-				}
-				state.depth++;
-				if (state.lastThread != holderThread) {
-					state.lastThread = holderThread;
-					if (readerSet == null || ! readerSet.contains(holderMethod)) {
-						throw new IllegalSynchronizationException(
-								state.lastThread, MethodTable.lookup(state.lastMethod), 
-								holderThread, MethodTable.lookup(holderMethod)
-						);
+				final ThreadState holder = threadState.get();
+				final State holderState = holder.currentState; 
+				final State lastHolderState = state.lastHolder;
+				if (lastHolderState != holderState) {
+					state.lastHolder = holderState;
+					state.depth++;
+					if (lastHolderState.writerThread != holder) {
+						final IntSet readerSet = holderState.readerSet;
+						if (readerSet == null || ! readerSet.contains(holderState.writerMethod)) {
+							throw new IllegalSynchronizationException(
+									lastHolderState.writerThread, MethodTable.lookup(lastHolderState.writerMethod), 
+									holder, MethodTable.lookup(holder.currentMethod)
+									// TODO refactor MethodTable to something like StateTable
+									// lookup to something like getMethodName(State...)
+							);
+						}
 					}
+				} else {
+					state.depth++;
 				}
 			} else {
 				// if we're already reentrant, just go one deeper.
@@ -439,17 +370,15 @@ public class RuntimeMonitor {
 			Util.fail(t);
 		}
 	}
-	
-	public static void inlineAcquire(final Object lock) {
-		// TODO when code stabilizes, make this a copy of acquire, to avoid loading from
-		// threadState.get() twice.
-		acquire(lock, threadState.get().currentMethod());
-	}
-	
+
 	public static void enter(final int mid) {
 		try {
-//			Util.logf("enter %d", mid);
-			threadState.get().enter(mid, MethodTable.policyTable[mid]);
+			//			Util.logf("enter %d", mid);
+			threadState.get().enter(mid);
+		} catch (NullPointerException e) {
+			final ThreadState ts = newThread();
+			threadState.set(ts);
+			ts.enter(mid);
 		} catch (Throwable t) {
 			Util.fail(t);
 		}
@@ -457,91 +386,27 @@ public class RuntimeMonitor {
 
 	public static void exit() {
 		try {
-//			Util.log("exit");
-			threadState.get().exit();
+			//			Util.log("exit");
+			if (!threadState.get().exit()) threadState.set(null);
 		} catch (Throwable t) {
 			Util.fail(t);
 		}
 	}
 
-	public static int currentMid() { // TODO could replace with opt. to have privateRead, inlinePrivateRead, etc.
-		try {
-			return threadState.get().currentMethod();
-		} catch (ArrayIndexOutOfBoundsException e) {
-			Util.fail(new InlinedEntryPointException());
-			return -1;
-		}
+	private static <T extends Throwable> T fudgeTrace(T t) {
+		return t;
+//		StackTraceElement[] stack = t.getStackTrace();
+//		int i = 0;
+//		while (i < stack.length && (stack[i].getClassName().startsWith(RuntimeMonitor.class.getPackage().getName())
+//				|| stack[i].getClassName().startsWith("acme."))) {
+//			i++;
+//		}
+//		if (i > 0) {
+//			StackTraceElement[] fudgedStack = new StackTraceElement[stack.length - i];
+//			System.arraycopy(stack, i, fudgedStack, 0, stack.length - i);
+//			t.setStackTrace(fudgedStack);
+//		}
+//		return t;
 	}
-	
-	
-	// -- TODO ----------------------------------------------
-//	/**
-//	 * Checks a read by a private reading method, i.e. a method that has no
-//	 * in-edges and can only read data written by the same thread.
-//	 * 
-//	 * TODO dynamic spec-loading prevents the use of this fast path for the 
-//	 * time being.  Pre-processing of the whole spec is needed to know that
-//	 * a method has no in-edges.
-//	 * 
-//	 * TODO note that you can't have one in the same program as a public writer.
-//	 * 
-//	 * This method need not be synchronized. Only one read is performed. If it
-//	 * happens to interleave with a privateRead or sharedRead call, no harm done
-//	 * since there's no writing done.  If it happens to interleave with a 
-//	 * privateWrite call or a sharedWrite call, we get luck of the draw since the
-//	 * application did not order these calls. Fine. We're not a race detector.
-//	 * 
-//	 * @param readerMethod
-//	 * @param state
-//	 */
-//	public static void privateRead(final State state, final int readerMethod) {
-//		final Thread readerThread = Thread.currentThread();
-//		final Thread writerThread;
-//		final int writerId;
-//		synchronized(state) {
-//			writerThread = state.writerThread;
-//			writerId = state.writerMethod;
-//		}
-//		if (readerThread != writerThread) 
-//			throw new IllegalSharingException(
-//					writerThread, MethodRegistry.lookup(writerId), 
-//					readerThread, MethodRegistry.lookup(readerMethod)
-//			);
-//	}
-//
-//
-//
-//	public static void optSharedRead(final State state, final int readerMid) {
-//	final Thread readerThread = Thread.currentThread();
-//	// volatile read: if someone else has written, then we'll know.
-//	final Thread writerThread = state.writerThread;
-//	if (writerThread != readerThread) {
-//		// a third thread != writerThread and != readerThread could write between that check
-//		// and this load of readerSet.  Likewise, writerThread could write again in a different
-//		// method. This is potentially problematic if we want to report the correct illegal 
-//		// communication, but is fine otherwise, because if the check below fire, there was the
-//		// potential for *some* illegal communication.
-//		
-//		// non-volatile read:
-//		final AbstractMethodSet readerSet = state.readerSet;
-//		if (readerSet == null || ! readerSet.contains(readerMid)) {
-//			// writerThread and readerSet are potentially from different accesses, possibly even
-//			// in different threads, but it is true that this communication was illegal, because.
-//			// 
-//			throw new IllegalSharingException(
-//					writerThread, MethodRegistry.lookup(readerSet.owner), 
-//					readerThread, MethodRegistry.lookup(readerMid)
-//			);
-//		}
-//	}
-//}
-//
-//public static void optSharedWrite(final State state, final int writerMid) {
-//	final Thread writerThread = Thread.currentThread();
-//	// non-volatile write
-//	state.readerSet = MethodRegistry.policyTable[writerMid];
-//	// volatile write
-//	state.writerThread = writerThread;
-//}
-//
+
 }

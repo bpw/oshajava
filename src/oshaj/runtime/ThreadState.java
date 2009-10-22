@@ -2,9 +2,9 @@ package oshaj.runtime;
 
 import java.lang.ref.WeakReference;
 
-import acme.util.Util;
-import oshaj.sourceinfo.IntSet;
 import oshaj.sourceinfo.MethodTable;
+
+import acme.util.Util;
 
 /**
  * All non-final fields are for thread private access only.
@@ -23,7 +23,7 @@ public final class ThreadState {
 		return ++idCounter;
 	}
 	
-	protected final int id;
+	public final int id;
 	
 	/**
 	 * Let GC go as planned... We have refs to ThreadStates in ThreadLocals in the
@@ -38,23 +38,41 @@ public final class ThreadState {
 	 */
 	private final String name;
 	
-	private int[]    methodIdStack  = new int[INITIAL_STACK_CAPACITY];
-	private int      stackSize      = 0;
+	private State[] stateTable;
+	
+	protected int currentMethod;
+	protected State currentState = State.INVALID_STATE;
+	private State[]  stateStack = new State[INITIAL_STACK_CAPACITY];
+	private int      stackSize  = 0;
 
-	protected IntSet currentReaderSet;
 	
 	// TODO WeakRef
 //	protected Object cachedArray;
 //	protected State[] cachedArrayStates;
 
-	public ThreadState(Thread thread) {
+	public ThreadState(final Thread thread, final int stateTableSize) {
 		threadRef = new WeakReference<Thread>(thread);
 		name = thread.getName();
 		id = newID();
+		stateTable = new State[stateTableSize];
 	}
 
 	public Thread getThread() {
 		return threadRef.get();
+	}
+	
+	protected State currentState() {
+		if (currentState == State.INVALID_STATE) {
+			throw new InlinedEntryPointException();
+		}
+		return currentState;
+	}
+	
+	protected int currentMethod() {
+		if (currentState == State.INVALID_STATE) {
+			throw new InlinedEntryPointException();
+		}
+		return currentMethod;
 	}
 	
 	public String getName() {
@@ -66,40 +84,51 @@ public final class ThreadState {
 		return "Thread " + id + " (\"" + getName() + "\")";
 	}
 	
+	public synchronized void expandStateTable(final int newSize) {
+		stateTable = expand(stateTable, newSize);
+	}
 	
-	// -- Stack implementation ----------------------------
-	
-	public void enter(int mid, IntSet rs) {
-		if (stackSize > methodIdStack.length - 1) {
-			resize(stackSize * 2);
+	public synchronized void loadNewMethods(int next, final int endExcl) {
+		for (; next < endExcl; next++) {
+			stateTable[next] = new State(this, next, MethodTable.policyTable[next]);
 		}
-		methodIdStack[stackSize++] = mid;
-		currentReaderSet = rs;
-//		readerSetStack[stackSize++] = rs;
 	}
 	
-	private void resize(int n) {
-		final int[] newMethodIdStack = new int[n];
-		for (int i = 0; i < methodIdStack.length; i++) {
-			newMethodIdStack[i] = methodIdStack[i];
+	protected synchronized void enter(final int mid) {
+		if (stackSize > stateStack.length - 1) {
+			stateStack = expand(stateStack, stackSize * 2);
 		}
-		methodIdStack = newMethodIdStack;
-//		final IntSet[] newReaderSetStack = new IntSet[n];
-//		for (int i = 0; i < readerSetStack.length; i++) {
-//			newReaderSetStack[i] = readerSetStack[i];
-//		}
-//		readerSetStack = newReaderSetStack;
+		// TODO is this optimization for recursion (or indirect-turned-direct 
+		// recursion induced by inlining) worth it?
+		if (mid == currentMethod) {
+			stateStack[stackSize++] = stateTable[mid];
+		} else {
+			currentMethod = mid;
+			final State newState = stateTable[mid];
+			currentState = newState;
+			stateStack[stackSize++] = newState;
+		}
 	}
 	
-	public int exit() {
-		final int caller = --stackSize;
-		currentReaderSet = MethodTable.policyTable[caller];
-		return caller;
-//		readerSetStack[stackSize - 1] = null;
+	private State[] expand(final State[] array, int n) {
+		final State[] newArray = new State[n];
+		for (int i = 0; i < array.length; i++) {
+			newArray[i] = array[i];
+		}
+		return newArray;
 	}
 	
-	public int currentMethod() {
-		return methodIdStack[stackSize-1];
+	protected boolean exit() {
+		--stackSize;
+		if (stackSize > 0) {
+			final State callerState = stateStack[stackSize];
+			currentState = callerState;
+			currentMethod = callerState.writerMethod;
+			return true;
+		} else {
+			currentState = State.INVALID_STATE;
+			return false;
+		}
 	}
 	
 }

@@ -22,6 +22,7 @@ public class BitVectorIntSet extends IntSet implements Serializable {
 		this(SLOT_SIZE);
 	}
 	
+	// TODO not thread safe! Requires external synchronization!
 	public void add(final int bitIndex) {
 		if (bitIndex > maxBitIndex) {
 			upsize(bitIndex);

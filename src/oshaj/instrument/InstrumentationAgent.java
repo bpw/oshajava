@@ -13,6 +13,8 @@ import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.util.CheckClassAdapter;
 
+import oshaj.runtime.RuntimeMonitor;
+
 import acme.util.Util;
 
 /**
@@ -34,7 +36,7 @@ public class InstrumentationAgent implements ClassFileTransformer {
 	protected static final String DEBUG_KEY = "instrument";
 	
 	static class Options {	
-		public boolean debug = true;
+		public boolean debug = false;
 		public boolean verifyInput = true;
 		public String  bytecodeDump = "oshajdump";
 		public boolean java6 = false;
@@ -101,11 +103,12 @@ public class InstrumentationAgent implements ClassFileTransformer {
 		if (!opts.instrument) return bytecode;
 		try {
 			final byte[] instrumentedBytecode = instrument(className, bytecode);
+			RuntimeMonitor.loadNewMethods();
 			if (opts.bytecodeDump != null) {
 				File f = new File(opts.bytecodeDump + File.separator + className + ".class");
 				f.getParentFile().mkdirs();
 				BufferedOutputStream insFile = new BufferedOutputStream(new FileOutputStream(f));
-				insFile.write(bytecode);
+				insFile.write(instrumentedBytecode);
 				insFile.flush();
 				insFile.close();
 			}

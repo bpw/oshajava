@@ -6,7 +6,6 @@ import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.AdviceAdapter;
-import org.objectweb.asm.commons.Method;
 
 import oshaj.sourceinfo.BitVectorIntSet;
 import oshaj.sourceinfo.MethodTable;
@@ -45,9 +44,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 	protected int myMaxStackAdditions = 0;
 
 	protected int originalMaxLocals = UNINITIALIZED, originalMaxStack = UNINITIALIZED;
-	
-	protected final Method arrayLoadHook, arrayStoreHook;
-	
+		
 	public MethodInstrumentor(MethodVisitor next, int access, String name, String desc, ClassInstrumentor inst) {
 		super(next, access, name, desc);
 		this.inst = inst;
@@ -58,8 +55,6 @@ public class MethodInstrumentor extends AdviceAdapter {
 		isConstructor = name.equals("<init>");
 		isClinit = name.equals("<clinit>");
 		fullNameAndDesc = inst.className + "." + name + desc;
-		arrayLoadHook = inst.opts.coarseArrayStates ? ClassInstrumentor.HOOK_COARSE_ARRAY_LOAD : ClassInstrumentor.HOOK_ARRAY_LOAD;
-		arrayStoreHook = inst.opts.coarseArrayStates ? ClassInstrumentor.HOOK_COARSE_ARRAY_STORE : ClassInstrumentor.HOOK_ARRAY_STORE;
 	}
 
 	protected void myStackSize(int size) {
@@ -167,16 +162,8 @@ public class MethodInstrumentor extends AdviceAdapter {
 				// get object (lock). stack -> lock
 				super.loadThis();
 			}
-			if (policy == Policy.INLINE) {
-				// call acquire hook. stack ->
-				super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_INLINE_ACQUIRE);
-			} else {
-				myStackSize(2);
-				// pus mid. stack -> lock mid
-				super.push(mid);
-				// call acquire hook. stack ->
-				super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_ACQUIRE);
-			}
+			// call acquire hook. stack ->
+			super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_ACQUIRE);
 			
 			// start try block.
 			if (policy != Policy.INLINE || isSynchronized) {
@@ -232,6 +219,18 @@ public class MethodInstrumentor extends AdviceAdapter {
 	public void visitFrame(int type, int nLocal, Object[] local, int nStack, Object[] stack) {//TODO
 	}
 
+	private void pushNewState() {
+		// stack == 
+		if (policy == Policy.PUBLIC) {
+			// stack ->  null
+			mv.visitInsn(Opcodes.ACONST_NULL);
+		} else {
+			// stack -> state
+			super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_WRITE);
+		}
+		// stack == state
+	}
+	
 	/**
 	 * Instrument accesses with read and write hooks.
 	 * 
@@ -241,228 +240,69 @@ public class MethodInstrumentor extends AdviceAdapter {
 	public void visitFieldInsn(int opcode, String owner, String name, String desc) {
 
 		if (inst.shouldInstrumentField(owner, name, desc)) {
-			myStackSize(2);
 
 			// TODO figure out how to add visitFrame where needed below (GOTOs) to
 			// avoid cost of computing the frames...?
 			//		Util.log("Visiting field ins: owner = " + owner + ", name = " + name + ", desc = " + desc);
 			final Type ownerType = Type.getType(ClassInstrumentor.getDescriptor(owner));
 			final String stateFieldName = name + ClassInstrumentor.SHADOW_FIELD_SUFFIX; 
-			final Label nonNullState = new Label(), stateDone = new Label();
 
 			switch(opcode) {
 			case Opcodes.PUTFIELD:
+				myStackSize(2);
 				final Type fieldType = Type.getType(desc);				
 				// stack == obj value |
 				// swap (may push 2 past the bar temporarily). stack -> value obj |   
 				super.swap(ClassInstrumentor.OBJECT_TYPE, fieldType);
 				// dup the target. stack -> value obj | obj
 				super.dup();
-				// Get the State for this field. stack -> value obj | state
-				super.getField(ownerType, stateFieldName, ClassInstrumentor.STATE_TYPE);
-				// dup the state. stack -> value obj | state state
-				super.dup();
-				// if non-null, jump ahead. stack -> value obj | state
-				super.ifNonNull(nonNullState);
-
-				// NULL CASE: first write
-				// pop the null. stack -> value obj | 
-				super.pop();
-				// dup. stack -> value obj | obj
-				super.dup();
-				switch (policy) {
-				case INLINE:
-					// do a first write. stack -> value obj | obj state
-					super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_INLINE_FIRST_WRITE);
-					break;
-				case PROTECTED:
-					// Push the current method id. stack -> value obj | obj mid
-					super.push(mid);
-					// do a first write. stack -> value obj | obj state
-					super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_PROTECTED_FIRST_WRITE);
-					break;
-				case PUBLIC:
-					// Push the current method id. stack -> value obj | obj mid
-					super.push(mid);
-					// do a first write. stack -> value obj | obj state
-					super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_PUBLIC_FIRST_WRITE);
-					break;
-				case PRIVATE:
-					// Push the current method id. stack -> value obj | obj mid
-					super.push(mid);
-					// do a first write. stack -> value obj | obj state
-					super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_PRIVATE_FIRST_WRITE);
-					break;
-				}
-				// stack == value obj | obj state
+				// push the current state on the stack. stack -> value obj | obj state
+				pushNewState();
 				// store the new state. stack -> value obj | 
 				super.putField(ownerType, stateFieldName, ClassInstrumentor.STATE_TYPE);
 				// swap back (may push 2 past the bar temporarily). stack -> obj value |
 				super.swap(fieldType,  ClassInstrumentor.OBJECT_TYPE);
-				// jump to end. stack -> obj value | 
-				super.goTo(stateDone);
-
-				// NON-NULL CASE: regular write
-				// stack == value obj | state
-				super.mark(nonNullState);
-				switch (policy) {
-				case INLINE:
-					// Call the write hook. stack -> value obj | 
-					super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_INLINE_WRITE);
-					break;
-				case PROTECTED:
-					// Push the current method id. stack -> value obj | state mid
-					super.push(mid);
-					// Call the write hook. stack -> value obj | 
-					super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_PROTECTED_WRITE);
-					break;
-				case PUBLIC:
-					// Push the current method id. stack -> value obj | state mid
-					super.push(mid);
-					// Call the write hook. stack -> value obj | 
-					super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_PUBLIC_WRITE);
-					break;
-				case PRIVATE:
-					// Push the current method id. stack -> value obj | state mid
-					super.push(mid);
-					// Call the write hook. stack -> value obj | 
-					super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_PRIVATE_WRITE);
-					break;
-				}
-				// swap back (may push 2 past the bar temporarily). stack -> obj value |
-				super.swap(fieldType,  ClassInstrumentor.OBJECT_TYPE);
-				super.mark(stateDone);
-
 				break;
 			case Opcodes.PUTSTATIC:
-				// Get the State for this field. stack -> state
-				super.getStatic(ownerType, stateFieldName, ClassInstrumentor.STATE_TYPE);
-				// dup the state. stack -> state state
-				super.dup();
-				// if non-null, jump ahead. stack -> state
-				super.ifNonNull(nonNullState);
-
-				// NULL CASE: first write
-				// pop the null. stack -> 
-				super.pop();
-				switch (policy) {
-				case INLINE:
-					// do a first write. stack -> state
-					super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_INLINE_FIRST_WRITE);
-					break;
-				case PROTECTED:
-					// Push the current method id. stack -> mid
-					super.push(mid);
-					// do a first write. stack -> state
-					super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_PROTECTED_FIRST_WRITE);
-					break;
-				case PUBLIC:
-					// Push the current method id. stack -> mid
-					super.push(mid);
-					// do a first write. stack -> state
-					super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_PUBLIC_FIRST_WRITE);
-					break;
-				case PRIVATE:
-					// Push the current method id. stack -> mid
-					super.push(mid);
-					// do a first write. stack -> state
-					super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_PRIVATE_FIRST_WRITE);
-					break;
-				}
+				myStackSize(1);
+				// get the current state. stack -> state
+				pushNewState();
 				// store the new state. stack -> 
 				super.putStatic(ownerType, stateFieldName, ClassInstrumentor.STATE_TYPE);
-				// jump to end. stack -> 
-				super.goTo(stateDone);
-
-				// NON-NULL CASE: regular write
-				// stack == state
-				super.mark(nonNullState);
-				switch (policy) {
-				case INLINE:
-					// Call the write hook. stack -> 
-					super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_INLINE_WRITE);
-					break;
-				case PROTECTED:
-					// Push the current method id. stack -> state mid
-					super.push(mid);
-					// Call the write hook. stack -> 
-					super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_PROTECTED_WRITE);
-					break;
-				case PUBLIC:
-					// Push the current method id. stack -> state mid
-					super.push(mid);
-					// Call the write hook. stack -> 
-					super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_PUBLIC_WRITE);
-					break;
-				case PRIVATE:
-					// Push the current method id. stack -> state mid
-					super.push(mid);
-					// Call the write hook. stack -> 
-					super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_PRIVATE_WRITE);
-					break;
-				}
-				super.mark(stateDone);
-
 				break;
 			case Opcodes.GETFIELD:
+				myStackSize(2);
 				// dup the target. stack -> obj | obj
 				super.dup();
 				// Get the State for this field. stack -> obj | state
 				super.getField(ownerType, stateFieldName, ClassInstrumentor.STATE_TYPE);
-				// dup the state. stack -> obj | state state
+				// stack -> obj | state state
 				super.dup();
-				// if non-null, jump ahead. stack -> obj | state
-				super.ifNonNull(nonNullState);
-
-				// NULL CASE: no communication
-				// pop the null. stack -> obj | 
+				Label fNull = super.newLabel();
+				// stack -> obj | state
+				super.ifNull(fNull);
+				// call the read hook. stack -> obj | 
+				super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_READ);
+				Label fEnd = super.newLabel();
+				super.goTo(fEnd);
+				super.mark(fNull);
 				super.pop();
-				// jump to end. stack -> obj | 
-				super.goTo(stateDone);
-
-				// NON-NULL CASE: regular communication
-				// stack == obj | state
-				super.mark(nonNullState);
-				if (policy == Policy.INLINE) {
-					// call the read hook. stack -> obj | 
-					super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_INLINE_READ);
-				} else {
-					// push mid. stack -> obj | state mid
-					super.push(mid);
-					// call the read hook. stack -> obj | 
-					super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_PROTECTED_READ);
-				}
-				super.mark(stateDone);
-
+				super.mark(fEnd);
 				break;
 			case Opcodes.GETSTATIC:
+				myStackSize(2);
 				// Get the State for this field. stack -> state
 				super.getStatic(ownerType, stateFieldName, ClassInstrumentor.STATE_TYPE);
-				// dup the state. stack -> state state
 				super.dup();
-				// if non-null, jump ahead. stack -> state
-				super.ifNonNull(nonNullState);
-
-				// NULL CASE: no communication
-				// pop the null. stack -> 
+				Label sNull = super.newLabel();
+				super.ifNull(sNull);
+				// call the read hook. stack -> 
+				super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_READ);
+				Label sEnd = super.newLabel();
+				super.goTo(sEnd);
+				super.mark(sNull);
 				super.pop();
-				// jump to end. stack -> 
-				super.goTo(stateDone);
-
-				// NON-NULL CASE: regular communication
-				// stack == state
-				super.mark(nonNullState);
-				if (policy == Policy.INLINE) {
-					// call the read hook. stack -> 
-					super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_INLINE_READ);
-				} else {
-					// push mid. stack ->  state mid
-					super.push(mid);
-					// call the read hook. stack -> 
-					super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_PROTECTED_READ);
-				}
-				super.mark(stateDone);
-
+				super.mark(sEnd);
 				break;
 			}
 			// END
@@ -483,32 +323,43 @@ public class MethodInstrumentor extends AdviceAdapter {
 //	protected Integer tempWordLocal = null;
 //	protected Integer tempLongWordLocal = null;
 	
-	private void aastore(int local, int width) {
-		myStackSize(width - 1);
-		// stack == array index value
-		// stack -> array index _
+	private void xastore(int opcode, int local, int width) {
+		// stack == array index value |
+		// stack -> array index _ |
 		super.storeLocal(local);
-		// stack -> array index array index
-		super.dup2();
-		// stack -> array index _
-		super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, arrayStoreHook);
+		if (inst.opts.coarseArrayStates) {
+			Label afterHook = new Label();
+			// stack -> index array _ |
+			super.swap();
+			// stack -> index array array |
+			super.dup();
+			// null check. stack -> index array _ |
+			super.ifNonNull(afterHook);  // TODO What the hell. This is backwards.
+			//mv.visitJumpInsn(Opcodes.IFNULL, afterHook);
+			
+			// NON-NULL CASE:
+			// stack -> index array array |
+			super.dup();
+			// call the hook. stack -> index array _ |
+			super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_COARSE_ARRAY_STORE);
+			
+			super.mark(afterHook);
+			// BOTH CASES
+			// stack -> array index _ |
+			super.swap();
+		} else {
+			myStackSize(width - 1);
+			// stack -> array index array | index
+			super.dup2();
+			// stack -> array index _ |
+			super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_ARRAY_STORE);
+		}
 		// stack -> array index value |
 		super.loadLocal(local);
-	}
+		// actual store
+		super.visitInsn(opcode);
 
-//	private void aastore(Type t) {
-//		final boolean wide = t == Type.LONG_TYPE || t == Type.DOUBLE_TYPE;
-//		myStackSize(wide ? 1 : 0);
-//		// stack == array index word1 word2
-//		// stack -> array index
-//		super.storeLocal(wide ? tempLongWordLocal : tempWordLocal, t);
-//		// stack -> array index array index
-//		super.dup2();
-//		// stack -> array index
-//		super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_ARRAY_STORE);
-//		// stack -> array index value |
-//		super.loadLocal(wide ? tempLongWordLocal : tempWordLocal, t);
-//	}
+	}
 
 	@Override
 	public void visitInsn(int opcode) { 
@@ -521,89 +372,84 @@ public class MethodInstrumentor extends AdviceAdapter {
 		case Opcodes.IALOAD:
 		case Opcodes.LALOAD:			
 		case Opcodes.SALOAD:
-			myStackSize(2);
-			// dup both args. stack -> array index array index
-			super.dup2();
-			// TODO option for array granularity.
-			// call array laod hook. stack -> array index
-			super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, arrayLoadHook);
+			if (inst.opts.coarseArrayStates) {
+				myStackSize(1);
+				// stack -> index array
+				super.swap();
+				// stack -> array index array
+				super.dupX1();
+				// call the hook. stack -> array index
+				super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_COARSE_ARRAY_LOAD);
+			} else {
+				myStackSize(2);
+				// stack -> array index array index
+				super.dup2();
+				// stack -> array index _
+				super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_ARRAY_LOAD);
+			}
 			super.visitInsn(opcode);
 			break;
 		case Opcodes.AASTORE:
 			if (tempLocalAddress == null) tempLocalAddress = super.newLocal(ClassInstrumentor.OBJECT_TYPE);
-			aastore(tempLocalAddress, 1);
-			super.visitInsn(opcode);
+			xastore(opcode, tempLocalAddress, 1);
 			break;
 		case Opcodes.BASTORE:
 			if (tempLocalByte == null) tempLocalByte = super.newLocal(Type.BYTE_TYPE);
-			aastore(tempLocalByte, 1);
-			super.visitInsn(opcode);
+			xastore(opcode, tempLocalByte, 1);
 			break;
 		case Opcodes.CASTORE:
 			if (tempLocalChar == null) tempLocalChar = super.newLocal(Type.CHAR_TYPE);
-			aastore(tempLocalChar, 1);
-			super.visitInsn(opcode);
+			xastore(opcode, tempLocalChar, 1);
 			break;
 		case Opcodes.FASTORE:
 			if (tempLocalFloat == null) tempLocalFloat = super.newLocal(Type.FLOAT_TYPE);
-			aastore(tempLocalFloat, 1);
-			super.visitInsn(opcode);
+			xastore(opcode, tempLocalFloat, 1);
 			break;
 		case Opcodes.IASTORE:
 			if (tempLocalInt == null) tempLocalInt = super.newLocal(Type.INT_TYPE);
-			aastore(tempLocalInt, 1);
-			super.visitInsn(opcode);
+			xastore(opcode, tempLocalInt, 1);
 			break;
 		case Opcodes.SASTORE:
 			if (tempLocalShort == null) tempLocalShort = super.newLocal(Type.SHORT_TYPE);
-			aastore(tempLocalShort, 1);
-			super.visitInsn(opcode);
+			xastore(opcode, tempLocalShort, 1);
 			break;
 		case Opcodes.DASTORE:
 			if (tempLocalDouble == null) tempLocalDouble = super.newLocal(Type.DOUBLE_TYPE);
-			aastore(tempLocalDouble, 2);
-			super.visitInsn(opcode);
+			xastore(opcode, tempLocalDouble, 2);
 			break;
 		case Opcodes.LASTORE:
 			if (tempLocalLong == null) tempLocalLong = super.newLocal(Type.LONG_TYPE);
-			aastore(tempLocalLong, 2);
-			super.visitInsn(opcode);
+			xastore(opcode, tempLocalLong, 2);
 			break;
 		case Opcodes.MONITORENTER:
-			myStackSize(2);
+			myStackSize(1);
 			// put in a try/finally to put in the release if needed...
 			final Label start = super.newLabel(), handler = super.newLabel(), done = super.newLabel();
 			mv.visitTryCatchBlock(start, handler, handler, ClassInstrumentor.OSHA_EXCEPT_TYPE_NAME);
 			
 			// dup the target. stack -> lock | lock
 			super.dup();
-			// save. stack -> lock
+			// save. stack -> lock |
 			final int lock = super.newLocal(ClassInstrumentor.OBJECT_TYPE);
 			super.storeLocal(lock);
-			// dup. stack -> lock lock
+			// dup. stack -> lock | lock
 			super.dup();
-			// do the monitorenter. stack -> lock
+			// do the monitorenter. stack -> lock |
 			super.visitInsn(opcode);
 
 			super.mark(start);
-			if (policy == Policy.INLINE) {
-				// call acquire hook. stack ->
-				super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_INLINE_ACQUIRE);
-			} else {
-				// push mid. stack -> lock mid
-				super.push(mid);
-				// call acquire hook. stack ->
-				super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_ACQUIRE);
-			}
+			// call acquire hook. stack ->
+			super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_ACQUIRE);
+
 			super.goTo(done);
 			
-			// handler. We get thee exception on the stack. stack -> e
+			// handler. We get thee exception on the stack. stack -> e |
 			super.mark(handler);
-			// reload lock. stack -> e lock
+			// reload lock. stack -> e | lock
 			super.loadLocal(lock);
-			// monitorexit. stack -> e
+			// monitorexit. stack -> e |
 			super.monitorExit();
-			// rethrow. ->
+			// rethrow. -> _ |
 			super.throwException();
 			super.mark(done);
 			break;

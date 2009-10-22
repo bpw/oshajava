@@ -50,30 +50,18 @@ public class ClassInstrumentor extends ClassAdapter {
 	protected static final Method HOOK_ENTER = new Method("enter", Type.VOID_TYPE, ARGS_INT);
 	protected static final Method HOOK_EXIT  = new Method("exit",  Type.VOID_TYPE, ARGS_NONE);
 
-	protected static final Method HOOK_PRIVATE_READ   = new Method("privateRead", Type.VOID_TYPE, ARGS_STATE_INT);
-	protected static final Method HOOK_PROTECTED_READ = new Method("sharedRead",  Type.VOID_TYPE, ARGS_STATE_INT);
-	protected static final Method HOOK_INLINE_READ    = new Method("inlineRead",  Type.VOID_TYPE, ARGS_STATE);
-
-	protected static final Method HOOK_PRIVATE_WRITE         = new Method("privateWrite",      Type.VOID_TYPE, ARGS_STATE_INT);
-	protected static final Method HOOK_PRIVATE_FIRST_WRITE   = new Method("privateFirstWrite", STATE_TYPE,     ARGS_INT);
-	protected static final Method HOOK_PROTECTED_WRITE       = new Method("protectedWrite",    Type.VOID_TYPE, ARGS_STATE_INT);
-	protected static final Method HOOK_PROTECTED_FIRST_WRITE = new Method("protectedFirstWrite", STATE_TYPE,   ARGS_INT);
-	protected static final Method HOOK_PUBLIC_WRITE          = new Method("publicWrite",       Type.VOID_TYPE, ARGS_STATE_INT);
-	protected static final Method HOOK_PUBLIC_FIRST_WRITE    = new Method("publicFirstWrite",  STATE_TYPE,     ARGS_INT);
-	protected static final Method HOOK_INLINE_WRITE          = new Method("inlineWrite",       Type.VOID_TYPE, ARGS_STATE);
-	protected static final Method HOOK_INLINE_FIRST_WRITE    = new Method("inlineFirstWrite",  STATE_TYPE, ARGS_NONE);
+//	protected static final Method HOOK_PRIVATE_READ   = new Method("privateRead", Type.VOID_TYPE, ARGS_STATE_INT);
+	protected static final Method HOOK_READ  = new Method("read",  Type.VOID_TYPE, ARGS_STATE);
+	protected static final Method HOOK_WRITE = new Method("write", STATE_TYPE, ARGS_NONE);
 	
-	// TODO CoarseRuntimeMonitor.
-
 //	protected static final Method HOOK_NEW_ARRAY       = new Method("newArray",      Type.VOID_TYPE, ARGS_INT_OBJECT);
 //	protected static final Method HOOK_NEW_MULTI_ARRAY = new Method("newMultiArray", Type.VOID_TYPE, ARGS_OBJECT_INT);
 	protected static final Method HOOK_ARRAY_LOAD      = new Method("arrayRead",     Type.VOID_TYPE, ARGS_OBJECT_INT);
 	protected static final Method HOOK_ARRAY_STORE     = new Method("arrayWrite",    Type.VOID_TYPE, ARGS_OBJECT_INT);
-	protected static final Method HOOK_COARSE_ARRAY_LOAD  = new Method("coarseArrayRead",     Type.VOID_TYPE, ARGS_OBJECT_INT);
-	protected static final Method HOOK_COARSE_ARRAY_STORE = new Method("coarseArrayWrite",    Type.VOID_TYPE, ARGS_OBJECT_INT);
+	protected static final Method HOOK_COARSE_ARRAY_LOAD  = new Method("coarseArrayRead",     Type.VOID_TYPE, ARGS_OBJECT);
+	protected static final Method HOOK_COARSE_ARRAY_STORE = new Method("coarseArrayWrite",    Type.VOID_TYPE, ARGS_OBJECT);
 
-	protected static final Method HOOK_ACQUIRE        = new Method("acquire", Type.VOID_TYPE, ARGS_OBJECT_INT);
-	protected static final Method HOOK_INLINE_ACQUIRE = new Method("inlineAcquire", Type.VOID_TYPE, ARGS_OBJECT);
+	protected static final Method HOOK_ACQUIRE        = new Method("acquire", Type.VOID_TYPE, ARGS_OBJECT);
 	protected static final Method HOOK_RELEASE        = new Method("release", Type.VOID_TYPE, ARGS_OBJECT);
 
 	/****************************************************************************/

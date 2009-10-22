@@ -40,6 +40,13 @@ public class MethodTable {
 	 */
 	private static final HashMap<String,Cons<BitVectorIntSet>> idRequests = new HashMap<String,Cons<BitVectorIntSet>>();
 		
+	
+	public static synchronized int size() {
+		return nextID;
+	}
+	public static synchronized int capacity() {
+		return policyTable.length;
+	}
 	/**
 	 * Register a new method by its signature, returning its unique ID.
 	 * 
@@ -74,7 +81,7 @@ public class MethodTable {
 		return id;
 	}
 	
-	private static void upsize() {
+	private static synchronized void upsize() {
 		Util.yikes("!!!!! UNSAFE resize triggered. !!!!!");
 		String[] tmp = new String[2*nextID];
 		System.arraycopy(methodIDtoSig, 0, tmp, 0, nextID);

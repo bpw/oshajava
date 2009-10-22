@@ -12,29 +12,27 @@ import oshaj.sourceinfo.IntSet;
  * for the duration of all the writes. Reading is more selective... depends
  * on the situation.
  * 
- * TODO try baking this in directly as 3 shadow fields instead of 1 with indirection.
- * Takes 12 bytes per object whether or not the shadow fields are used instead of the 
- * current 4 bytes, then 12 bytes + header more when actually used.
- * 
  * @author bpw
  *
  */
 public final class State {
 	
+	public static final State INVALID_STATE = new State(null, -1, null);
+	
 	/**
 	 * Thread id of the last thread to write to the field.
 	 */
-	protected volatile ThreadState writerThread;
+	protected final ThreadState writerThread;
 	
 	/**
 	 * Method id of the last method in which the field was written.
 	 */
-	protected int writerMethod;
+	protected final int writerMethod;
 	
 	/**
 	 * Method allowed to read the field from a different thread in the current state.
 	 */
-	protected IntSet readerSet;
+	protected final IntSet readerSet;
 	
 	protected State(ThreadState writerThread, int writerMethod, IntSet readerSet) {
 		this.writerMethod = writerMethod;
