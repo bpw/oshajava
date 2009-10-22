@@ -1,5 +1,6 @@
 package oshaj.runtime;
 
+import java.lang.ref.WeakReference;
 import java.lang.reflect.Array;
 
 import oshaj.sourceinfo.IntSet;
@@ -79,6 +80,8 @@ import acme.util.identityhash.ConcurrentIdentityHashMap;
  *     some, fine for others.
  *     
  * 13. RuntimeMonitor.flush - a voltile static field available for where it's needed to sync?
+ * 
+ * 14. Create all possible States. Give each an ID. DUH!!!!!!! 
  *    
  *    
  * TODO Things to fix or add.
@@ -123,10 +126,17 @@ import acme.util.identityhash.ConcurrentIdentityHashMap;
  * @author bpw
  */
 public class RuntimeMonitor {
-
+	
 	protected static final ThreadLocal<ThreadState> threadState = new ThreadLocal<ThreadState>() {
 		@Override protected ThreadState initialValue() { return new ThreadState(Thread.currentThread()); }
 	};
+	
+	protected static final int MAX_THREADS = 32;
+	
+	// TODO must be resize if too many threads.
+	// TODO each entry must be resized if MethodTable.policyTable gets resized.
+	// TODO GC when a thread exits.
+	protected static final State[][] stateTable = new State[MAX_THREADS][];
 
 	// TODO fix WeakConcurrentIdentityHashMap and replace with that..
 	// we need a concurrent hash map b/c access for multiple locks at once is not

@@ -39,7 +39,7 @@ public class MethodTable {
 	 * FIXME need local copies...
 	 */
 	private static final HashMap<String,Cons<BitVectorIntSet>> idRequests = new HashMap<String,Cons<BitVectorIntSet>>();
-	
+		
 	/**
 	 * Register a new method by its signature, returning its unique ID.
 	 * 
@@ -69,15 +69,21 @@ public class MethodTable {
 		
 		// resize if necessary.
 		if (nextID == policyTable.length) {
-			Util.yikes("!!!!! UNSAFE resize triggered. !!!!!");
-			String[] tmp = new String[2*nextID];
-			System.arraycopy(methodIDtoSig, 0, tmp, 0, nextID);
-			methodIDtoSig = tmp;
-			IntSet[] p = new IntSet[2*nextID];
-			System.arraycopy(policyTable, 0, p, 0, nextID);
-			policyTable = p;
+			upsize();
 		}
 		return id;
+	}
+	
+	private static void upsize() {
+		Util.yikes("!!!!! UNSAFE resize triggered. !!!!!");
+		String[] tmp = new String[2*nextID];
+		System.arraycopy(methodIDtoSig, 0, tmp, 0, nextID);
+		methodIDtoSig = tmp;
+		IntSet[] p = new IntSet[2*nextID];
+		System.arraycopy(policyTable, 0, p, 0, nextID);
+		policyTable = p;
+		// upsize the state table.
+		// TODO RuntimeMonitor.upsizeStateTable();
 	}
 	
 	/**

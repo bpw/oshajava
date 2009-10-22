@@ -19,7 +19,7 @@ import oshaj.sourceinfo.IntSet;
  * @author bpw
  *
  */
-public class State {
+public final class State {
 	
 	/**
 	 * Thread id of the last thread to write to the field.
