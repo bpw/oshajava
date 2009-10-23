@@ -24,11 +24,7 @@ import acme.util.identityhash.ConcurrentIdentityHashMap;
  *    immediately accessible.  (We'll always need dynamic spec reading, etc. to
  *    handle reflection and dynamic class loading, but for most apps we'll be able
  *    to get most of what's interesting up front.)
- *    
- * *****5. Store the currentThread in a local in each method. This way, Thread.currentThread()
- *    is called only once per method invocation. Then pass it as an argument to each
- *    hook that needs it.
- *    
+ *        
  * 6. Inline the writerThread == currentThread check for reads. (i.e. do it outside the
  *    hook and only call the hook if needed.)
  *    
@@ -41,6 +37,10 @@ import acme.util.identityhash.ConcurrentIdentityHashMap;
  * 
  * 12. Choose array granularity on some level other than "yes or no for all."  Asin coarse for
  *     some, fine for others.
+ *     
+ * 13. Encode state (w/o reader set) as an int 
+ *     low bits for method, high for thread... 12 bits for tid, 20 for mid. each thread
+ *     has an array of reader sets... 
  *     
  *    
  * TODO Things to fix or add.
@@ -149,10 +149,10 @@ public class RuntimeMonitor {
 	 * @param readerMethod
 	 */
 	public static void read(final State write, final ThreadState reader) {
-		if (write.writerThread != reader) {
-			final IntSet readerSet = write.readerSet;
+		if (write.thread != reader) {
+			final IntSet readerSet = write.readers;
 			if (readerSet == null || ! readerSet.contains(reader.currentMethod)) {
-				throw new IllegalSharingException(write.writerThread, MethodTable.lookup(write.writerMethod), 
+				throw new IllegalSharingException(write.thread, MethodTable.lookup(write.method), 
 						reader, MethodTable.lookup(reader.currentMethod));
 			}
 		}
@@ -191,20 +191,20 @@ public class RuntimeMonitor {
 		} catch (NullPointerException e) {
 			throw fudgeTrace(e);
 		}
-		if (write != null) {
+		if (write != null && write != State.INVALID_STATE) {
 			read(write, reader);
 		}
 	}
 
-	/**
-	 * Updates the state to reflect a write by a method with no out-edges.
-	 * 
-	 * @param state
-	 * @param writerMethod
-	 */
-	public static State currentState() {
-		return threadState.get().currentState;
-	}
+//	/**
+//	 * Updates the state to reflect a write by a method with no out-edges.
+//	 * 
+//	 * @param state
+//	 * @param method
+//	 */
+//	public static State currentState() {
+//		return threadState.get().currentState;
+//	}
 	
 	public static void arrayWrite(final Object array, final int index, final State currentState) {
 		State[] states = arrayStates.get(array);
@@ -231,8 +231,11 @@ public class RuntimeMonitor {
 	// concurrent hash map doesn't handle nulls, plus it's faster to
 	// just skip it in the first place anyway. We do have to check null
 	// for inlined cases.
+	// TODO array state caching. Use map: array -> state ref. cache the ref, then lookup
+	// in the map is unnecessary.
 	public static void coarseArrayWrite(final Object array, final State currentState) {
-		if (currentState != null) coarseArrayStates.put(array, threadState.get().currentState);
+		//  if no array state caching, push the null check back to bytecode.
+		coarseArrayStates.put(array, currentState != null ? currentState : State.INVALID_STATE);
 	}
 
 
@@ -260,37 +263,35 @@ public class RuntimeMonitor {
 	/**
 	 * Lock acquire hook.
 	 * 
-	 * TODO cache locks by thread.
+	 * TODO cache locks by thread. A stack of them, actually?
 	 * 
 	 * @param nextMethods
 	 * @param holderMethod
 	 * @param lock
 	 */
-	public static void acquire(final Object lock) {
+	public static void acquire(final Object lock, final ThreadState holder, final State holderState) {
 		try {
-			LockState state = lockStates.get(lock);
-			if (state == null) {
-				state = new LockState(threadState.get().currentState);
-				state.depth = 1;
-				state = lockStates.putIfAbsent(lock, state);
-				Util.assertTrue(state == null);
-			} else if (state.depth < 0) {
+			LockState lockState = lockStates.get(lock);
+			if (lockState == null) {
+				lockState = new LockState(holder.currentState);
+				lockState.depth = 1;
+				lockState = lockStates.putIfAbsent(lock, lockState);
+				Util.assertTrue(lockState == null);
+			} else if (lockState.depth < 0) {
 				Util.fail("Bad lock scoping.");
-			} else if (state.depth == 0) {
+			} else if (lockState.depth == 0) {
 				// First (non-reentrant) acquire by this thread.
 				// NOTE: this is atomic, because we hold lock and no other thread can call
 				// the acquire or release hooks until they hold the lock.
-				final ThreadState holder = threadState.get();
-				final State holderState = holder.currentState; 
-				final State lastHolderState = state.lastHolder;
+				final State lastHolderState = lockState.lastHolder;
 				if (lastHolderState != holderState) {
-					state.lastHolder = holderState;
-					state.depth++;
-					if (lastHolderState.writerThread != holder) {
-						final IntSet readerSet = holderState.readerSet;
-						if (readerSet == null || ! readerSet.contains(holderState.writerMethod)) {
+					lockState.lastHolder = holderState;
+					lockState.depth++;
+					if (lastHolderState.thread != holder) {
+						final IntSet readerSet = holderState.readers;
+						if (readerSet == null || ! readerSet.contains(holderState.method)) {
 							throw new IllegalSynchronizationException(
-									lastHolderState.writerThread, MethodTable.lookup(lastHolderState.writerMethod), 
+									lastHolderState.thread, MethodTable.lookup(lastHolderState.method), 
 									holder, MethodTable.lookup(holder.currentMethod)
 									// TODO refactor MethodTable to something like StateTable
 									// lookup to something like getMethodName(State...)
@@ -298,11 +299,11 @@ public class RuntimeMonitor {
 						}
 					}
 				} else {
-					state.depth++;
+					lockState.depth++;
 				}
 			} else {
 				// if we're already reentrant, just go one deeper.
-				state.depth++;
+				lockState.depth++;
 			}
 		} catch (IllegalCommunicationException e) {
 			throw e;
@@ -312,7 +313,12 @@ public class RuntimeMonitor {
 	}
 	
 	public static ThreadState getThreadState() {
-		return threadState.get();
+		final ThreadState t = threadState.get();
+		if (t == null) {
+			throw new InlinedEntryPointException();
+		} else {
+			return t;
+		}
 	}
 
 	public static ThreadState enter(final int mid) {

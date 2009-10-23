@@ -40,13 +40,12 @@ public final class ThreadState {
 	
 	private State[] stateTable;
 	
-	protected int currentMethod;
-	protected State currentState = State.INVALID_STATE;
+	public int currentMethod;
+	public State currentState = State.INVALID_STATE;
 	private State[]  stateStack = new State[INITIAL_STACK_CAPACITY];
 	private int      stackSize  = 0;
 
-	
-	// TODO WeakRef
+	// TODO weak reference or just some GC of my own. e.g. delete after n method calls.	
 //	protected Object cachedArray;
 //	protected State[] cachedArrayStates;
 
@@ -61,19 +60,19 @@ public final class ThreadState {
 		return threadRef.get();
 	}
 	
-	protected State currentState() {
-		if (currentState == State.INVALID_STATE) {
-			throw new InlinedEntryPointException();
-		}
-		return currentState;
-	}
-	
-	protected int currentMethod() {
-		if (currentState == State.INVALID_STATE) {
-			throw new InlinedEntryPointException();
-		}
-		return currentMethod;
-	}
+//	protected State currentState() {
+//		if (currentState == State.INVALID_STATE) {
+//			throw new InlinedEntryPointException();
+//		}
+//		return currentState;
+//	}
+//	
+//	protected int currentMethod() {
+//		if (currentState == State.INVALID_STATE) {
+//			throw new InlinedEntryPointException();
+//		}
+//		return currentMethod;
+//	}
 	
 	public String getName() {
 		final Thread thread = threadRef.get();
@@ -123,7 +122,7 @@ public final class ThreadState {
 		if (stackSize > 0) {
 			final State callerState = stateStack[stackSize];
 			currentState = callerState;
-			currentMethod = callerState.writerMethod;
+			currentMethod = callerState.method;
 			return true;
 		} else {
 			currentState = State.INVALID_STATE;

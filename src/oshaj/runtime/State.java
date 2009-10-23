@@ -22,28 +22,28 @@ public final class State {
 	/**
 	 * Thread id of the last thread to write to the field.
 	 */
-	protected final ThreadState writerThread;
+	protected final ThreadState thread;
 	
 	/**
 	 * Method id of the last method in which the field was written.
 	 */
-	protected final int writerMethod;
+	protected final int method;
 	
 	/**
 	 * Method allowed to read the field from a different thread in the current state.
 	 */
-	protected final IntSet readerSet;
+	protected final IntSet readers;
 	
-	protected State(ThreadState writerThread, int writerMethod, IntSet readerSet) {
-		this.writerMethod = writerMethod;
-		this.readerSet = readerSet;
-		this.writerThread = writerThread;
+	protected State(ThreadState thread, int method, IntSet successors) {
+		this.method = method;
+		this.readers = successors;
+		this.thread = thread;
 	}
 	
-	protected State(ThreadState writerTid, int writerMethod) {
-		this.writerMethod = writerMethod;
-		this.readerSet = null;
-		this.writerThread = writerTid;
+	protected State(ThreadState thread, int method) {
+		this.method = method;
+		this.readers = null;
+		this.thread = thread;
 	}
 	
 }

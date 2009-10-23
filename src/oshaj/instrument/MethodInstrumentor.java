@@ -63,25 +63,115 @@ public class MethodInstrumentor extends AdviceAdapter {
 		}
 	}
 
-	protected int varCurrentThread, varCurrentState;
+	private Integer tempLocalAddress = null;
+	private Integer tempLocalBoolean = null;
+	private Integer tempLocalByte = null;
+	private Integer tempLocalChar = null;
+	private Integer tempLocalDouble = null;
+	private Integer tempLocalFloat = null;
+	private Integer tempLocalInt = null;
+	private Integer tempLocalLong = null;
+	private Integer tempLocalShort = null;
+
 	
+	/**
+	 * Local variables ids for storing the current threadstate and state.
+	 */
+	private int varCurrentThread;
+	private int varCurrentState;
+//	private boolean stateVarInitialized = false, threadVarInitialized = false;
+	
+	protected void initializeThreadVar() {
+//		if (!threadVarInitialized) {
+//			threadVarInitialized = true;
+			varCurrentThread = super.newLocal(ClassInstrumentor.THREAD_STATE_TYPE);
+			super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_THREAD_STATE);
+			// sotre the current threadState into a local.
+			super.storeLocal(varCurrentThread, ClassInstrumentor.THREAD_STATE_TYPE);
+//		}
+	}
+	
+	private void initializeThreadVarFromEnterHook() {
+//		threadVarInitialized = true;
+		varCurrentThread = super.newLocal(ClassInstrumentor.THREAD_STATE_TYPE);
+		// sotre the current threadState into a local.
+		super.storeLocal(varCurrentThread, ClassInstrumentor.THREAD_STATE_TYPE);
+	}
+	
+	protected void initializeStateVar() {
+//		initializeThreadVar();
+//		if (!stateVarInitialized) {
+//			stateVarInitialized = true;
+			varCurrentState  = super.newLocal(ClassInstrumentor.STATE_TYPE);
+			// stack -> threadstate
+			pushCurrentThread();
+			// stack -> state
+			super.getField(ClassInstrumentor.THREAD_STATE_TYPE, ClassInstrumentor.CURRENT_STATE_FIELD, ClassInstrumentor.STATE_TYPE);
+			// stack ->
+			super.storeLocal(varCurrentState, ClassInstrumentor.STATE_TYPE);
+//		}
+	}
+	
+	/**
+	 * Push the current threadstate onto the stack.
+	 */
 	protected void pushCurrentThread() {
+//		initializeThreadVar();
 		super.loadLocal(varCurrentThread, ClassInstrumentor.THREAD_STATE_TYPE);
 	}
 
-	private void pushCurrentState() {
+	/**
+	 * Push the current state onto the stack.
+	 */
+	protected void pushCurrentState() {
 		// stack == 
 		if (policy == Policy.PUBLIC) {
 			// stack ->  null
 			mv.visitInsn(Opcodes.ACONST_NULL);
-		} else if (policy == Policy.INLINE){
-			super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_WRITE);
 		} else {
+//			initializeStateVar();
 			// stack -> state
-			super.loadLocal(varCurrentState, ClassInstrumentor.THREAD_STATE_TYPE);
+			super.loadLocal(varCurrentState, ClassInstrumentor.STATE_TYPE);
 		}
 		// stack == state
 	}
+	
+	/**
+	 * If the top item on the stack is the threadstate of the current thread,
+	 * jump to l.
+	 * @param l
+	 */
+	protected void ifSameThread(Label l) {
+		// stack == threadstate'
+		// stack -> threadstate' threadstate
+		pushCurrentThread();
+		// stack ->
+		super.ifCmp(ClassInstrumentor.THREAD_STATE_TYPE, EQ, l);
+	}
+	
+	protected void ifSameState(Label l) {
+		// stack == state'
+		pushCurrentState();
+		super.ifCmp(ClassInstrumentor.STATE_TYPE, EQ, l);
+	}
+	
+	protected void loadThreadFromState() {
+		// stack == state
+		// stack -> threadstate
+		super.getField(ClassInstrumentor.STATE_TYPE, ClassInstrumentor.THREAD_FIELD, ClassInstrumentor.THREAD_STATE_TYPE);
+	}
+	
+	protected void ifCurrentStateNull(Label l) {
+		pushCurrentState();
+		super.ifNull(l);
+	}
+	
+	
+	/**
+	 * If the current state is not null, jump to l.
+	 * @param l
+	 */
+//	protected void ifNullState(Label l) {}
 
 	@Override
 	public AnnotationVisitor visitAnnotation(String desc, boolean visible) {
@@ -174,21 +264,15 @@ public class MethodInstrumentor extends AdviceAdapter {
 			super.push(mid);
 			// stack -> threadstate
 			super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_ENTER);
+			initializeThreadVarFromEnterHook();
 		} else {
-			super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_THREAD_STATE);
+			initializeThreadVar();
 		}
-		// sotre the current threadState into a local.
-		super.storeLocal(varCurrentThread, ClassInstrumentor.THREAD_STATE_TYPE);
-		// store the current state into a local
-		// stack -> threadstate
-		super.loadLocal(varCurrentThread, ClassInstrumentor.THREAD_STATE_TYPE);
-		// stack -> state
-		super.getField(ClassInstrumentor.THREAD_STATE_TYPE, ClassInstrumentor.CURRENT_STATE_FIELD, ClassInstrumentor.STATE_TYPE);
-		// stack ->
-		super.storeLocal(varCurrentState, ClassInstrumentor.THREAD_STATE_TYPE);
+		initializeStateVar();
+		// To init those ^^^ lazily, you need to know about control flow. We don't.
 		
 		if (isSynchronized) {
-			myStackSize(1);
+			myStackSize(3);
 			if (isStatic) {
 				// get class (lock). stack -> lock
 				super.push(inst.classType);
@@ -196,6 +280,8 @@ public class MethodInstrumentor extends AdviceAdapter {
 				// get object (lock). stack -> lock
 				super.loadThis();
 			}
+			pushCurrentThread();
+			pushCurrentState();
 			// call acquire hook. stack ->
 			super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_ACQUIRE);
 
@@ -225,7 +311,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 			}
 
 			// -- end code -------------
-			super.visitMaxs(originalMaxStack + myMaxStackAdditions, originalMaxLocals);
+			super.visitMaxs(originalMaxStack + myMaxStackAdditions + 2, originalMaxLocals);
 		}
 
 		super.visitEnd();
@@ -300,29 +386,43 @@ public class MethodInstrumentor extends AdviceAdapter {
 				super.getField(ownerType, stateFieldName, ClassInstrumentor.STATE_TYPE);
 				// stack -> obj | state state
 				super.dup();
-				Label fNull = super.newLabel();
+				Label homeFree = super.newLabel();
+//				//stack -> obj | state
+//				ifSameState(homeFree); // OK if same state (same thread, same method, state maybe == null)
+//				// stack -> obj | state state
+//				super.dup();
 				// stack -> obj | state
-				super.ifNull(fNull);
+				super.ifNull(homeFree);
+//				// stack -> obj | state state
+//				super.dup();
+//				// stack -> obj | state threadstate
+//				loadThreadFromState();
+//				// stack -> obj | state
+//				ifSameThread(homeFree);
+				// stack -> obj | state threadstate
+				pushCurrentThread();
 				// call the read hook. stack -> obj | 
 				super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_READ);
-				Label fEnd = super.newLabel();
-				super.goTo(fEnd);
-				super.mark(fNull);
+				Label ok = super.newLabel();
+				super.goTo(ok);
+				super.mark(homeFree);
 				super.pop();
-				super.mark(fEnd);
+				super.mark(ok);
 				break;
 			case Opcodes.GETSTATIC:
 				myStackSize(2);
 				// Get the State for this field. stack -> state
 				super.getStatic(ownerType, stateFieldName, ClassInstrumentor.STATE_TYPE);
 				super.dup();
-				Label sNull = super.newLabel();
-				super.ifNull(sNull);
+				Label sHomeFree = super.newLabel();
+				super.ifNull(sHomeFree);
+				//stack -> state threadstate
+				pushCurrentThread();
 				// call the read hook. stack -> 
 				super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_READ);
 				Label sEnd = super.newLabel();
 				super.goTo(sEnd);
-				super.mark(sNull);
+				super.mark(sHomeFree);
 				super.pop();
 				super.mark(sEnd);
 				break;
@@ -334,34 +434,26 @@ public class MethodInstrumentor extends AdviceAdapter {
 		super.visitFieldInsn(opcode, owner, name, desc);
 	}
 
-	protected Integer tempLocalAddress = null;
-	protected Integer tempLocalByte = null;
-	protected Integer tempLocalChar = null;
-	protected Integer tempLocalDouble = null;
-	protected Integer tempLocalFloat = null;
-	protected Integer tempLocalInt = null;
-	protected Integer tempLocalLong = null;
-	protected Integer tempLocalShort = null;
-	//	protected Integer tempWordLocal = null;
-	//	protected Integer tempLongWordLocal = null;
 
 	private void xastore(int opcode, int local, int width) {
 		// stack == array index value |
-		// stack -> array index _ |
-		super.storeLocal(local);
 		if (inst.opts.coarseArrayStates) {
-			Label afterHook = new Label();
+			myStackSize(2 - width);
+			Label afterHook = super.newLabel();
+			// stack -> array index _ |
+			super.storeLocal(local);
 			// stack -> index array _ |
 			super.swap();
 			// stack -> index array array |
 			super.dup();
 			// null check. stack -> index array _ |
-			super.ifNull(afterHook);  // TODO What the hell. This lets null through.
-			//mv.visitJumpInsn(Opcodes.IFNULL, afterHook);
-
+			super.ifNull(afterHook);
+			
 			// NON-NULL CASE:
 			// stack -> index array array |
 			super.dup();
+			// stack -> index array array | state
+			pushCurrentState();
 			// call the hook. stack -> index array _ |
 			super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_COARSE_ARRAY_STORE);
 
@@ -369,15 +461,21 @@ public class MethodInstrumentor extends AdviceAdapter {
 			// BOTH CASES
 			// stack -> array index _ |
 			super.swap();
+			// stack -> array index value |
+			super.loadLocal(local);
 		} else {
-			myStackSize(width - 1);
+			myStackSize(3 - width);
+			// stack -> array index _ |
+			super.storeLocal(local);
 			// stack -> array index array | index
 			super.dup2();
+			// stack -> array index array | index threadstate
+			pushCurrentThread();
 			// stack -> array index _ |
 			super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_ARRAY_STORE);
+			// stack -> array index value |
+			super.loadLocal(local);
 		}
-		// stack -> array index value |
-		super.loadLocal(local);
 
 	}
 
@@ -393,83 +491,71 @@ public class MethodInstrumentor extends AdviceAdapter {
 		case Opcodes.LALOAD:			
 		case Opcodes.SALOAD:
 			if (inst.opts.coarseArrayStates) {
-				myStackSize(1);
+				myStackSize(2);
 				// stack -> index array
 				super.swap();
 				// stack -> array index array
 				super.dupX1();
+				// stack -> array index array threadstate
+				pushCurrentThread();
 				// call the hook. stack -> array index
 				super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_COARSE_ARRAY_LOAD);
 			} else {
-				myStackSize(2);
+				myStackSize(3);
 				// stack -> array index array index
 				super.dup2();
+				// stack -> array index array index threadstate
+				pushCurrentThread();
 				// stack -> array index _
 				super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_ARRAY_LOAD);
 			}
 			super.visitInsn(opcode);
 			break;
 		case Opcodes.AASTORE:
-			if (policy != Policy.PUBLIC) {
-				if (tempLocalAddress == null) tempLocalAddress = super.newLocal(ClassInstrumentor.OBJECT_TYPE);
-				xastore(opcode, tempLocalAddress, 1);
-			}
+			if (tempLocalAddress == null) tempLocalAddress = super.newLocal(ClassInstrumentor.OBJECT_TYPE);
+			xastore(opcode, tempLocalAddress, 1);
 			// actual store
 			super.visitInsn(opcode);
 			break;
 		case Opcodes.BASTORE:
-			if (policy != Policy.PUBLIC) {
-				if (tempLocalByte == null) tempLocalByte = super.newLocal(Type.BYTE_TYPE);
-				xastore(opcode, tempLocalByte, 1);
-			}
+			if (tempLocalByte == null) tempLocalByte = super.newLocal(Type.BYTE_TYPE);
+			xastore(opcode, tempLocalByte, 1);
 			// actual store
 			super.visitInsn(opcode);
 			break;
 		case Opcodes.CASTORE:
-			if (policy != Policy.PUBLIC) {
-				if (tempLocalChar == null) tempLocalChar = super.newLocal(Type.CHAR_TYPE);
-				xastore(opcode, tempLocalChar, 1);
-			}
+			if (tempLocalChar == null) tempLocalChar = super.newLocal(Type.CHAR_TYPE);
+			xastore(opcode, tempLocalChar, 1);
 			// actual store
 			super.visitInsn(opcode);
 			break;
 		case Opcodes.FASTORE:
-			if (policy != Policy.PUBLIC) {
-				if (tempLocalFloat == null) tempLocalFloat = super.newLocal(Type.FLOAT_TYPE);
-				xastore(opcode, tempLocalFloat, 1);
-			}
+			if (tempLocalFloat == null) tempLocalFloat = super.newLocal(Type.FLOAT_TYPE);
+			xastore(opcode, tempLocalFloat, 1);
 			// actual store
 			super.visitInsn(opcode);
 			break;
 		case Opcodes.IASTORE:
-			if (policy != Policy.PUBLIC) {
-				if (tempLocalInt == null) tempLocalInt = super.newLocal(Type.INT_TYPE);
-				xastore(opcode, tempLocalInt, 1);
-			}
+			if (tempLocalInt == null) tempLocalInt = super.newLocal(Type.INT_TYPE);
+			xastore(opcode, tempLocalInt, 1);
 			// actual store
 			super.visitInsn(opcode);
 			break;
 		case Opcodes.SASTORE:
-			if (policy != Policy.PUBLIC) {
-				if (tempLocalShort == null) tempLocalShort = super.newLocal(Type.SHORT_TYPE);
-				xastore(opcode, tempLocalShort, 1);
-			}
+			if (tempLocalShort == null) tempLocalShort = super.newLocal(Type.SHORT_TYPE);
+			xastore(opcode, tempLocalShort, 1);
 			// actual store
 			super.visitInsn(opcode);
 			break;
 		case Opcodes.DASTORE:
-			if (policy != Policy.PUBLIC) {
-				if (tempLocalDouble == null) tempLocalDouble = super.newLocal(Type.DOUBLE_TYPE);
-				xastore(opcode, tempLocalDouble, 2);
-			}
+			if (tempLocalDouble == null) tempLocalDouble = super.newLocal(Type.DOUBLE_TYPE);
+			xastore(opcode, tempLocalDouble, 2);
 			// actual store
 			super.visitInsn(opcode);
 			break;
 		case Opcodes.LASTORE:
-			if (policy != Policy.PUBLIC) {
-				if (tempLocalLong == null) tempLocalLong = super.newLocal(Type.LONG_TYPE);
-				xastore(opcode, tempLocalLong, 2);
-			}
+			if (tempLocalLong == null) tempLocalLong = super.newLocal(Type.LONG_TYPE);
+			xastore(opcode, tempLocalLong, 2);
 			// actual store
 			super.visitInsn(opcode);
 			break;
@@ -490,6 +576,8 @@ public class MethodInstrumentor extends AdviceAdapter {
 			super.visitInsn(opcode);
 
 			super.mark(start);
+			pushCurrentThread();
+			pushCurrentState();
 			// call acquire hook. stack ->
 			super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_ACQUIRE);
 
