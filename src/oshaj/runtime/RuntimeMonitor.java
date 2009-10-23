@@ -92,7 +92,11 @@ public class RuntimeMonitor {
 	// protected by the app locks...
 	protected static final ConcurrentIdentityHashMap<Object,LockState> lockStates = new ConcurrentIdentityHashMap<Object,LockState>();
 	protected static final ConcurrentIdentityHashMap<Object,State[]> arrayStates = new ConcurrentIdentityHashMap<Object,State[]>();
-	protected static final ConcurrentIdentityHashMap<Object,State> coarseArrayStates = new ConcurrentIdentityHashMap<Object,State>();
+	protected static final ConcurrentIdentityHashMap<Object,Ref<State>> coarseArrayStates = new ConcurrentIdentityHashMap<Object,Ref<State>>();
+	
+	static class Ref<T> {
+		T contents;
+	}
 
 	// called lazily - from threadState's lazy initializer, so whenever this thread's
 	// first action is.
@@ -158,6 +162,16 @@ public class RuntimeMonitor {
 		}
 	}
 
+//	/**
+//	 * Updates the state to reflect a write by a method with no out-edges.
+//	 * 
+//	 * @param state
+//	 * @param method
+//	 */
+//	public static State currentState() {
+//		return threadState.get().currentState;
+//	}
+	
 	// OK if array == null. Slower, but the program is about to throw a NullPointerException anyway.
 	public static void arrayRead(final Object array, final int index, final ThreadState reader) {
 		//		final ThreadState thread = threadState.get();
@@ -170,61 +184,78 @@ public class RuntimeMonitor {
 		//			thread.cachedArray = array;
 		//			thread.cachedArrayStates = states;
 		//		}
-		final State[] states;
-		try {
-			states = arrayStates.get(array);
-		} catch (NullPointerException e) {
-			throw fudgeTrace(e);
-		}
-		if (states != null) {
-			final State write = states[index];
+		if (array == reader.cachedArray) {
+			final State write = reader.cachedArrayIndexStates[index];
 			if (write != null) {
 				read(write, reader);
 			}
-		}
-	}
-	// OK if array == null. Slower, but the program is about to throw a NullPointerException anyway.
-	public static void coarseArrayRead(final Object array, final ThreadState reader) {
-		final State write;
-		try {
-			write = coarseArrayStates.get(array);
-		} catch (NullPointerException e) {
-			throw fudgeTrace(e);
-		}
-		if (write != null && write != State.INVALID_STATE) {
-			read(write, reader);
+		} else {
+			final State[] states;
+			try {
+				states = arrayStates.get(array);
+			} catch (NullPointerException e) {
+				throw fudgeTrace(e);
+			}
+			if (states != null) {
+				final State write = states[index];
+				if (write != null) {
+					read(write, reader);
+				}
+				reader.cachedArray = array;
+				reader.cachedArrayIndexStates = states;
+			}
 		}
 	}
 
-//	/**
-//	 * Updates the state to reflect a write by a method with no out-edges.
-//	 * 
-//	 * @param state
-//	 * @param method
-//	 */
-//	public static State currentState() {
-//		return threadState.get().currentState;
-//	}
-	
-	public static void arrayWrite(final Object array, final int index, final State currentState) {
-		State[] states = arrayStates.get(array);
-		if (states == null) {
-			// if array == null, we don't want to do anything more.
-			// the user code will throw the NullPointerException.
-			// by returning here, we also prevent the null key from
-			// getting into arrayStates and causing false commmunication
-			// ("collisions...")
-			// Since this is the init case, we can afford to pay. ;-)
-			if (array == null) {
-				return;
+	public static void arrayWrite(final Object array, final int index, final State currentState, final ThreadState writer) {
+		if (array == writer.cachedArray) {
+			writer.cachedArrayIndexStates[index] = currentState;
+		} else {
+			State[] states = arrayStates.get(array);
+			if (states == null) {
+				// if array == null, we don't want to do anything more.
+				// the user code will throw the NullPointerException.
+				// by returning here, we also prevent the null key from
+				// getting into arrayStates and causing false commmunication
+				// ("collisions...")
+				// Since this is the init case, we can afford to pay. ;-)
+				if (array == null) {
+					return;
+				}
+				states = new State[Array.getLength(array)];
+				State[] old = arrayStates.putIfAbsent(array, states);
+				if (old != null) {
+					states = old;
+				}
 			}
-			states = new State[Array.getLength(array)];
-			State[] old = arrayStates.putIfAbsent(array, states);
-			if (old != null) {
-				states = old;
-			}
+			states[index] = currentState;
+			writer.cachedArray = array;
+			writer.cachedArrayIndexStates = states;
 		}
-		states[index] = currentState;
+	}
+	
+	// TODO cached write array and cached read array? or is the linkage the key?
+
+	// OK if array == null. Slower, but the program is about to throw a NullPointerException anyway.
+	public static void coarseArrayRead(final Object array, final ThreadState reader) {
+		final State write;
+		if (array == reader.cachedArray) {
+			write = reader.cachedArrayStateRef.contents;
+		} else {
+			final Ref<State> writeRef;
+			try {
+				writeRef = coarseArrayStates.get(array);
+			} catch (NullPointerException e) {
+				throw fudgeTrace(e);
+			}
+			if (writeRef == null) return;
+			write = writeRef.contents;
+			reader.cachedArray = array;
+			reader.cachedArrayStateRef = writeRef;
+		}
+		if (write != null) {
+			read(write, reader);
+		}
 	}
 
 	// DO NOT CALL ON PUBLIC WRITES (i.e. when currentstate is null)
@@ -233,9 +264,24 @@ public class RuntimeMonitor {
 	// for inlined cases.
 	// TODO array state caching. Use map: array -> state ref. cache the ref, then lookup
 	// in the map is unnecessary.
-	public static void coarseArrayWrite(final Object array, final State currentState) {
+	public static void coarseArrayWrite(final Object array, final State currentState, final ThreadState threadState) {
 		//  if no array state caching, push the null check back to bytecode.
-		coarseArrayStates.put(array, currentState != null ? currentState : State.INVALID_STATE);
+		if (threadState.cachedArray == array) {
+			threadState.cachedArrayStateRef.contents = currentState;
+		} else {
+			Ref<State> ref = coarseArrayStates.get(array);
+			if (ref == null) {
+				ref = new Ref<State>();
+				ref.contents = currentState;
+				final Ref<State> oldRef = coarseArrayStates.putIfAbsent(array, ref);
+				if (oldRef != null) {
+					ref = oldRef;
+					ref.contents = currentState;
+				}
+			}
+			threadState.cachedArray = array;
+			threadState.cachedArrayStateRef = ref;
+		}
 	}
 
 

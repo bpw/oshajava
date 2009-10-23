@@ -438,7 +438,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 	private void xastore(int opcode, int local, int width) {
 		// stack == array index value |
 		if (inst.opts.coarseArrayStates) {
-			myStackSize(2 - width);
+			myStackSize(3 - width);
 			Label afterHook = super.newLabel();
 			// stack -> array index _ |
 			super.storeLocal(local);
@@ -454,6 +454,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 			super.dup();
 			// stack -> index array array | state
 			pushCurrentState();
+			pushCurrentThread();
 			// call the hook. stack -> index array _ |
 			super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_COARSE_ARRAY_STORE);
 
@@ -464,12 +465,13 @@ public class MethodInstrumentor extends AdviceAdapter {
 			// stack -> array index value |
 			super.loadLocal(local);
 		} else {
-			myStackSize(3 - width);
+			myStackSize(4 - width);
 			// stack -> array index _ |
 			super.storeLocal(local);
 			// stack -> array index array | index
 			super.dup2();
-			// stack -> array index array | index threadstate
+			// stack -> array index array | index state threadstate
+			pushCurrentState();
 			pushCurrentThread();
 			// stack -> array index _ |
 			super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_ARRAY_STORE);

@@ -46,9 +46,13 @@ public final class ThreadState {
 	private int      stackSize  = 0;
 
 	// TODO weak reference or just some GC of my own. e.g. delete after n method calls.	
-//	protected Object cachedArray;
-//	protected State[] cachedArrayStates;
-
+	protected Object cachedArray;
+	protected RuntimeMonitor.Ref<State> cachedArrayStateRef; // coarse
+	protected State[] cachedArrayIndexStates; // fine
+	
+	private static final int INITIAL_LOCK_STACK_CAPACITY = 16;
+	private LockState[] lockStateStack = new LockState[INITIAL_LOCK_STACK_CAPACITY]; 
+	
 	public ThreadState(final Thread thread, final int stateTableSize) {
 		threadRef = new WeakReference<Thread>(thread);
 		name = thread.getName();
