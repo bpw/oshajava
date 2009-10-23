@@ -41,6 +41,7 @@ public class ClassInstrumentor extends ClassAdapter {
 	protected static final String STATE_DESC                = STATE_TYPE.getDescriptor();
 	protected static final String CURRENT_STATE_FIELD       = "currentState";
 	protected static final String THREAD_FIELD              = "thread";
+	protected static final String OBJECT_WITH_STATE_NAME    = Type.getInternalName(oshaj.runtime.ObjectWithState.class);
 
 	protected static final Type[] ARGS_NONE      = new Type[0];
 	protected static final Type[] ARGS_INT       = { Type.INT_TYPE };
@@ -72,7 +73,7 @@ public class ClassInstrumentor extends ClassAdapter {
 	protected static final Method HOOK_COARSE_ARRAY_STORE = new Method("coarseArrayWrite",    Type.VOID_TYPE, new Type[] {OBJECT_TYPE, STATE_TYPE, THREAD_STATE_TYPE});
 
 	protected static final Method HOOK_ACQUIRE        = new Method("acquire", Type.VOID_TYPE, new Type[] {OBJECT_TYPE, THREAD_STATE_TYPE, STATE_TYPE});
-	protected static final Method HOOK_RELEASE        = new Method("release", Type.VOID_TYPE, ARGS_OBJECT);
+	protected static final Method HOOK_RELEASE        = new Method("release", Type.VOID_TYPE, ARGS_OBJECT_THREAD);
 
 	/****************************************************************************/
 
@@ -108,6 +109,9 @@ public class ClassInstrumentor extends ClassAdapter {
 		classDesc = getDescriptor(name);
 		classType = Type.getObjectType(name);
 		// TODO
+		if (opts.coarseFieldStates && (access & Opcodes.ACC_INTERFACE) == 0 && (superName == null || superName.equals("java/lang/Object"))) {
+			superName = Type.getType(oshaj.runtime.ObjectWithState.class).getInternalName();
+		}
 		super.visit((version == Opcodes.V1_6 ? Opcodes.V1_5 : version), access, name, signature, superName, interfaces);
 	}
 	
@@ -121,15 +125,17 @@ public class ClassInstrumentor extends ClassAdapter {
 	
 	@Override
 	public FieldVisitor visitField(int access, String name, String desc, String signature, Object value) {
-		// TODO option to ignore final fields.
-		// We make all state fields non-final to be able to set them from outside a constructor
-		if (shouldInstrumentField(name, desc)) {
-			final FieldVisitor fv = super.visitField(
-					access & ~(Opcodes.ACC_FINAL | Opcodes.ACC_VOLATILE), // see optimization note in RuntimeMonitor.
-					name + SHADOW_FIELD_SUFFIX, STATE_DESC, signature, null
-			);
-			if (fv != null) {
-				fv.visitEnd();
+		if (!opts.coarseFieldStates || (access & Opcodes.ACC_STATIC) != 0) {
+			// TODO option to ignore final fields. how?
+			// We make all state fields non-final to be able to set them from outside a constructor
+			if (shouldInstrumentField(name, desc)) {
+				final FieldVisitor fv = super.visitField(
+						access & ~(Opcodes.ACC_FINAL | Opcodes.ACC_VOLATILE),
+						name + SHADOW_FIELD_SUFFIX, STATE_DESC, signature, null
+				);
+				if (fv != null) {
+					fv.visitEnd();
+				}
 			}
 		}
 		return super.visitField(access, name, desc, signature, value);

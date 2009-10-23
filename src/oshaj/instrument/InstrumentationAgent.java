@@ -41,8 +41,9 @@ public class InstrumentationAgent implements ClassFileTransformer {
 		public String  bytecodeDump = "oshajdump";
 		public boolean java6 = false;
 		public boolean instrument = true;
-		public boolean coarseArrayStates = false;
-		public boolean coarseFieldStates = false;
+		public boolean coarseArrayStates = true;
+		public boolean coarseFieldStates = true;
+		public boolean instrumentFinalFields = false;
 		
 		public boolean verifyOutput() {
 			return debug;

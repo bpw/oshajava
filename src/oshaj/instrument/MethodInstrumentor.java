@@ -319,7 +319,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 
 	protected void makeReleaseExitHook(int extraStack) {
 		if (isSynchronized) {
-			myStackSize(1 + extraStack);
+			myStackSize(2 + extraStack);
 			if (isStatic) {
 				// get class (lock). stack -> lock
 				super.push(inst.classType);
@@ -327,6 +327,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 				// get object (lock). stack -> lock
 				super.loadThis();
 			}
+			pushCurrentThread();
 			// call release hook. stack ->
 			super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_RELEASE);
 		}
@@ -353,8 +354,12 @@ public class MethodInstrumentor extends AdviceAdapter {
 			// avoid cost of computing the frames...?
 			//		Util.log("Visiting field ins: owner = " + owner + ", name = " + name + ", desc = " + desc);
 			final Type ownerType = Type.getType(ClassInstrumentor.getDescriptor(owner));
-			final String stateFieldName = name + ClassInstrumentor.SHADOW_FIELD_SUFFIX; 
-
+			final String stateFieldName;
+			if (inst.opts.coarseFieldStates && (opcode == Opcodes.PUTFIELD || opcode == Opcodes.GETFIELD)){
+				stateFieldName = ClassInstrumentor.SHADOW_FIELD_SUFFIX;
+			} else {
+				stateFieldName = name + ClassInstrumentor.SHADOW_FIELD_SUFFIX;
+			}
 			switch(opcode) {
 			case Opcodes.PUTFIELD:
 				myStackSize(2);
@@ -596,9 +601,10 @@ public class MethodInstrumentor extends AdviceAdapter {
 			super.mark(done);
 			break;
 		case Opcodes.MONITOREXIT:
-			myStackSize(1);
+			myStackSize(2);
 			// dup the target. stack -> lock | lock
 			super.dup();
+			pushCurrentThread();
 			// call release hook. stack -> lock |
 			super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_RELEASE);
 			super.visitInsn(opcode);
@@ -682,6 +688,14 @@ public class MethodInstrumentor extends AdviceAdapter {
 		} else {
 			super.visitJumpInsn(opcode, label);
 		}
+	}
+
+	@Override
+	public void visitMethodInsn(int opcode, String owner, String name, String desc) {
+		if (opcode == Opcodes.INVOKESPECIAL && owner.equals("java/lang/Object") && name.equals("<init>")) {
+			owner = ClassInstrumentor.OBJECT_WITH_STATE_NAME;
+		}
+		super.visitMethodInsn(opcode, owner, name, desc);
 	}
 
 }

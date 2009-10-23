@@ -296,11 +296,17 @@ public class RuntimeMonitor {
 	 * 
 	 * @param lock
 	 */
-	public static void release(final Object lock) {
+	public static void release(final Object lock, final ThreadState holder) {
 		try {
-			final LockState state = lockStates.get(lock);
-			if (state.depth <= 0) Util.fail("Bad lock scoping");
-			state.depth--;
+			final LockState ls = lockStates.get(lock);
+			final int depth = --ls.depth;
+			if (depth < 1) {
+				if (depth < 0) {
+					Util.fail("Bad lock scoping");
+				} else {
+					holder.popLock();
+				}
+			}
 		} catch (Exception t) {
 			Util.fail(t);
 		}
@@ -317,39 +323,50 @@ public class RuntimeMonitor {
 	 */
 	public static void acquire(final Object lock, final ThreadState holder, final State holderState) {
 		try {
-			LockState lockState = lockStates.get(lock);
-			if (lockState == null) {
-				lockState = new LockState(holder.currentState);
-				lockState.depth = 1;
-				lockState = lockStates.putIfAbsent(lock, lockState);
-				Util.assertTrue(lockState == null);
-			} else if (lockState.depth < 0) {
-				Util.fail("Bad lock scoping.");
-			} else if (lockState.depth == 0) {
-				// First (non-reentrant) acquire by this thread.
-				// NOTE: this is atomic, because we hold lock and no other thread can call
-				// the acquire or release hooks until they hold the lock.
-				final State lastHolderState = lockState.lastHolder;
-				if (lastHolderState != holderState) {
-					lockState.lastHolder = holderState;
-					lockState.depth++;
-					if (lastHolderState.thread != holder) {
-						final IntSet readerSet = holderState.readers;
-						if (readerSet == null || ! readerSet.contains(holderState.method)) {
-							throw new IllegalSynchronizationException(
-									lastHolderState.thread, MethodTable.lookup(lastHolderState.method), 
-									holder, MethodTable.lookup(holder.currentMethod)
-									// TODO refactor MethodTable to something like StateTable
-									// lookup to something like getMethodName(State...)
-							);
+			LockState lockState = holder.getLockState(lock);
+			if (lockState != null) {
+				// if it's in that stack, then it's already been acquired, so just increment the depth.
+				lockState.depth++;
+			} else {
+				// else look it up.
+				lockState = lockStates.get(lock);
+				if (lockState == null) {
+					lockState = new LockState(holder.currentState);
+					lockState.depth = 1;
+					// push it in the holder's cache.
+					holder.pushLock(lock, lockState);
+					lockState = lockStates.putIfAbsent(lock, lockState);
+					Util.assertTrue(lockState == null);
+				} else if (lockState.depth < 0) {
+					Util.fail("Bad lock scoping.");
+				} else if (lockState.depth == 0) {
+					// First (non-reentrant) acquire by this thread.
+					// NOTE: this is atomic, because we hold lock and no other thread can call
+					// the acquire or release hooks until they hold the lock.
+					final State lastHolderState = lockState.lastHolder;
+					if (lastHolderState != holderState) {
+						lockState.lastHolder = holderState;
+						lockState.depth++;
+						if (lastHolderState != null && lastHolderState.thread != holder) {
+							final IntSet readerSet = holderState.readers;
+							if (readerSet == null || ! readerSet.contains(holderState.method)) {
+								throw new IllegalSynchronizationException(
+										lastHolderState.thread, MethodTable.lookup(lastHolderState.method), 
+										holder, MethodTable.lookup(holder.currentMethod)
+										// TODO refactor MethodTable to something like StateTable
+										// lookup to something like getMethodName(State...)
+								);
+							}
 						}
+					} else {
+						lockState.depth++;
 					}
+					// push it in the holder's cache.
+					holder.pushLock(lock, lockState);
 				} else {
+					// if we're already reentrant, just go one deeper.
 					lockState.depth++;
 				}
-			} else {
-				// if we're already reentrant, just go one deeper.
-				lockState.depth++;
 			}
 		} catch (IllegalCommunicationException e) {
 			throw e;
