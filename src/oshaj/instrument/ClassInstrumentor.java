@@ -28,6 +28,7 @@ public class ClassInstrumentor extends ClassAdapter {
 	
 	protected static final Type STRING_TYPE          = Type.getType(java.lang.String.class);
 	protected static final Type STATE_TYPE           = Type.getType(oshaj.runtime.State.class);
+	protected static final Type THREAD_STATE_TYPE    = Type.getType(oshaj.runtime.ThreadState.class);
 	protected static final Type RUNTIME_MONITOR_TYPE = Type.getType(oshaj.runtime.RuntimeMonitor.class);
 	protected static final Type OBJECT_TYPE          = Type.getType(java.lang.Object.class);
 
@@ -38,28 +39,36 @@ public class ClassInstrumentor extends ClassAdapter {
 	protected static final String OSHA_EXCEPT_TYPE_NAME     = Type.getInternalName(oshaj.runtime.OshaRuntimeException.class);
 	protected static final String SHADOW_FIELD_SUFFIX       = "__osha_state";
 	protected static final String STATE_DESC                = STATE_TYPE.getDescriptor();
+	protected static final String CURRENT_STATE_FIELD       = "currentState";
 
 	protected static final Type[] ARGS_NONE      = new Type[0];
 	protected static final Type[] ARGS_INT       = { Type.INT_TYPE };
 	protected static final Type[] ARGS_STATE     = { STATE_TYPE };
+	protected static final Type[] ARGS_STATE_THREAD     = { STATE_TYPE, THREAD_STATE_TYPE };
 	protected static final Type[] ARGS_STATE_INT = { STATE_TYPE, Type.INT_TYPE };
 	protected static final Type[] ARGS_OBJECT_INT = { OBJECT_TYPE, Type.INT_TYPE };
+	protected static final Type[] ARGS_OBJECT_INT_STATE = { OBJECT_TYPE, Type.INT_TYPE, STATE_TYPE };
 	protected static final Type[] ARGS_INT_OBJECT = { Type.INT_TYPE, OBJECT_TYPE };
+	protected static final Type[] ARGS_INT_OBJECT_THREAD = { Type.INT_TYPE, OBJECT_TYPE, THREAD_STATE_TYPE };
 	protected static final Type[] ARGS_OBJECT    = { OBJECT_TYPE };
+	protected static final Type[] ARGS_OBJECT_THREAD    = { OBJECT_TYPE, THREAD_STATE_TYPE };
+	protected static final Type[] ARGS_OBJECT_STATE    = { OBJECT_TYPE, STATE_TYPE };
 	
 	protected static final Method HOOK_ENTER = new Method("enter", Type.VOID_TYPE, ARGS_INT);
 	protected static final Method HOOK_EXIT  = new Method("exit",  Type.VOID_TYPE, ARGS_NONE);
 
-//	protected static final Method HOOK_PRIVATE_READ   = new Method("privateRead", Type.VOID_TYPE, ARGS_STATE_INT);
+	protected static final Method HOOK_THREAD_STATE = new Method("getThreadState", THREAD_STATE_TYPE, ARGS_NONE);
+
+	//	protected static final Method HOOK_PRIVATE_READ   = new Method("privateRead", Type.VOID_TYPE, ARGS_STATE_INT);
 	protected static final Method HOOK_READ  = new Method("read",  Type.VOID_TYPE, ARGS_STATE);
 	protected static final Method HOOK_WRITE = new Method("write", STATE_TYPE, ARGS_NONE);
 	
 //	protected static final Method HOOK_NEW_ARRAY       = new Method("newArray",      Type.VOID_TYPE, ARGS_INT_OBJECT);
 //	protected static final Method HOOK_NEW_MULTI_ARRAY = new Method("newMultiArray", Type.VOID_TYPE, ARGS_OBJECT_INT);
 	protected static final Method HOOK_ARRAY_LOAD      = new Method("arrayRead",     Type.VOID_TYPE, ARGS_OBJECT_INT);
-	protected static final Method HOOK_ARRAY_STORE     = new Method("arrayWrite",    Type.VOID_TYPE, ARGS_OBJECT_INT);
-	protected static final Method HOOK_COARSE_ARRAY_LOAD  = new Method("coarseArrayRead",     Type.VOID_TYPE, ARGS_OBJECT);
-	protected static final Method HOOK_COARSE_ARRAY_STORE = new Method("coarseArrayWrite",    Type.VOID_TYPE, ARGS_OBJECT);
+	protected static final Method HOOK_ARRAY_STORE     = new Method("arrayWrite",    Type.VOID_TYPE, ARGS_OBJECT_INT_STATE);
+	protected static final Method HOOK_COARSE_ARRAY_LOAD  = new Method("coarseArrayRead",     Type.VOID_TYPE, ARGS_OBJECT_THREAD);
+	protected static final Method HOOK_COARSE_ARRAY_STORE = new Method("coarseArrayWrite",    Type.VOID_TYPE, ARGS_OBJECT_STATE);
 
 	protected static final Method HOOK_ACQUIRE        = new Method("acquire", Type.VOID_TYPE, ARGS_OBJECT);
 	protected static final Method HOOK_RELEASE        = new Method("release", Type.VOID_TYPE, ARGS_OBJECT);

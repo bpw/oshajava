@@ -10,10 +10,6 @@ import acme.util.identityhash.ConcurrentIdentityHashMap;
 /**
  * TODO Possible optimizations:
  *  
- * 1. store a stack of method sets instead of method ids (i.e. do the array load 
- *    in the enter and exit hooks instead of in each read, write, and acquire hook.
- *    Hopefully this is less often, but who knows.)
- *    
  * 2. Don't call the enter and exit hooks for non-inlined methods that:
  *    - do not contain field accesses (except private reads);
  *    - do not contain any synchronization (including being a synchronized method);
@@ -29,12 +25,7 @@ import acme.util.identityhash.ConcurrentIdentityHashMap;
  *    handle reflection and dynamic class loading, but for most apps we'll be able
  *    to get most of what's interesting up front.)
  *    
- * 4. Use volatile instead of synchronized for state accesses (see optSharedRead and
- *    optSharedWrite, below). Probably a bad idea, b/c of race potential etc., but
- *    read up on that JMM... It also means that ICEs are not guaranteed to report
- *    *blame* correctly. (They are still validly illegal communication...)
- *    
- * 5. Store the currentThread in a local in each method. This way, Thread.currentThread()
+ * *****5. Store the currentThread in a local in each method. This way, Thread.currentThread()
  *    is called only once per method invocation. Then pass it as an argument to each
  *    hook that needs it.
  *    
@@ -48,42 +39,9 @@ import acme.util.identityhash.ConcurrentIdentityHashMap;
  * 
  * 9. When code is stable, customize and diversify array read/writer hooks.
  * 
- * 10. Shadow fields no longer need to be volatile now that State.writerThread is volatile
- *     and is always read last, written first, even in the constructor.  The double-checked 
- *     locking cannot expose uninitialized innards of a State because of this invariant.
- *     This approach increases the possibility of lost updates around conflicting "initial"
- *     writes, since the write of the State to the shadow field is no longer volatile (and
- *     may be delayed a bit longer/communicated a bit later as a result).  However, the only
- *     way to ensure no lost updates is to have a shadow lock as well that is acquired to
- *     initialize the shadow field (the shadow field must be volatile).  Same problem applies,
- *     though, since now you have to initialize the lock. (Get inside the constructors somehow?
- *     If you can do that, then just init the shadow field there and make it final... which
- *     leads to another thought.)
- *     
- * 11. If you can get inside constructors (even if not uniquely), just make the shadow fields
- *     non-final, but init them in the constructors.  If there are this() calls, no big deal.
- *     You'll just create an extra State or two and reassign.  To insure that things outside
- *     the constructor don't get null when they read the shadow field write to writerThread
- *     again after writing the State to the shadow field. For example:
- *       final State = new State(...);
- *       shadowField = state;
- *       state.writerThread = ...;
- *     CAVEAT: if this escapes in a constructor, you could be screwed and another thread might
- *     get a null from the shadow field. However, they're still guaranteed to see a fully
- *     initialized State if they do see one.
- *     You won't be able to get all constructors, I'm guessing, so for the ones you can't get, 
- *     keep the #10 style lazy initialization.
- *     
  * 12. Choose array granularity on some level other than "yes or no for all."  Asin coarse for
  *     some, fine for others.
  *     
- * 13. RuntimeMonitor.flush - a voltile static field available for where it's needed to sync?
- * 
- * 14. Create all possible States. Give each an ID. DUH!!!!!!! 
- * 
- * 15. Store thread id in a local at the beginning of each method and do the "same thread?"
- *     check in the bytecode stream before calling the hook.
- *    
  *    
  * TODO Things to fix or add.
  * 
@@ -92,8 +50,6 @@ import acme.util.identityhash.ConcurrentIdentityHashMap;
  * + Copy of acme.* (using our copy of java.*)
  * 
  * + Copy of asm.* (using our copy of java.*)
- * 
- * + Arrays
  * 
  * + command line options
  * 
@@ -114,16 +70,6 @@ import acme.util.identityhash.ConcurrentIdentityHashMap;
  * 
  * + see javax.annotation.processing and apt if you want source-level...
  * 
- * + How we check for null when dereferencing fields and array shadows? Unless the null pointer
- *   exception comes from in the RuntimeMonitor, it will look like it came from user code
- *   (which it would have anyway if it was not instrumented).  In fact, we're functionally
- *   OK now, but could improve performance by changing order of things...
- *   1. All shadow field gets/puts are done outside the RuntimeMonitor, so they're OK.
- *   2. Array shadow lookups in reads will cause an unneeded hook,  but we're about to throw a
- *      NullPointerException anyway, so it's OK not to optimize. :-)  We do a null check for
- *      array writes only in the lazy initialization case (where it would muck up a reflection call to
- *      get the length of the array to allocate a shadow of the same length).
- *    
  * @author bpw
  */
 public class RuntimeMonitor {
@@ -202,8 +148,7 @@ public class RuntimeMonitor {
 	 * @param state
 	 * @param readerMethod
 	 */
-	public static void read(final State write) {
-		final ThreadState reader = threadState.get();
+	public static void read(final State write, final ThreadState reader) {
 		if (write.writerThread != reader) {
 			final IntSet readerSet = write.readerSet;
 			if (readerSet == null || ! readerSet.contains(reader.currentMethod)) {
@@ -214,7 +159,7 @@ public class RuntimeMonitor {
 	}
 
 	// OK if array == null. Slower, but the program is about to throw a NullPointerException anyway.
-	public static void arrayRead(final Object array, final int index) {
+	public static void arrayRead(final Object array, final int index, final ThreadState reader) {
 		//		final ThreadState thread = threadState.get();
 		//		final State state;
 		//		if (array == thread.cachedArray) {
@@ -234,12 +179,12 @@ public class RuntimeMonitor {
 		if (states != null) {
 			final State write = states[index];
 			if (write != null) {
-				read(write);
+				read(write, reader);
 			}
 		}
 	}
 	// OK if array == null. Slower, but the program is about to throw a NullPointerException anyway.
-	public static void coarseArrayRead(final Object array) {
+	public static void coarseArrayRead(final Object array, final ThreadState reader) {
 		final State write;
 		try {
 			write = coarseArrayStates.get(array);
@@ -247,7 +192,7 @@ public class RuntimeMonitor {
 			throw fudgeTrace(e);
 		}
 		if (write != null) {
-			read(write);
+			read(write, reader);
 		}
 	}
 
@@ -257,11 +202,11 @@ public class RuntimeMonitor {
 	 * @param state
 	 * @param writerMethod
 	 */
-	public static State write() {
+	public static State currentState() {
 		return threadState.get().currentState;
 	}
 	
-	public static void arrayWrite(final Object array, int index) {
+	public static void arrayWrite(final Object array, final int index, final State currentState) {
 		State[] states = arrayStates.get(array);
 		if (states == null) {
 			// if array == null, we don't want to do anything more.
@@ -279,15 +224,14 @@ public class RuntimeMonitor {
 				states = old;
 			}
 		}
-		states[index] = threadState.get().currentState;
+		states[index] = currentState;
 	}
 
 	// DO NOT CALL ON PUBLIC WRITES (i.e. when currentstate is null)
 	// concurrent hash map doesn't handle nulls, plus it's faster to
 	// just skip it in the first place anyway. We do have to check null
 	// for inlined cases.
-	public static void coarseArrayWrite(final Object array) {
-		final State currentState = threadState.get().currentState;
+	public static void coarseArrayWrite(final Object array, final State currentState) {
 		if (currentState != null) coarseArrayStates.put(array, threadState.get().currentState);
 	}
 
@@ -366,17 +310,25 @@ public class RuntimeMonitor {
 			Util.fail(t);
 		}
 	}
+	
+	public static ThreadState getThreadState() {
+		return threadState.get();
+	}
 
-	public static void enter(final int mid) {
+	public static ThreadState enter(final int mid) {
 		try {
 			//			Util.logf("enter %d", mid);
-			threadState.get().enter(mid);
+			final ThreadState ts = threadState.get();
+			ts.enter(mid);
+			return ts;
 		} catch (NullPointerException e) {
 			final ThreadState ts = newThread();
 			threadState.set(ts);
 			ts.enter(mid);
+			return ts;
 		} catch (Throwable t) {
 			Util.fail(t);
+			return null;
 		}
 	}
 

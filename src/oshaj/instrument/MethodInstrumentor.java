@@ -44,7 +44,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 	protected int myMaxStackAdditions = 0;
 
 	protected int originalMaxLocals = UNINITIALIZED, originalMaxStack = UNINITIALIZED;
-
+	
 	public MethodInstrumentor(MethodVisitor next, int access, String name, String desc, ClassInstrumentor inst) {
 		super(next, access, name, desc);
 		this.inst = inst;
@@ -61,6 +61,26 @@ public class MethodInstrumentor extends AdviceAdapter {
 		if (size > myMaxStackAdditions) {
 			myMaxStackAdditions = size;
 		}
+	}
+
+	protected int varCurrentThread, varCurrentState;
+	
+	protected void pushCurrentThread() {
+		super.loadLocal(varCurrentThread, ClassInstrumentor.THREAD_STATE_TYPE);
+	}
+
+	private void pushCurrentState() {
+		// stack == 
+		if (policy == Policy.PUBLIC) {
+			// stack ->  null
+			mv.visitInsn(Opcodes.ACONST_NULL);
+		} else if (policy == Policy.INLINE){
+			super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_WRITE);
+		} else {
+			// stack -> state
+			super.loadLocal(varCurrentState, ClassInstrumentor.THREAD_STATE_TYPE);
+		}
+		// stack == state
 	}
 
 	@Override
@@ -148,11 +168,25 @@ public class MethodInstrumentor extends AdviceAdapter {
 
 	@Override
 	protected void onMethodEnter() {
+		myStackSize(1);
+		
 		if (policy != Policy.INLINE) {
-			myStackSize(1);
 			super.push(mid);
+			// stack -> threadstate
 			super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_ENTER);
+		} else {
+			super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_THREAD_STATE);
 		}
+		// sotre the current threadState into a local.
+		super.storeLocal(varCurrentThread, ClassInstrumentor.THREAD_STATE_TYPE);
+		// store the current state into a local
+		// stack -> threadstate
+		super.loadLocal(varCurrentThread, ClassInstrumentor.THREAD_STATE_TYPE);
+		// stack -> state
+		super.getField(ClassInstrumentor.THREAD_STATE_TYPE, ClassInstrumentor.CURRENT_STATE_FIELD, ClassInstrumentor.STATE_TYPE);
+		// stack ->
+		super.storeLocal(varCurrentState, ClassInstrumentor.THREAD_STATE_TYPE);
+		
 		if (isSynchronized) {
 			myStackSize(1);
 			if (isStatic) {
@@ -219,18 +253,6 @@ public class MethodInstrumentor extends AdviceAdapter {
 	public void visitFrame(int type, int nLocal, Object[] local, int nStack, Object[] stack) {//TODO
 	}
 
-	private void pushNewState() {
-		// stack == 
-		if (policy == Policy.PUBLIC) {
-			// stack ->  null
-			mv.visitInsn(Opcodes.ACONST_NULL);
-		} else {
-			// stack -> state
-			super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_WRITE);
-		}
-		// stack == state
-	}
-
 	/**
 	 * Instrument accesses with read and write hooks.
 	 * 
@@ -257,7 +279,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 				// dup the target. stack -> value obj | obj
 				super.dup();
 				// push the current state on the stack. stack -> value obj | obj state
-				pushNewState();
+				pushCurrentState();
 				// store the new state. stack -> value obj | 
 				super.putField(ownerType, stateFieldName, ClassInstrumentor.STATE_TYPE);
 				// swap back (may push 2 past the bar temporarily). stack -> obj value |
@@ -266,7 +288,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 			case Opcodes.PUTSTATIC:
 				myStackSize(1);
 				// get the current state. stack -> state
-				pushNewState();
+				pushCurrentState();
 				// store the new state. stack -> 
 				super.putStatic(ownerType, stateFieldName, ClassInstrumentor.STATE_TYPE);
 				break;
