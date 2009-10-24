@@ -90,7 +90,6 @@ public class MethodTable {
 		System.arraycopy(policyTable, 0, p, 0, nextID);
 		policyTable = p;
 		// upsize the state table.
-		// TODO RuntimeMonitor.upsizeStateTable();
 	}
 	
 	/**

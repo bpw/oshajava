@@ -342,8 +342,6 @@ public class MethodInstrumentor extends AdviceAdapter {
 
 	/**
 	 * Instrument accesses with read and write hooks.
-	 * 
-	 * TODO handle anonymous classes correctly.	
 	 */
 	@Override
 	public void visitFieldInsn(int opcode, String owner, String name, String desc) {

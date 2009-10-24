@@ -108,10 +108,10 @@ public class ClassInstrumentor extends ClassAdapter {
 		className = name;
 		classDesc = getDescriptor(name);
 		classType = Type.getObjectType(name);
-		// TODO
 		if (opts.coarseFieldStates && (access & Opcodes.ACC_INTERFACE) == 0 && (superName == null || superName.equals("java/lang/Object"))) {
 			superName = Type.getType(oshaj.runtime.ObjectWithState.class).getInternalName();
 		}
+		// TODO 5/6
 		super.visit((version == Opcodes.V1_6 ? Opcodes.V1_5 : version), access, name, signature, superName, interfaces);
 	}
 	

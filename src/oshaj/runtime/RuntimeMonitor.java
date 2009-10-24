@@ -5,7 +5,6 @@ import java.lang.reflect.Array;
 import oshaj.sourceinfo.IntSet;
 import oshaj.sourceinfo.MethodTable;
 import acme.util.Util;
-import acme.util.identityhash.ConcurrentIdentityHashMap;
 
 /**
  * TODO Possible optimizations:
@@ -25,14 +24,6 @@ import acme.util.identityhash.ConcurrentIdentityHashMap;
  *    handle reflection and dynamic class loading, but for most apps we'll be able
  *    to get most of what's interesting up front.)
  *        
- * 6. Inline the writerThread == currentThread check for reads. (i.e. do it outside the
- *    hook and only call the hook if needed.)
- *    
- * 7. Cache array and its array of states in ThreadState. Good for when running down an
- *    array; bad for when copying between/jumping around.
- *    
- * 8. Cache lock and lock state in ThreadState.
- * 
  * 9. When code is stable, customize and diversify array read/writer hooks.
  * 
  * 12. Choose array granularity on some level other than "yes or no for all."  Asin coarse for
@@ -78,10 +69,9 @@ public class RuntimeMonitor {
 //		@Override protected ThreadState initialValue() { return newThread(); }
 //	};
 
-	protected static final int MAX_THREADS = 32;
+	protected static final int MAX_THREADS = 16;
 
 	// TODO must be resize if too many threads.
-	// TODO each entry must be resized if MethodTable.policyTable gets resized.
 	// TODO GC when a thread exits.
 	private static int lastMethodTableSize = 0;
 	private static final ThreadState[] threadTable = new ThreadState[MAX_THREADS];
@@ -90,9 +80,9 @@ public class RuntimeMonitor {
 	// TODO fix WeakConcurrentIdentityHashMap and replace with that..
 	// we need a concurrent hash map b/c access for multiple locks at once is not
 	// protected by the app locks...
-	protected static final ConcurrentIdentityHashMap<Object,LockState> lockStates = new ConcurrentIdentityHashMap<Object,LockState>();
-	protected static final ConcurrentIdentityHashMap<Object,State[]> arrayStates = new ConcurrentIdentityHashMap<Object,State[]>();
-	protected static final ConcurrentIdentityHashMap<Object,Ref<State>> coarseArrayStates = new ConcurrentIdentityHashMap<Object,Ref<State>>();
+	protected static final WeakConcurrentIdentityHashMap<Object,LockState> lockStates = new WeakConcurrentIdentityHashMap<Object,LockState>();
+	protected static final WeakConcurrentIdentityHashMap<Object,State[]> arrayStates = new WeakConcurrentIdentityHashMap<Object,State[]>();
+	protected static final WeakConcurrentIdentityHashMap<Object,Ref<State>> coarseArrayStates = new WeakConcurrentIdentityHashMap<Object,Ref<State>>();
 	
 	static class Ref<T> {
 		T contents;
@@ -262,8 +252,6 @@ public class RuntimeMonitor {
 	// concurrent hash map doesn't handle nulls, plus it's faster to
 	// just skip it in the first place anyway. We do have to check null
 	// for inlined cases.
-	// TODO array state caching. Use map: array -> state ref. cache the ref, then lookup
-	// in the map is unnecessary.
 	public static void coarseArrayWrite(final Object array, final State currentState, final ThreadState threadState) {
 		//  if no array state caching, push the null check back to bytecode.
 		if (threadState.cachedArray == array) {
@@ -314,8 +302,6 @@ public class RuntimeMonitor {
 
 	/**
 	 * Lock acquire hook.
-	 * 
-	 * TODO cache locks by thread. A stack of them, actually?
 	 * 
 	 * @param nextMethods
 	 * @param holderMethod
