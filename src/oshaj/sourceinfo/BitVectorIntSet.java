@@ -38,9 +38,7 @@ public class BitVectorIntSet extends IntSet implements Serializable {
 			return;
 		}
 		final long[] tmp = new long[(nbits % SLOT_SIZE == 0 ? nbits/SLOT_SIZE : nbits/SLOT_SIZE + 1)];
-		for (int i = 0; i < bits.length; i++) {
-			tmp[i] = bits[i];
-		}
+		System.arraycopy(bits, 0, tmp, 0, bits.length);
 		maxBitIndex = nbits - 1;
 	}
 	

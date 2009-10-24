@@ -77,12 +77,14 @@ public class RuntimeMonitor {
 	private static final ThreadState[] threadTable = new ThreadState[MAX_THREADS];
 	private static int maxThreadId = 0;
 
-	// TODO fix WeakConcurrentIdentityHashMap and replace with that..
-	// we need a concurrent hash map b/c access for multiple locks at once is not
-	// protected by the app locks...
-	protected static final WeakConcurrentIdentityHashMap<Object,LockState> lockStates = new WeakConcurrentIdentityHashMap<Object,LockState>();
-	protected static final WeakConcurrentIdentityHashMap<Object,State[]> arrayStates = new WeakConcurrentIdentityHashMap<Object,State[]>();
-	protected static final WeakConcurrentIdentityHashMap<Object,Ref<State>> coarseArrayStates = new WeakConcurrentIdentityHashMap<Object,Ref<State>>();
+	// TODO test the WCIHM implementation to make sure it actually works and isn't just dropping
+	// all the keys or something weird.
+	protected static final WeakConcurrentIdentityHashMap<Object,LockState> lockStates = 
+		new WeakConcurrentIdentityHashMap<Object,LockState>();
+	protected static final WeakConcurrentIdentityHashMap<Object,State[]> arrayStates = 
+		new WeakConcurrentIdentityHashMap<Object,State[]>();
+	protected static final WeakConcurrentIdentityHashMap<Object,Ref<State>> coarseArrayStates = 
+		new WeakConcurrentIdentityHashMap<Object,Ref<State>>();
 	
 	static class Ref<T> {
 		T contents;
@@ -299,6 +301,10 @@ public class RuntimeMonitor {
 			Util.fail(t);
 		}
 	}
+	public static void release(final ObjectWithState lock, final ThreadState holder) {
+		final int depth = --lock.__osha_lock_state.depth;
+		if (depth < 0) Util.fail("Bad lock scoping");
+	}
 
 	/**
 	 * Lock acquire hook.
@@ -358,6 +364,39 @@ public class RuntimeMonitor {
 			throw e;
 		} catch (Throwable t) {
 			Util.fail(t);
+		}
+	}
+	public static void acquire(final ObjectWithState lock, final ThreadState holder, final State holderState) {
+		LockState ls = lock.__osha_lock_state;
+		if (ls == null) {
+			ls = new LockState(holderState);
+			ls.depth = 1;
+			lock.__osha_lock_state = ls;
+		} else if (ls.depth < 0) {
+			Util.fail("Bad lock scoping.");
+		} else if (ls.depth == 0) {
+			// First (non-reentrant) acquire by this thread.
+			// NOTE: this is atomic, because we hold lock and no other thread can call
+			// the acquire or release hooks until they hold the lock.
+			final State lastHolderState = ls.lastHolder;
+			if (lastHolderState != holderState) {
+				ls.lastHolder = holderState;
+				ls.depth++;
+				if (lastHolderState != null && lastHolderState.thread != holder) {
+					final IntSet readerSet = holderState.readers;
+					if (readerSet == null || ! readerSet.contains(holderState.method)) {
+						throw new IllegalSynchronizationException(
+								lastHolderState.thread, MethodTable.lookup(lastHolderState.method), 
+								holder, MethodTable.lookup(holder.currentMethod)
+						);
+					}
+				}
+			} else {
+				ls.depth++;
+			}
+		} else {
+			// if we're already reentrant, just go one deeper.
+			ls.depth++;
 		}
 	}
 	

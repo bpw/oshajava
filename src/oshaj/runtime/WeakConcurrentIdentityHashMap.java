@@ -474,7 +474,7 @@ public class WeakConcurrentIdentityHashMap<K, V> {
 				int index = hash & (tab.length - 1);
 				HashEntry<K,V> first = tab[index];
 				HashEntry<K,V> e = first;
-				while (e != null && (e.hash != hash || key != e.key))
+				while (e != null && (e.hash != hash || key != e.key.get()))
 					e = e.next;
 
 				V oldValue = null;

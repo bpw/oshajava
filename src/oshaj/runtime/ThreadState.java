@@ -195,16 +195,12 @@ public final class ThreadState {
 	 */
 	private Object[] expand(final Object[] array, int n) {
 		final Object[] newArray = new Object[n];
-		for (int i = 0; i < array.length; i++) {
-			newArray[i] = array[i];
-		}
+		System.arraycopy(array, 0, newArray, 0, array.length);
 		return newArray;
 	}
 	private int[] expand(final int[] array, int n) {
 		final int[] newArray = new int[n];
-		for (int i = 0; i < array.length; i++) {
-			newArray[i] = array[i];
-		}
+		System.arraycopy(array, 0, newArray, 0, array.length);
 		return newArray;
 	}
 	
