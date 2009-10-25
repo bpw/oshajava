@@ -1,0 +1,44 @@
+Used in pieces of ASM that we actually (or likely) use.
+
+* means interfaces
+
+java.util:
+HashMap
+  AbstractMap
+    AbstractCollection
+      java.lang.StringBuilder - in toString()... probably not an issue.
+    AbstractSet
+ArrayList
+  AbstractList
+HashSet
+  LinkedHashMap
+AbstractSet
+Arrays
+
+NoSuchElementException (tree.InsnList, from CheckClassAdapter, probably?)
+ListIterator (tree.InsnList, from CheckClassAdapter, probably?)
+Collections (commons.SimpleRemapper)
+LinkedList (commons.JSRInlinerAdapter)
+BitSet (commons.JSRInlinerAdapter)
+AbstractMap (commons.JSRInlinerAdapter)
+
+
+
+java.io:
+None actually used if instrumentation verifies.
+PrintWriter (CheckClassAdapter)
+  Writer
+StringWriter (CheckMethodAdapter, from CheckClassAdapter)
+  java.lang.StringBuffer
+    java.lang.AbstractStringBuilder
+      StringIndexOutOfBoundsException
+      Character
+    if serialized: java.io.ObjectStreamField
+  IndexOutOfBoundsException
+InputStream (ClassReader, but only for a constructor we don't use)
+IOException (ClassReader) -- no field, no methods of interest. Do not instrument?
+
+
+Maybe don't insturment:
+IOException (probably other Exceptions)
+java.security.*

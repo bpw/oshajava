@@ -26,7 +26,30 @@ import acme.util.Util;
  * 
  * 
  * TODO Write a tool with ASM that finds all dependencies on java.*, copies them, and
- * rewrites the bytecodes to use the copies. Can't work on classes with native methods.
+ * rewrites the bytecodes to generate and use the copies. Can't work on classes with native methods.
+ * This would get us around GPL issues if we every released with BSD/MIT...
+ * 
+ * TODO pair with OshaJavaMain and InstrumentingClassLoader.
+ * If it's an ICL trying to load something from javacopy.*, then it's
+ * the application, and it should be instrumented.
+ * If it's not, then it's asm or oshajava or acme loading something
+ * and it should not be instrumented.
+ * 
+ * TODO When instrumenting a class, the java.* types it uses should be rewritten as follows:
+ * If their initializing class loader was an ICL or if they are not loaded, then do not rewrite.
+ * If their initializing class laoder was not an ICL, they were not
+ * instrumented, so rewrite them to be javacopy.*.
+ * As ICL loads classes, it records the names/types it loaded so this is easy to determine.
+ * 
+ * TODO When loading a javacopy.* class, open the classes.jar behind the scenes, pull out the
+ * corresponding java.* class and rewrite it to be javacopy.* before the restof instrumentation.
+ * 
+ * TODO in transform(), if loader is ICL, do the instrumentation.  If not, don't.  Actually, push this
+ * all to the ICL? No, because we don't get to hook the byte array there.
+ * 
+ * TODO OshaJavaMain for installing shutdown hook to dump recorded graph in inference mode.
+ * 
+ * TODO in premain, set the system class loader to be an ICL.
  * 
  * @author benw
  *
@@ -101,7 +124,7 @@ public class InstrumentationAgent implements ClassFileTransformer {
 	
 	public byte[] transform(ClassLoader loader, String className, Class<?> classBeingRedefined, 
 			ProtectionDomain pd, byte[] bytecode) throws IllegalClassFormatException {
-		if (!opts.instrument) return bytecode;
+		if (!opts.instrument) return null;
 		try {
 			final byte[] instrumentedBytecode = instrument(className, bytecode);
 			RuntimeMonitor.loadNewMethods();
@@ -117,7 +140,7 @@ public class InstrumentationAgent implements ClassFileTransformer {
 		} catch (Throwable e) {
 			Util.log("Problem running oshaj class transformer.");
 			Util.fail(e);
-			return bytecode;
+			return null;
 		}
 	}
 
