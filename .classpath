@@ -6,6 +6,6 @@
 	<classpathentry kind="lib" path="libs/acme-10-7-09.jar" sourcepath="/AcmeUtils/src"/>
 	<classpathentry kind="lib" path="libs/asm-3.2/lib/asm-3.2.jar" sourcepath="libs/asm-3.2/src.zip"/>
 	<classpathentry kind="lib" path="libs/asm-3.2/lib/asm-commons-3.2.jar" sourcepath="libs/asm-3.2/src.zip"/>
-	<classpathentry kind="lib" path="libs/asm-3.2/lib/asm-util-3.2.jar"/>
+	<classpathentry kind="lib" path="libs/asm-3.2/lib/asm-util-3.2.jar" sourcepath="libs/asm-3.2/src.zip"/>
 	<classpathentry kind="output" path="build/classes"/>
 </classpath>
