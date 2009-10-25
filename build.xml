@@ -1,7 +1,9 @@
-<project name="oshaj" default="build">
+<project name="oshajava" default="build">
 	
 	<!-- properties -->
 	
+	<property name="top.package" value="${ant.project.name}" />
+
 	<property name="src.dir"  value="src" />
 	<property name="libs.dir" value="libs" />
 	
@@ -18,7 +20,8 @@
 	<property name="agent.jar"      value="${build.dir}/${ant.project.name}.jar" />
 	<property name="annotation.jar" value="${build.dir}/${ant.project.name}-annotation.jar" />
 	
-	<property name="agent.class" value="oshaj.instrument.InstrumentationAgent" />
+	<property name="agent.class" value="${top.package}.instrument.InstrumentationAgent" />
+	
 	
 	<path id="libs.classpath" >
 		<pathelement location="${basedir}/${libs.dir}/acme-10-7-09.jar" />
@@ -47,7 +50,7 @@
 	<target name="jar" depends="compile">
 		<!-- annotations jar (for compile time) -->
 		<jar destfile="${annotation.jar}">	
-			<fileset dir="${classes.dir}" includes="oshaj/annotation/*.class" />
+			<fileset dir="${classes.dir}" includes="${top.package}/annotation/*.class" />
 		</jar>
 		<!-- agent jar (for instrument and runtime) -->
 		<manifestclasspath property="jar.classpath" jarfile="${agent.jar}">
