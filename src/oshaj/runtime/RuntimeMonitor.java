@@ -132,6 +132,9 @@ public class RuntimeMonitor {
 	//		}
 	//	}
 
+
+	// -- Checking ---------------------------------------------------------------------
+	
 	/**
 	 * Checks a read by a shared reading method, i.e. a method that has in-edges
 	 * and can read a write by the same thread or a write in one of the
@@ -166,18 +169,13 @@ public class RuntimeMonitor {
 	
 	// OK if array == null. Slower, but the program is about to throw a NullPointerException anyway.
 	public static void arrayRead(final Object array, final int index, final ThreadState reader) {
-		//		final ThreadState thread = threadState.get();
-		//		final State state;
-		//		if (array == thread.cachedArray) {
-		//			state = thread.cachedArrayStates[index];
-		//		} else {
-		//			final State[] states = arrayStates.get(array);
-		//			state = states[index];
-		//			thread.cachedArray = array;
-		//			thread.cachedArrayStates = states;
-		//		}
 		if (array == reader.cachedArray) {
-			final State write = reader.cachedArrayIndexStates[index];
+			final State write;
+			try {
+				write = reader.cachedArrayIndexStates[index];
+			} catch (NullPointerException e) {
+				throw fudgeTrace(e);
+			}
 			if (write != null) {
 				read(write, reader);
 			}
@@ -399,6 +397,51 @@ public class RuntimeMonitor {
 			ls.depth++;
 		}
 	}
+	
+
+	// -- Recording --------------------------------------------------------------------
+	
+	public static void recordRead(final State writer, final ThreadState reader) {
+		if (writer.thread != reader) {
+			synchronized(writer) {
+				writer.readers.add(reader.currentMethod);
+			}
+		}
+	}
+	
+	// TODO watch out for assumptions in bytecode instrumentation... null check? etc.?
+//	public static void recordArrayRead(final Object array, final int index, final ThreadState reader) {
+//		if (array == reader.cachedArray) {
+//			final State write;
+//			try {
+//				write = reader.cachedArrayIndexStates[index];
+//			} catch (NullPointerException e) {
+//				throw fudgeTrace(e);
+//			}
+//			if (write != null) {
+//				recordRead(write, reader);
+//			}
+//		} else {
+//			final State[] states;
+//			try {
+//				states = arrayStates.get(array);
+//			} catch (NullPointerException e) {
+//				throw fudgeTrace(e);
+//			}
+//			if (states != null) {
+//				final State write = states[index];
+//				if (write != null) {
+//					recordRead(write, reader);
+//				}
+//				reader.cachedArray = array;
+//				reader.cachedArrayIndexStates = states;
+//			} else {
+//				
+//			}
+//		}
+//	}
+	// -- General ----------------------------------------------------------------------
+
 	
 	public static ThreadState getThreadState() {
 		final ThreadState t = threadState.get();
