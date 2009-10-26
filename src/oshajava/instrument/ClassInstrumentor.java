@@ -24,7 +24,7 @@ public class ClassInstrumentor extends ClassAdapter {
 	 * 
 	 */
 
-	protected static final String[] NONINSTRUMENTED_PREFIXES = { "oshaj/", "org/objectweb/asm/", "acme/", "sun/", "java/" };
+	protected static final String[] NONINSTRUMENTED_PREFIXES = { "oshajava/", "org/objectweb/asm/", "acme/", "java/lang/" };
 	
 	protected static final Type STRING_TYPE          = Type.getType(java.lang.String.class);
 	protected static final Type STATE_TYPE           = Type.getType(oshajava.runtime.State.class);
@@ -143,8 +143,12 @@ public class ClassInstrumentor extends ClassAdapter {
 
 	@Override
 	public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
-		return new MethodInstrumentor(super.visitMethod(access, name, desc, signature, exceptions),
-				access, name, desc, this);
+		if ((access & Opcodes.ACC_NATIVE) == 0) {
+			return new MethodInstrumentor(super.visitMethod(access, name, desc, signature, exceptions),
+					access, name, desc, this);
+		} else {
+			return null;
+		}
 	}
 
 	/**

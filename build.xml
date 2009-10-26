@@ -21,6 +21,7 @@
 	<property name="annotation.jar" value="${build.dir}/${ant.project.name}-annotation.jar" />
 	
 	<property name="agent.class" value="${top.package}.instrument.InstrumentationAgent" />
+	<property name="class.loader" value="${top.package}.instrument.InstrumentingClassLoader" />
 	
 	
 	<path id="libs.classpath" >
@@ -73,10 +74,10 @@ Class-Path: ${jar.classpath}
 export OSHAJAVA_ANNOTATION_CLASSPATH=${basedir}/${annotation.jar}
 </echo>
 <echo file="${compiler.bin}">#!/bin/sh
-javac -Xbootclasspath/a:${basedir}/${annotation.jar} $@
+javac -Xbootclasspath/a:${basedir}/${annotation.jar} $$@
 </echo>
 <echo file="${runtime.bin}">#!/bin/sh
-java -javaagent:${basedir}/${agent.jar} $@
+java -javaagent:${basedir}/${agent.jar} -Djava.system.class.loader=${class.loader} $$@
 </echo>
 		<chmod perm="a+x" type="file">
 			<fileset dir="${bin.dir}" includes="*" />	

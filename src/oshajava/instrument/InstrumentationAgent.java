@@ -7,6 +7,8 @@ import java.lang.instrument.ClassFileTransformer;
 import java.lang.instrument.IllegalClassFormatException;
 import java.lang.instrument.Instrumentation;
 import java.security.ProtectionDomain;
+import java.util.HashMap;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
@@ -55,9 +57,9 @@ import acme.util.Util;
  *
  */
 public class InstrumentationAgent implements ClassFileTransformer {
-	
+
 	protected static final String DEBUG_KEY = "instrument";
-	
+
 	static class Options {	
 		public boolean debug = true;
 		public boolean verifyInput = true;
@@ -67,7 +69,7 @@ public class InstrumentationAgent implements ClassFileTransformer {
 		public boolean coarseArrayStates = true;
 		public boolean coarseFieldStates = true;
 		public boolean instrumentFinalFields = false;
-		
+
 		public boolean verifyOutput() {
 			return debug;
 		}
@@ -75,13 +77,13 @@ public class InstrumentationAgent implements ClassFileTransformer {
 			return java6;
 		}
 	}
-	
+
 	public final Options opts;
-	
+
 	public InstrumentationAgent(Options opts) {
 		this.opts = opts;
 	}
-	
+
 	public byte[] instrument(String className, byte[] bytecode) {
 		if (ClassInstrumentor.shouldInstrument(className)) {
 			final ClassReader in = new ClassReader(bytecode);
@@ -109,28 +111,36 @@ public class InstrumentationAgent implements ClassFileTransformer {
 	}
 
 	/*********************************************************************************************/
-	
-	private static ClassLoader loader;
-	private static InstrumentationAgent agent;
-	
+
+	//	private static InstrumentationAgent agent;
+	protected static final HashMap<String,String> toCopy = new HashMap<String,String>();
+
 	public static void premain(String agentArgs, Instrumentation inst) {
 		try {
 			// TODO if args say to infer/record, Runtime.getRuntime().addShutdownHook(dumper);
-			Util.debug(DEBUG_KEY, "Loading oshaj");
+			Util.debug(DEBUG_KEY, "Loading oshajava runtime");
 			// Register the instrumentor with the jvm as a class file transformer.
-			agent = new InstrumentationAgent(new Options());
+			InstrumentationAgent agent = new InstrumentationAgent(new Options());
 
-			System.setProperty("java.system.class.loader", "oshaj.instrument.InstrumentingClassLoader");
-			loader = ClassLoader.getSystemClassLoader();
-//			Util.assertTrue(loader instanceof InstrumentingClassLoader);
+			//			System.setProperty("java.system.class.loader", "oshajava.instrument.InstrumentingClassLoader");
+			//			Util.assertTrue(loader instanceof InstrumentingClassLoader);
+			// TODO do we miss anything loaded later by asm, acme this way?
+			synchronized(toCopy) {
+				for (Class<?> c : inst.getAllLoadedClasses()) {
+					final String name = c.getCanonicalName();
+					if (name != null && ClassInstrumentor.shouldInstrument(name)) {
+						toCopy.put(name, InstrumentingClassLoader.ALT_JDK_PKG + "." + name);
+					}
+				}
+			}
 			inst.addTransformer(agent);
 			Util.debug(DEBUG_KEY, "Starting application");
 		} catch (Throwable e) {
-			Util.log("Problem installing oshaj class transformer.");
+			Util.log("Problem installing oshajava instrumentor");
 			Util.fail(e);
 		}
 	}
-	
+
 	public byte[] transform(ClassLoader loader, String className, Class<?> classBeingRedefined, 
 			ProtectionDomain pd, byte[] bytecode) throws IllegalClassFormatException {
 		Util.log(className);
@@ -148,7 +158,7 @@ public class InstrumentationAgent implements ClassFileTransformer {
 			}
 			return instrumentedBytecode;
 		} catch (Throwable e) {
-			Util.log("Problem running oshaj class transformer.");
+			Util.log("Problem running oshajava instrumentor");
 			Util.fail(e);
 			return null;
 		}
