@@ -8,6 +8,8 @@ import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.commons.Method;
 
+import acme.util.Util;
+
 
 // TODO make asm Method, GenericAdapter, etc. use copies of java.util stuff.
 // TODO repackage asm into oshaj.org.... so that oshaj can be run on apps that
@@ -96,6 +98,7 @@ public class ClassInstrumentor extends ClassAdapter {
 	protected String classDesc;
 	protected Type classType;
 	protected InstrumentationAgent.Options opts;
+	protected String superName;
 
 	public ClassInstrumentor(ClassVisitor cv, InstrumentationAgent.Options opts) {
 		super(cv);
@@ -108,11 +111,13 @@ public class ClassInstrumentor extends ClassAdapter {
 		className = name;
 		classDesc = getDescriptor(name);
 		classType = Type.getObjectType(name);
+		this.superName = superName;
 		if (opts.coarseFieldStates && (access & Opcodes.ACC_INTERFACE) == 0 && (superName == null || superName.equals("java/lang/Object"))) {
 			superName = Type.getType(oshajava.runtime.ObjectWithState.class).getInternalName();
 		}
 		// TODO 5/6
 		super.visit((version == Opcodes.V1_6 ? Opcodes.V1_5 : version), access, name, signature, superName, interfaces);
+		Util.log(name + " extends " + superName);
 	}
 	
 	// TODO allow the annotations on a class... just send to all methods...

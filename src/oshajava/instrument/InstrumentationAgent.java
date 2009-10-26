@@ -13,6 +13,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.ClassWriter;
+import org.objectweb.asm.commons.Remapper;
+import org.objectweb.asm.commons.RemappingClassAdapter;
+import org.objectweb.asm.commons.SimpleRemapper;
 import org.objectweb.asm.util.CheckClassAdapter;
 
 import oshajava.runtime.RuntimeMonitor;
@@ -67,7 +70,7 @@ public class InstrumentationAgent implements ClassFileTransformer {
 		public boolean java6 = false;
 		public boolean instrument = true;
 		public boolean coarseArrayStates = true;
-		public boolean coarseFieldStates = true;
+		public boolean coarseFieldStates = false;
 		public boolean instrumentFinalFields = false;
 
 		public boolean verifyOutput() {
@@ -97,6 +100,9 @@ public class InstrumentationAgent implements ClassFileTransformer {
 			if (!opts.java6) {
 				chain = new RemoveJava6Adapter(chain);
 			}
+			Remapper r = new SimpleRemapper(toCopy);
+			chain = new RemappingClassAdapter(chain, r);
+
 			if (opts.verifyInput) {
 				chain = new CheckClassAdapter(chain);
 			}
@@ -127,9 +133,12 @@ public class InstrumentationAgent implements ClassFileTransformer {
 			// TODO do we miss anything loaded later by asm, acme this way?
 			synchronized(toCopy) {
 				for (Class<?> c : inst.getAllLoadedClasses()) {
-					final String name = c.getCanonicalName();
-					if (name != null && ClassInstrumentor.shouldInstrument(name)) {
-						toCopy.put(name, InstrumentingClassLoader.ALT_JDK_PKG + "." + name);
+					String name = c.getCanonicalName();
+					if (name != null) {
+						name = name.replaceAll("\\.", "/");
+						if (ClassInstrumentor.shouldInstrument(name)) {
+							toCopy.put(name, InstrumentingClassLoader.ALT_JDK_PKG + "/" + name);
+						}
 					}
 				}
 			}

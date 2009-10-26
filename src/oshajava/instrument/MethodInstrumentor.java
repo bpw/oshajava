@@ -690,7 +690,8 @@ public class MethodInstrumentor extends AdviceAdapter {
 
 	@Override
 	public void visitMethodInsn(int opcode, String owner, String name, String desc) {
-		if (opcode == Opcodes.INVOKESPECIAL && owner.equals("java/lang/Object") && name.equals("<init>")) {
+		if (isConstructor && inst.superName.equals(ClassInstrumentor.OBJECT_WITH_STATE_NAME) 
+				&& opcode == Opcodes.INVOKESPECIAL && owner.equals("java/lang/Object") && name.equals("<init>")) {
 			owner = ClassInstrumentor.OBJECT_WITH_STATE_NAME;
 		}
 		super.visitMethodInsn(opcode, owner, name, desc);
