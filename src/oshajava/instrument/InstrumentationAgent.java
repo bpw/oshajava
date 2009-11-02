@@ -8,7 +8,6 @@ import java.lang.instrument.IllegalClassFormatException;
 import java.lang.instrument.Instrumentation;
 import java.security.ProtectionDomain;
 import java.util.HashMap;
-import java.util.concurrent.ConcurrentHashMap;
 
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
@@ -19,7 +18,6 @@ import org.objectweb.asm.commons.SimpleRemapper;
 import org.objectweb.asm.util.CheckClassAdapter;
 
 import oshajava.runtime.RuntimeMonitor;
-
 import acme.util.Util;
 
 /**
@@ -72,6 +70,7 @@ public class InstrumentationAgent implements ClassFileTransformer {
 		public boolean coarseArrayStates = true;
 		public boolean coarseFieldStates = false;
 		public boolean instrumentFinalFields = false;
+		public boolean remapJDK = false;
 
 		public boolean verifyOutput() {
 			return debug;
@@ -88,7 +87,8 @@ public class InstrumentationAgent implements ClassFileTransformer {
 	}
 
 	public byte[] instrument(String className, byte[] bytecode) {
-		if (ClassInstrumentor.shouldInstrument(className)) {
+		if (ClassInstrumentor.shouldInstrument(className) 
+				&& !(className.indexOf('$') != -1 && toCopy.containsKey(className.substring(0, className.indexOf('$'))))) {
 			final ClassReader in = new ClassReader(bytecode);
 			final ClassWriter out = new ClassWriter(in, opts.frames() ? ClassWriter.COMPUTE_FRAMES : 0);
 			ClassVisitor chain = out;
@@ -100,17 +100,17 @@ public class InstrumentationAgent implements ClassFileTransformer {
 			if (!opts.java6) {
 				chain = new RemoveJava6Adapter(chain);
 			}
-			Remapper r = new SimpleRemapper(toCopy);
-			chain = new RemappingClassAdapter(chain, r);
-
+			if (opts.remapJDK) {
+				chain = new RemappingClassAdapter(chain, new SimpleRemapper(toCopy));
+			}
 			if (opts.verifyInput) {
 				chain = new CheckClassAdapter(chain);
 			}
-			Util.debugf(DEBUG_KEY, "Instrumenting %s", className);
+			Util.logf("Instrumenting %s", className);
 			in.accept(chain, ClassReader.SKIP_FRAMES);
 			return out.toByteArray();
 		} else {
-			Util.debugf(DEBUG_KEY, "Ignored %s", className);
+			Util.logf("Ignored %s", className);
 			return bytecode;
 		}
 
@@ -124,12 +124,10 @@ public class InstrumentationAgent implements ClassFileTransformer {
 	public static void premain(String agentArgs, Instrumentation inst) {
 		try {
 			// TODO if args say to infer/record, Runtime.getRuntime().addShutdownHook(dumper);
-			Util.debug(DEBUG_KEY, "Loading oshajava runtime");
+			Util.log("Loading oshajava runtime");
 			// Register the instrumentor with the jvm as a class file transformer.
 			InstrumentationAgent agent = new InstrumentationAgent(new Options());
 
-			//			System.setProperty("java.system.class.loader", "oshajava.instrument.InstrumentingClassLoader");
-			//			Util.assertTrue(loader instanceof InstrumentingClassLoader);
 			// TODO do we miss anything loaded later by asm, acme this way?
 			synchronized(toCopy) {
 				for (Class<?> c : inst.getAllLoadedClasses()) {
@@ -143,7 +141,7 @@ public class InstrumentationAgent implements ClassFileTransformer {
 				}
 			}
 			inst.addTransformer(agent);
-			Util.debug(DEBUG_KEY, "Starting application");
+			Util.log("Starting application");
 		} catch (Throwable e) {
 			Util.log("Problem installing oshajava instrumentor");
 			Util.fail(e);
@@ -152,23 +150,31 @@ public class InstrumentationAgent implements ClassFileTransformer {
 
 	public byte[] transform(ClassLoader loader, String className, Class<?> classBeingRedefined, 
 			ProtectionDomain pd, byte[] bytecode) throws IllegalClassFormatException {
-		Util.log(className);
+		// ONly instrument if instrumentation is requested and this load is being performed by
+		// an ICL.
 		if (!opts.instrument) return null;
-		try {
-			final byte[] instrumentedBytecode = instrument(className, bytecode);
-			RuntimeMonitor.loadNewMethods();
-			if (opts.bytecodeDump != null) {
-				File f = new File(opts.bytecodeDump + File.separator + className + ".class");
-				f.getParentFile().mkdirs();
-				BufferedOutputStream insFile = new BufferedOutputStream(new FileOutputStream(f));
-				insFile.write(instrumentedBytecode);
-				insFile.flush();
-				insFile.close();
+		if (loader != null) Util.logf("%s loading %s", loader, className);
+		if (InstrumentingClassLoader.initiated(className)) {
+			try {
+				final byte[] instrumentedBytecode = instrument(className, bytecode);
+				RuntimeMonitor.loadNewMethods();
+				if (opts.bytecodeDump != null) {
+					File f = new File(opts.bytecodeDump + File.separator + className + ".class");
+					f.getParentFile().mkdirs();
+					BufferedOutputStream insFile = new BufferedOutputStream(new FileOutputStream(f));
+					insFile.write(instrumentedBytecode);
+					insFile.flush();
+					insFile.close();
+				}
+				return instrumentedBytecode;
+			} catch (Throwable e) {
+				Util.log("Problem running oshajava instrumentor");
+				Util.fail(e);
+				return null;
 			}
-			return instrumentedBytecode;
-		} catch (Throwable e) {
-			Util.log("Problem running oshajava instrumentor");
-			Util.fail(e);
+
+		} else {
+//			Util.logf("Ignoring non-ICL load of %s", className);
 			return null;
 		}
 	}

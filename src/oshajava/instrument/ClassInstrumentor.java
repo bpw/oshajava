@@ -26,7 +26,13 @@ public class ClassInstrumentor extends ClassAdapter {
 	 * 
 	 */
 
-	protected static final String[] NONINSTRUMENTED_PREFIXES = { "oshajava/", "org/objectweb/asm/", "acme/", "java/lang/" };
+	protected static final String[] NONINSTRUMENTED_PREFIXES = { 
+		"oshajava/", 
+		"org/objectweb/asm/", 
+		"acme/", 
+		"java/lang/", 
+		"sun/misc/" 
+	};
 	
 	protected static final Type STRING_TYPE          = Type.getType(java.lang.String.class);
 	protected static final Type STATE_TYPE           = Type.getType(oshajava.runtime.State.class);
@@ -117,7 +123,7 @@ public class ClassInstrumentor extends ClassAdapter {
 		}
 		// TODO 5/6
 		super.visit((version == Opcodes.V1_6 ? Opcodes.V1_5 : version), access, name, signature, superName, interfaces);
-		Util.log(name + " extends " + superName);
+		Util.log("class " + name + " extends " + superName);
 	}
 	
 	// TODO allow the annotations on a class... just send to all methods...
@@ -152,7 +158,7 @@ public class ClassInstrumentor extends ClassAdapter {
 			return new MethodInstrumentor(super.visitMethod(access, name, desc, signature, exceptions),
 					access, name, desc, this);
 		} else {
-			return null;
+			return super.visitMethod(access, name, desc, signature, exceptions);
 		}
 	}
 

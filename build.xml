@@ -21,6 +21,7 @@
 	<property name="annotation.jar" value="${build.dir}/${ant.project.name}-annotation.jar" />
 	
 	<property name="agent.class" value="${top.package}.instrument.InstrumentationAgent" />
+	<property name="main.class" value="${top.package}.runtime.OshaJavaMain" />
 	<property name="class.loader" value="${top.package}.instrument.InstrumentingClassLoader" />
 	
 	
@@ -70,15 +71,18 @@ Class-Path: ${jar.classpath}
 
 	<target name="bin">
 		<mkdir dir="${bin.dir}" />
-<echo file="${paths.script}">export PATH=$$PATH:${basedir}/${bin.dir}
-export OSHAJAVA_ANNOTATION_CLASSPATH=${basedir}/${annotation.jar}
-</echo>
-<echo file="${compiler.bin}">#!/bin/sh
-javac -Xbootclasspath/a:${basedir}/${annotation.jar} $$@
-</echo>
-<echo file="${runtime.bin}">#!/bin/sh
-java -javaagent:${basedir}/${agent.jar} -Djava.system.class.loader=${class.loader} $$@
-</echo>
+		<echo file="${paths.script}">export PATH=$$PATH:${basedir}/${bin.dir}
+			export OSHAJAVA_ANNOTATION_CLASSPATH=${basedir}/${annotation.jar}
+		</echo>
+		<echo file="${compiler.bin}">#!/bin/sh
+			javac -version
+			javac -Xbootclasspath/a:${basedir}/${annotation.jar} $$@
+		</echo>
+		<echo file="${runtime.bin}">#!/bin/sh
+			java -version
+			java -javaagent:${basedir}/${agent.jar} -Xbootclasspath/a:${basedir}/${agent.jar}:${toString:libs.classpath} -Djava.system.class.loader=${class.loader} ${main.class} $$@
+			# 
+		</echo>
 		<chmod perm="a+x" type="file">
 			<fileset dir="${bin.dir}" includes="*" />	
 		</chmod>

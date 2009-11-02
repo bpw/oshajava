@@ -79,29 +79,26 @@ public class MethodInstrumentor extends AdviceAdapter {
 	 */
 	private int varCurrentThread;
 	private int varCurrentState;
-//	private boolean stateVarInitialized = false, threadVarInitialized = false;
+	private boolean threadVarInitialized = false, stateVarInitialized = false;
 	
 	protected void initializeThreadVar() {
-//		if (!threadVarInitialized) {
-//			threadVarInitialized = true;
-			varCurrentThread = super.newLocal(ClassInstrumentor.THREAD_STATE_TYPE);
-			super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_THREAD_STATE);
-			// sotre the current threadState into a local.
-			super.storeLocal(varCurrentThread, ClassInstrumentor.THREAD_STATE_TYPE);
-//		}
+		varCurrentThread = super.newLocal(ClassInstrumentor.THREAD_STATE_TYPE);
+		super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_THREAD_STATE);
+		// sotre the current threadState into a local.
+		super.storeLocal(varCurrentThread, ClassInstrumentor.THREAD_STATE_TYPE);
+		threadVarInitialized = true;
 	}
-	
+
 	private void initializeThreadVarFromEnterHook() {
-//		threadVarInitialized = true;
 		varCurrentThread = super.newLocal(ClassInstrumentor.THREAD_STATE_TYPE);
 		// sotre the current threadState into a local.
 		super.storeLocal(varCurrentThread, ClassInstrumentor.THREAD_STATE_TYPE);
+		threadVarInitialized = true;
 	}
-	
+
 	protected void initializeStateVar() {
-//		initializeThreadVar();
-//		if (!stateVarInitialized) {
-//			stateVarInitialized = true;
+		if (policy != Policy.PUBLIC) {
+			myStackSize(1);
 			varCurrentState  = super.newLocal(ClassInstrumentor.STATE_TYPE);
 			// stack -> threadstate
 			pushCurrentThread();
@@ -109,13 +106,22 @@ public class MethodInstrumentor extends AdviceAdapter {
 			super.getField(ClassInstrumentor.THREAD_STATE_TYPE, ClassInstrumentor.CURRENT_STATE_FIELD, ClassInstrumentor.STATE_TYPE);
 			// stack ->
 			super.storeLocal(varCurrentState, ClassInstrumentor.STATE_TYPE);
-//		}
+			stateVarInitialized = true;
+		}
 	}
-	
+
+	@Override
+	public void visitLineNumber(int line, Label start) {
+		// TODO Auto-generated method stub
+//		Util.logf("Line %d ------------------------------------", line);
+		super.visitLineNumber(line, start);
+	}
+
 	/**
 	 * Push the current threadstate onto the stack.
 	 */
 	protected void pushCurrentThread() {
+		Util.assertTrue(threadVarInitialized);
 //		initializeThreadVar();
 		super.loadLocal(varCurrentThread, ClassInstrumentor.THREAD_STATE_TYPE);
 	}
@@ -129,7 +135,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 			// stack ->  null
 			mv.visitInsn(Opcodes.ACONST_NULL);
 		} else {
-//			initializeStateVar();
+			Util.assertTrue(threadVarInitialized && stateVarInitialized);
 			// stack -> state
 			super.loadLocal(varCurrentState, ClassInstrumentor.STATE_TYPE);
 		}
@@ -251,13 +257,6 @@ public class MethodInstrumentor extends AdviceAdapter {
 			}
 		}
 		super.visitCode();
-	}
-
-	protected final Label beginTry = super.newLabel();
-	protected final Label endTryBeginHandler = super.newLabel();
-
-	@Override
-	protected void onMethodEnter() {
 		myStackSize(1);
 		
 		if (policy != Policy.INLINE) {
@@ -291,6 +290,13 @@ public class MethodInstrumentor extends AdviceAdapter {
 				super.mark(beginTry);
 			}
 		}
+	}
+
+	protected final Label beginTry = super.newLabel();
+	protected final Label endTryBeginHandler = super.newLabel();
+
+	@Override
+	protected void onMethodEnter() {
 	}
 
 	@Override
