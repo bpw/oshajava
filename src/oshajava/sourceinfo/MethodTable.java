@@ -2,7 +2,8 @@ package oshajava.sourceinfo;
 
 import java.util.HashMap;
 
-import acme.util.Util;
+import oshajava.support.acme.util.Util;
+
 
 public class MethodTable {
 	

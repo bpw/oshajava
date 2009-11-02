@@ -1,9 +1,9 @@
 package oshajava.runtime;
 
 import java.lang.reflect.Method;
-import acme.util.Util;
 
 import oshajava.instrument.InstrumentingClassLoader;
+import oshajava.support.acme.util.Util;
 
 public class OshaJavaMain {
 	

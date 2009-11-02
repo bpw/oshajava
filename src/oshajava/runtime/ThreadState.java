@@ -3,8 +3,8 @@ package oshajava.runtime;
 import java.lang.ref.WeakReference;
 
 import oshajava.sourceinfo.MethodTable;
+import oshajava.support.acme.util.Util;
 
-import acme.util.Util;
 
 /**
  * All non-final fields are for thread private access only.

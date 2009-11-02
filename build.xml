@@ -25,14 +25,14 @@
 	<property name="class.loader" value="${top.package}.instrument.InstrumentingClassLoader" />
 	
 	
-	<path id="libs.classpath" >
+	<!-- <path id="libs.classpath" >
 		<pathelement location="${basedir}/${libs.dir}/acme-10-7-09.jar" />
 		<pathelement location="${basedir}/${asm.lib}/asm-${asm.version}.jar" />
 		<pathelement location="${basedir}/${asm.lib}/asm-analysis-${asm.version}.jar" />
 		<pathelement location="${basedir}/${asm.lib}/asm-commons-${asm.version}.jar" />
 		<pathelement location="${basedir}/${asm.lib}/asm-tree-${asm.version}.jar" />
 		<pathelement location="${basedir}/${asm.lib}/asm-util-${asm.version}.jar" />
-	</path>
+	</path> -->
 	
 	<!-- build targets -->
 	
@@ -45,7 +45,7 @@
 	<target name="compile">
 		<mkdir dir="${classes.dir}" />
 		<javac srcdir="${src.dir}" destdir="${classes.dir}">
-			<classpath refid="libs.classpath" />
+			<!-- <classpath refid="libs.classpath" /> -->
 		</javac>
 	</target>
 		
@@ -55,17 +55,17 @@
 			<fileset dir="${classes.dir}" includes="${top.package}/annotation/*.class" />
 		</jar>
 		<!-- agent jar (for instrument and runtime) -->
-		<manifestclasspath property="jar.classpath" jarfile="${agent.jar}">
+		<!-- <manifestclasspath property="jar.classpath" jarfile="${agent.jar}">
 			<classpath refid="libs.classpath" />
-		</manifestclasspath>
+		</manifestclasspath> -->
 		<property name="manifest" value="${classes.dir}/Manifest.mf" />
 <echo file="${manifest}">Premain-Class: ${agent.class}
 Agent-Class: ${agent.class}
-Class-Path: ${jar.classpath}
 </echo>
+<!--Class-Path: ${jar.classpath}-->
 		<jar destfile="${agent.jar}" index="true" manifest="${manifest}">	
 			<fileset dir="${classes.dir}" includes="**/*.class" />
-			<indexjars refid="libs.classpath" />
+			<!-- <indexjars refid="libs.classpath" /> -->
 		</jar>
 	</target>
 
@@ -80,8 +80,8 @@ Class-Path: ${jar.classpath}
 		</echo>
 		<echo file="${runtime.bin}">#!/bin/sh
 			java -version
-			java -javaagent:${basedir}/${agent.jar} -Xbootclasspath/a:${basedir}/${agent.jar}:${toString:libs.classpath} -Djava.system.class.loader=${class.loader} ${main.class} $$@
-			# 
+			java -javaagent:${basedir}/${agent.jar} -Xbootclasspath/a:${basedir}/${agent.jar} $$@
+			# -Xbootclasspath/a:${basedir}/${agent.jar}:${toString:libs.classpath} -Djava.system.class.loader=${class.loader}  ${main.class}
 		</echo>
 		<chmod perm="a+x" type="file">
 			<fileset dir="${bin.dir}" includes="*" />	

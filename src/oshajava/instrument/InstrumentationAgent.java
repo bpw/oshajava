@@ -9,16 +9,16 @@ import java.lang.instrument.Instrumentation;
 import java.security.ProtectionDomain;
 import java.util.HashMap;
 
-import org.objectweb.asm.ClassReader;
-import org.objectweb.asm.ClassVisitor;
-import org.objectweb.asm.ClassWriter;
-import org.objectweb.asm.commons.Remapper;
-import org.objectweb.asm.commons.RemappingClassAdapter;
-import org.objectweb.asm.commons.SimpleRemapper;
-import org.objectweb.asm.util.CheckClassAdapter;
 
 import oshajava.runtime.RuntimeMonitor;
-import acme.util.Util;
+import oshajava.support.acme.util.Util;
+import oshajava.support.org.objectweb.asm.ClassReader;
+import oshajava.support.org.objectweb.asm.ClassVisitor;
+import oshajava.support.org.objectweb.asm.ClassWriter;
+import oshajava.support.org.objectweb.asm.commons.Remapper;
+import oshajava.support.org.objectweb.asm.commons.RemappingClassAdapter;
+import oshajava.support.org.objectweb.asm.commons.SimpleRemapper;
+import oshajava.support.org.objectweb.asm.util.CheckClassAdapter;
 
 /**
  * TODO options
@@ -64,7 +64,7 @@ public class InstrumentationAgent implements ClassFileTransformer {
 	static class Options {	
 		public boolean debug = true;
 		public boolean verifyInput = true;
-		public String  bytecodeDump = "oshajdump";
+		public String  bytecodeDump = null; //"oshajdump";
 		public boolean java6 = false;
 		public boolean instrument = true;
 		public boolean coarseArrayStates = true;
@@ -106,11 +106,11 @@ public class InstrumentationAgent implements ClassFileTransformer {
 			if (opts.verifyInput) {
 				chain = new CheckClassAdapter(chain);
 			}
-			Util.logf("Instrumenting %s", className);
+//			Util.logf("Instrumenting %s", className);
 			in.accept(chain, ClassReader.SKIP_FRAMES);
 			return out.toByteArray();
 		} else {
-			Util.logf("Ignored %s", className);
+//			Util.logf("Ignored %s", className);
 			return bytecode;
 		}
 
@@ -153,12 +153,12 @@ public class InstrumentationAgent implements ClassFileTransformer {
 		// ONly instrument if instrumentation is requested and this load is being performed by
 		// an ICL.
 		if (!opts.instrument) return null;
-		if (loader != null) Util.logf("%s loading %s", loader, className);
-		if (InstrumentingClassLoader.initiated(className)) {
+//		if (loader != null) Util.logf("%s loading %s", loader, className);
+//		if (InstrumentingClassLoader.initiated(className)) {
 			try {
 				final byte[] instrumentedBytecode = instrument(className, bytecode);
 				RuntimeMonitor.loadNewMethods();
-				if (opts.bytecodeDump != null) {
+				if (opts.bytecodeDump != null && instrumentedBytecode != bytecode) {
 					File f = new File(opts.bytecodeDump + File.separator + className + ".class");
 					f.getParentFile().mkdirs();
 					BufferedOutputStream insFile = new BufferedOutputStream(new FileOutputStream(f));
@@ -173,10 +173,10 @@ public class InstrumentationAgent implements ClassFileTransformer {
 				return null;
 			}
 
-		} else {
+//		} else {
 //			Util.logf("Ignoring non-ICL load of %s", className);
-			return null;
-		}
+//			return null;
+//		}
 	}
 
 }

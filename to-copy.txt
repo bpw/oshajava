@@ -14,10 +14,10 @@ HashSet
   LinkedHashMap
 AbstractSet
 Arrays
+Collections (commons.SimpleRemapper)
 
 NoSuchElementException (tree.InsnList, from CheckClassAdapter, probably?)
 ListIterator (tree.InsnList, from CheckClassAdapter, probably?)
-Collections (commons.SimpleRemapper)
 LinkedList (commons.JSRInlinerAdapter)
 BitSet (commons.JSRInlinerAdapter)
 AbstractMap (commons.JSRInlinerAdapter)

@@ -2,7 +2,8 @@ package oshajava.instrument;
 
 import java.util.concurrent.ConcurrentHashMap;
 
-import acme.util.Util;
+import oshajava.support.acme.util.Util;
+
 
 public class InstrumentingClassLoader extends ClassLoader {
 	

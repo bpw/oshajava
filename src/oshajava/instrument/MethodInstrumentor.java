@@ -1,16 +1,16 @@
 package oshajava.instrument;
 
-import org.objectweb.asm.AnnotationVisitor;
-import org.objectweb.asm.Label;
-import org.objectweb.asm.MethodVisitor;
-import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.Type;
-import org.objectweb.asm.commons.AdviceAdapter;
 
 import oshajava.sourceinfo.BitVectorIntSet;
 import oshajava.sourceinfo.MethodTable;
 import oshajava.sourceinfo.UniversalIntSet;
-import acme.util.Util;
+import oshajava.support.acme.util.Util;
+import oshajava.support.org.objectweb.asm.AnnotationVisitor;
+import oshajava.support.org.objectweb.asm.Label;
+import oshajava.support.org.objectweb.asm.MethodVisitor;
+import oshajava.support.org.objectweb.asm.Opcodes;
+import oshajava.support.org.objectweb.asm.Type;
+import oshajava.support.org.objectweb.asm.commons.AdviceAdapter;
 
 // TODO allow annotations on interface methods, applied to all their
 // implementers?  This opens a bigger can of worms:

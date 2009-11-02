@@ -1,7 +1,7 @@
 package oshajava.runtime;
 
 //TODO
-import acme.util.identityhash.WeakIdentityHashMap;
+import oshajava.support.acme.util.identityhash.WeakIdentityHashMap;
 
 public class LameWeakConcurrentIdentityHashMap<K,V> {
 	

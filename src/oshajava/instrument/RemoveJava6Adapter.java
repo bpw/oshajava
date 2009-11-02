@@ -1,10 +1,10 @@
 package oshajava.instrument;
 
-import org.objectweb.asm.ClassAdapter;
-import org.objectweb.asm.ClassVisitor;
-import org.objectweb.asm.MethodAdapter;
-import org.objectweb.asm.MethodVisitor;
-import org.objectweb.asm.Opcodes;
+import oshajava.support.org.objectweb.asm.ClassAdapter;
+import oshajava.support.org.objectweb.asm.ClassVisitor;
+import oshajava.support.org.objectweb.asm.MethodAdapter;
+import oshajava.support.org.objectweb.asm.MethodVisitor;
+import oshajava.support.org.objectweb.asm.Opcodes;
 
 public class RemoveJava6Adapter extends ClassAdapter implements ClassVisitor {
 

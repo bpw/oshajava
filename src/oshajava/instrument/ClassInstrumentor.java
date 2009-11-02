@@ -1,14 +1,14 @@
 package oshajava.instrument;
 
-import org.objectweb.asm.ClassAdapter;
-import org.objectweb.asm.ClassVisitor;
-import org.objectweb.asm.FieldVisitor;
-import org.objectweb.asm.MethodVisitor;
-import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.Type;
-import org.objectweb.asm.commons.Method;
+import oshajava.support.acme.util.Util;
+import oshajava.support.org.objectweb.asm.ClassAdapter;
+import oshajava.support.org.objectweb.asm.ClassVisitor;
+import oshajava.support.org.objectweb.asm.FieldVisitor;
+import oshajava.support.org.objectweb.asm.MethodVisitor;
+import oshajava.support.org.objectweb.asm.Opcodes;
+import oshajava.support.org.objectweb.asm.Type;
+import oshajava.support.org.objectweb.asm.commons.Method;
 
-import acme.util.Util;
 
 
 // TODO make asm Method, GenericAdapter, etc. use copies of java.util stuff.
@@ -28,10 +28,23 @@ public class ClassInstrumentor extends ClassAdapter {
 
 	protected static final String[] NONINSTRUMENTED_PREFIXES = { 
 		"oshajava/", 
-		"org/objectweb/asm/", 
-		"acme/", 
 		"java/lang/", 
-		"sun/misc/" 
+		"java/security",
+		"sun/misc/",
+		"sun/reflect",
+		// TODO
+		"java/util/AbstractCollection",
+		"java/util/AbtractMap",
+		"java/util/AbstractSet",
+		"java/util/ArrayList",
+		"java/util/Arrays",
+		"java/util/Collections",
+		"java/util/concurrent/ConcurrentHashMap",
+		"java/util/concurrent/locks/ReentrantLock",
+		"java/util/HashMap",
+		"java/util/HashSet",
+		"java/util/LinkedHashMap",
+		"java/util/Vector"
 	};
 	
 	protected static final Type STRING_TYPE          = Type.getType(java.lang.String.class);
@@ -123,7 +136,7 @@ public class ClassInstrumentor extends ClassAdapter {
 		}
 		// TODO 5/6
 		super.visit((version == Opcodes.V1_6 ? Opcodes.V1_5 : version), access, name, signature, superName, interfaces);
-		Util.log("class " + name + " extends " + superName);
+//		Util.log("class " + name + " extends " + superName);
 	}
 	
 	// TODO allow the annotations on a class... just send to all methods...

@@ -4,7 +4,7 @@ import java.lang.reflect.Array;
 
 import oshajava.sourceinfo.IntSet;
 import oshajava.sourceinfo.MethodTable;
-import acme.util.Util;
+import oshajava.support.acme.util.Util;
 
 /**
  * TODO Possible optimizations:
