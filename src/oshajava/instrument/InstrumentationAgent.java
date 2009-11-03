@@ -60,11 +60,11 @@ import oshajava.support.org.objectweb.asm.util.CheckClassAdapter;
 public class InstrumentationAgent implements ClassFileTransformer {
 
 	protected static final String DEBUG_KEY = "instrument";
-
+	
 	static class Options {	
 		public boolean debug = true;
 		public boolean verifyInput = true;
-		public String  bytecodeDump = null; //"oshajdump";
+		public String  bytecodeDump = "oshajdump";
 		public boolean java6 = false;
 		public boolean instrument = true;
 		public boolean coarseArrayStates = true;
@@ -106,11 +106,11 @@ public class InstrumentationAgent implements ClassFileTransformer {
 			if (opts.verifyInput) {
 				chain = new CheckClassAdapter(chain);
 			}
-//			Util.logf("Instrumenting %s", className);
+			Util.logf("Instrumenting %s", className);
 			in.accept(chain, ClassReader.SKIP_FRAMES);
 			return out.toByteArray();
 		} else {
-//			Util.logf("Ignored %s", className);
+			Util.logf("Ignored %s", className);
 			return bytecode;
 		}
 
@@ -123,6 +123,7 @@ public class InstrumentationAgent implements ClassFileTransformer {
 
 	public static void premain(String agentArgs, Instrumentation inst) {
 		try {
+			Thread.currentThread().setName("oshajava");
 			// TODO if args say to infer/record, Runtime.getRuntime().addShutdownHook(dumper);
 			Util.log("Loading oshajava runtime");
 			// Register the instrumentor with the jvm as a class file transformer.
@@ -133,7 +134,7 @@ public class InstrumentationAgent implements ClassFileTransformer {
 				for (Class<?> c : inst.getAllLoadedClasses()) {
 					String name = c.getCanonicalName();
 					if (name != null) {
-						name = name.replaceAll("\\.", "/");
+						name = name.replace('.', '/');
 						if (ClassInstrumentor.shouldInstrument(name)) {
 							toCopy.put(name, InstrumentingClassLoader.ALT_JDK_PKG + "/" + name);
 						}
@@ -141,42 +142,65 @@ public class InstrumentationAgent implements ClassFileTransformer {
 				}
 			}
 			inst.addTransformer(agent);
-			Util.log("Starting application");
+//			Util.log("Starting application");
 		} catch (Throwable e) {
 			Util.log("Problem installing oshajava instrumentor");
 			Util.fail(e);
 		}
 	}
 
+	private volatile boolean instrumentationStarted = false;
+	private static String mainClassInternalName;
+	public static void setMainClass(String cl) {
+		mainClassInternalName = cl.replace('.', '/');
+	}
+	private static ThreadGroup appThreadGroupRoot;
+	public static void setAppThreadGroupRoot(ThreadGroup tg) {
+		appThreadGroupRoot = tg;
+	}
+
 	public byte[] transform(ClassLoader loader, String className, Class<?> classBeingRedefined, 
 			ProtectionDomain pd, byte[] bytecode) throws IllegalClassFormatException {
-		// ONly instrument if instrumentation is requested and this load is being performed by
-		// an ICL.
-		if (!opts.instrument) return null;
-//		if (loader != null) Util.logf("%s loading %s", loader, className);
-//		if (InstrumentingClassLoader.initiated(className)) {
-			try {
-				final byte[] instrumentedBytecode = instrument(className, bytecode);
-				RuntimeMonitor.loadNewMethods();
-				if (opts.bytecodeDump != null && instrumentedBytecode != bytecode) {
-					File f = new File(opts.bytecodeDump + File.separator + className + ".class");
-					f.getParentFile().mkdirs();
-					BufferedOutputStream insFile = new BufferedOutputStream(new FileOutputStream(f));
-					insFile.write(instrumentedBytecode);
-					insFile.flush();
-					insFile.close();
-				}
-				return instrumentedBytecode;
-			} catch (Throwable e) {
-				Util.log("Problem running oshajava instrumentor");
-				Util.fail(e);
-				return null;
+		if (!shouldTransform(className)) return null;
+		try {
+			final byte[] instrumentedBytecode = instrument(className, bytecode);
+			RuntimeMonitor.loadNewMethods();
+			if (opts.bytecodeDump != null && instrumentedBytecode != bytecode) {
+				File f = new File(opts.bytecodeDump + File.separator + className + ".class");
+				f.getParentFile().mkdirs();
+				BufferedOutputStream insFile = new BufferedOutputStream(new FileOutputStream(f));
+				insFile.write(instrumentedBytecode);
+				insFile.flush();
+				insFile.close();
 			}
-
-//		} else {
-//			Util.logf("Ignoring non-ICL load of %s", className);
-//			return null;
-//		}
+			return instrumentedBytecode;
+		} catch (Throwable e) {
+			Util.log("Problem running oshajava instrumentor");
+			Util.fail(e);
+			return null;
+		}
 	}
+	
+	private boolean shouldTransform(String className) {
+		if (opts.instrument) {
+			if (!instrumentationStarted) {
+				if(className.equals(mainClassInternalName)) {
+					instrumentationStarted = true;
+					Util.logf("Loading main class (%s) and starting instrumentation.", mainClassInternalName);
+					return true;
+				}
+				Util.logf("Ignoring %s. (Instrumentation not started yet.)", className);
+			} else if (appThreadGroupRoot.parentOf(Thread.currentThread().getThreadGroup())) {
+				// if this is a thread spawned by the app.
+				// TODO this loses finalize methods, called by GC, probably not in an app thread.
+				return true;
+			} else {
+				Util.logf("Ignoring %s. (Not in application thread.)", className);
+			}
+		}
+		return false;
+	}
+	
+//	protected byte[] transform
 
 }

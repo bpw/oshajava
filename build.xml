@@ -9,6 +9,9 @@
 	
 	<property name="asm.version" value="3.2" />
 	<property name="asm.lib"     value="${libs.dir}/asm-${asm.version}/lib" />
+	<property name="asm.src.dir" value="${libs.dir}/asm-${asm.version}/src" />
+	
+	<property name="acme.src.dir" value="${libs.dir}/acmeutils/src" />
 	
 	<property name="build.dir"    value="build" />
 	<property name="classes.dir"  value="${build.dir}/classes" />
@@ -44,6 +47,8 @@
 	
 	<target name="compile">
 		<mkdir dir="${classes.dir}" />
+		<javac srcdir="${asm.src.dir}" destdir="${classes.dir}" />
+		<javac srcdir="${acme.src.dir}" destdir="${classes.dir}" />
 		<javac srcdir="${src.dir}" destdir="${classes.dir}">
 			<!-- <classpath refid="libs.classpath" /> -->
 		</javac>
@@ -80,8 +85,20 @@ Agent-Class: ${agent.class}
 		</echo>
 		<echo file="${runtime.bin}">#!/bin/sh
 			java -version
-			java -javaagent:${basedir}/${agent.jar} -Xbootclasspath/a:${basedir}/${agent.jar} $$@
-			# -Xbootclasspath/a:${basedir}/${agent.jar}:${toString:libs.classpath} -Djava.system.class.loader=${class.loader}  ${main.class}
+			JAVA_ARGS=""
+			while test -n "$1"
+			do
+			    # val=`echo "$1" | sed -e "s;--[^=]*=;;"`
+			    case "$1" in
+				--) shift; break ;;
+				*) JAVA_ARGS="$$JAVA_ARGS $1" ;;
+			    esac
+			    shift
+			done
+				
+			java -javaagent:${basedir}/${agent.jar} -Xbootclasspath/a:${basedir}/${agent.jar} $$JAVA_ARGS ${main.class} $$@
+			# 
+			# -Xbootclasspath/a:${basedir}/${agent.jar}:${toString:libs.classpath} -Djava.system.class.loader=${class.loader}  
 		</echo>
 		<chmod perm="a+x" type="file">
 			<fileset dir="${bin.dir}" includes="*" />	

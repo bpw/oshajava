@@ -76,6 +76,11 @@ public class RuntimeMonitor {
 	private static int lastMethodTableSize = 0;
 	private static final ThreadState[] threadTable = new ThreadState[MAX_THREADS];
 	private static int maxThreadId = 0;
+	
+	private static boolean appStarted = false;
+	protected static void startApp() {
+		appStarted = true;
+	}
 
 	// TODO test the WCIHM implementation to make sure it actually works and isn't just dropping
 	// all the keys or something weird.

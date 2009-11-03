@@ -1,6 +1,5 @@
 package oshajava.instrument;
 
-import oshajava.support.acme.util.Util;
 import oshajava.support.org.objectweb.asm.ClassAdapter;
 import oshajava.support.org.objectweb.asm.ClassVisitor;
 import oshajava.support.org.objectweb.asm.FieldVisitor;
@@ -30,8 +29,6 @@ public class ClassInstrumentor extends ClassAdapter {
 		"oshajava/", 
 		"java/lang/", 
 		"java/security",
-		"sun/misc/",
-		"sun/reflect",
 		// TODO
 		"java/util/AbstractCollection",
 		"java/util/AbtractMap",
@@ -107,7 +104,7 @@ public class ClassInstrumentor extends ClassAdapter {
 	}
 	
 	public static String getDescriptor(String name) {
-		return "L" + name.replaceAll("\\.", "/") + ";";
+		return "L" + name.replace('.', '/') + ";";
 	}
 
 	/**************************************************************************/
