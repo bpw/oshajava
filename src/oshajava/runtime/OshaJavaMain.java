@@ -36,6 +36,11 @@ public class OshaJavaMain {
 				}
 			}
 		};
+		Runtime.getRuntime().addShutdownHook(new Thread() {
+			public void run() {
+				InstrumentationAgent.stopInstrumentation();
+			}
+		});
 		Util.logf("Starting %s", args[0]);
 		app.start();
 		try {

@@ -61,6 +61,25 @@ public class InstrumentationAgent implements ClassFileTransformer {
 
 	protected static final String DEBUG_KEY = "instrument";
 	
+	protected static final String[] EXCLUDE_PREFIXES = { 
+		"oshajava/", 
+		"java/lang/", 
+		"java/security",
+		// TODO
+		"java/util/AbstractCollection",
+		"java/util/AbtractMap",
+		"java/util/AbstractSet",
+		"java/util/ArrayList",
+		"java/util/Arrays",
+		"java/util/Collections",
+		"java/util/concurrent/ConcurrentHashMap",
+		"java/util/concurrent/locks/ReentrantLock",
+		"java/util/HashMap",
+		"java/util/HashSet",
+		"java/util/LinkedHashMap",
+		"java/util/Vector"
+	};
+	
 	static class Options {	
 		public boolean debug = true;
 		public boolean verifyInput = true;
@@ -87,39 +106,31 @@ public class InstrumentationAgent implements ClassFileTransformer {
 	}
 
 	public byte[] instrument(String className, byte[] bytecode) {
-		if (ClassInstrumentor.shouldInstrument(className) 
-				&& !(className.indexOf('$') != -1 && toCopy.containsKey(className.substring(0, className.indexOf('$'))))) {
-			final ClassReader in = new ClassReader(bytecode);
-			final ClassWriter out = new ClassWriter(in, opts.frames() ? ClassWriter.COMPUTE_FRAMES : 0);
-			ClassVisitor chain = out;
-			// Build a chain according to the options.
-			if (opts.verifyOutput()) {
-				chain = new CheckClassAdapter(chain);
-			}
-			chain = new ClassInstrumentor(chain, opts);
-			if (!opts.java6) {
-				chain = new RemoveJava6Adapter(chain);
-			}
-			if (opts.remapJDK) {
-				chain = new RemappingClassAdapter(chain, new SimpleRemapper(toCopy));
-			}
-			if (opts.verifyInput) {
-				chain = new CheckClassAdapter(chain);
-			}
-			Util.logf("Instrumenting %s", className);
-			in.accept(chain, ClassReader.SKIP_FRAMES);
-			return out.toByteArray();
-		} else {
-			Util.logf("Ignored %s", className);
-			return bytecode;
+		final ClassReader in = new ClassReader(bytecode);
+		final ClassWriter out = new ClassWriter(in, opts.frames() ? ClassWriter.COMPUTE_FRAMES : 0);
+		ClassVisitor chain = out;
+		// Build a chain according to the options.
+		if (opts.verifyOutput()) {
+			chain = new CheckClassAdapter(chain);
 		}
-
+		chain = new ClassInstrumentor(chain, opts);
+		if (!opts.java6) {
+			chain = new RemoveJava6Adapter(chain);
+		}
+		if (opts.remapJDK) {
+			chain = new RemappingClassAdapter(chain, new SimpleRemapper(uninstrumentedLoadedClasses));
+		}
+		if (opts.verifyInput) {
+			chain = new CheckClassAdapter(chain);
+		}
+		Util.logf("Instrumenting %s", className);
+		in.accept(chain, ClassReader.SKIP_FRAMES);
+		return out.toByteArray();
 	}
 
 	/*********************************************************************************************/
 
-	//	private static InstrumentationAgent agent;
-	protected static final HashMap<String,String> toCopy = new HashMap<String,String>();
+	protected static final HashMap<String,String> uninstrumentedLoadedClasses = new HashMap<String,String>();
 
 	public static void premain(String agentArgs, Instrumentation inst) {
 		try {
@@ -130,29 +141,32 @@ public class InstrumentationAgent implements ClassFileTransformer {
 			InstrumentationAgent agent = new InstrumentationAgent(new Options());
 
 			// TODO do we miss anything loaded later by asm, acme this way?
-			synchronized(toCopy) {
+			synchronized(uninstrumentedLoadedClasses) {
 				for (Class<?> c : inst.getAllLoadedClasses()) {
 					String name = c.getCanonicalName();
 					if (name != null) {
 						name = name.replace('.', '/');
-						if (ClassInstrumentor.shouldInstrument(name)) {
-							toCopy.put(name, InstrumentingClassLoader.ALT_JDK_PKG + "/" + name);
+						if (shouldInstrument(name)) {
+							uninstrumentedLoadedClasses.put(name, InstrumentingClassLoader.ALT_JDK_PKG + "/" + name);
 						}
 					}
 				}
 			}
 			inst.addTransformer(agent);
-//			Util.log("Starting application");
 		} catch (Throwable e) {
 			Util.log("Problem installing oshajava instrumentor");
 			Util.fail(e);
 		}
 	}
 
-	private volatile boolean instrumentationStarted = false;
+	private static volatile boolean instrumentationOn = false;
 	private static String mainClassInternalName;
 	public static void setMainClass(String cl) {
 		mainClassInternalName = cl.replace('.', '/');
+	}
+	public static void stopInstrumentation() {
+		Util.log("Turning off instrumentation");
+		instrumentationOn = false;
 	}
 	private static ThreadGroup appThreadGroupRoot;
 	public static void setAppThreadGroupRoot(ThreadGroup tg) {
@@ -161,8 +175,8 @@ public class InstrumentationAgent implements ClassFileTransformer {
 
 	public byte[] transform(ClassLoader loader, String className, Class<?> classBeingRedefined, 
 			ProtectionDomain pd, byte[] bytecode) throws IllegalClassFormatException {
-		if (!shouldTransform(className)) return null;
 		try {
+			if (!shouldTransform(className)) return null;
 			final byte[] instrumentedBytecode = instrument(className, bytecode);
 			RuntimeMonitor.loadNewMethods();
 			if (opts.bytecodeDump != null && instrumentedBytecode != bytecode) {
@@ -183,22 +197,41 @@ public class InstrumentationAgent implements ClassFileTransformer {
 	
 	private boolean shouldTransform(String className) {
 		if (opts.instrument) {
-			if (!instrumentationStarted) {
+			if (!instrumentationOn) {
 				if(className.equals(mainClassInternalName)) {
-					instrumentationStarted = true;
+					instrumentationOn = true;
 					Util.logf("Loading main class (%s) and starting instrumentation.", mainClassInternalName);
 					return true;
 				}
-				Util.logf("Ignoring %s. (Instrumentation not started yet.)", className);
-			} else if (appThreadGroupRoot.parentOf(Thread.currentThread().getThreadGroup())) {
-				// if this is a thread spawned by the app.
+//				Util.logf("Ignoring %s (Instrumentation not started yet.)", className);
+			} else if (appThreadGroupRoot.parentOf(Thread.currentThread().getThreadGroup())
+					&& shouldInstrument(className)
+					&& !hasUninstrumentedOuterClass(className)) {
+				// if this is a thread spawned by the app and we don't ignore this class.
 				// TODO this loses finalize methods, called by GC, probably not in an app thread.
 				return true;
 			} else {
-				Util.logf("Ignoring %s. (Not in application thread.)", className);
+				Util.logf("Ignoring %s", className);
 			}
 		}
 		return false;
+	}
+	
+	protected static boolean shouldInstrument(String className) {
+		for (String prefix : EXCLUDE_PREFIXES) {
+			if (className.startsWith(prefix)) return false;
+		}
+		return true;
+	}
+	
+	private static boolean hasUninstrumentedOuterClass(String className) {
+		final int i = className.lastIndexOf('$');
+		if (i == -1) {
+			return false;
+		} else {
+			final String cn = className.substring(0, i);
+			return uninstrumentedLoadedClasses.containsKey(cn) || hasUninstrumentedOuterClass(cn);
+		}
 	}
 	
 //	protected byte[] transform

@@ -25,25 +25,6 @@ public class ClassInstrumentor extends ClassAdapter {
 	 * 
 	 */
 
-	protected static final String[] NONINSTRUMENTED_PREFIXES = { 
-		"oshajava/", 
-		"java/lang/", 
-		"java/security",
-		// TODO
-		"java/util/AbstractCollection",
-		"java/util/AbtractMap",
-		"java/util/AbstractSet",
-		"java/util/ArrayList",
-		"java/util/Arrays",
-		"java/util/Collections",
-		"java/util/concurrent/ConcurrentHashMap",
-		"java/util/concurrent/locks/ReentrantLock",
-		"java/util/HashMap",
-		"java/util/HashSet",
-		"java/util/LinkedHashMap",
-		"java/util/Vector"
-	};
-	
 	protected static final Type STRING_TYPE          = Type.getType(java.lang.String.class);
 	protected static final Type STATE_TYPE           = Type.getType(oshajava.runtime.State.class);
 	protected static final Type THREAD_STATE_TYPE    = Type.getType(oshajava.runtime.ThreadState.class);
@@ -95,14 +76,6 @@ public class ClassInstrumentor extends ClassAdapter {
 
 	/****************************************************************************/
 
-
-	public static boolean shouldInstrument(String className) {
-		for (String prefix : NONINSTRUMENTED_PREFIXES) {
-			if (className.startsWith(prefix)) return false;
-		}
-		return true;
-	}
-	
 	public static String getDescriptor(String name) {
 		return "L" + name.replace('.', '/') + ";";
 	}
@@ -184,7 +157,7 @@ public class ClassInstrumentor extends ClassAdapter {
 	 * @return
 	 */
 	public boolean shouldInstrumentField(String owner, String name, String desc) {
-		return shouldInstrument(owner) && shouldInstrumentField(name, desc);
+		return InstrumentationAgent.shouldInstrument(owner) && shouldInstrumentField(name, desc);
 	}
 	
 	protected boolean shouldInstrumentField(String name, String desc) {
