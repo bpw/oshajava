@@ -27,19 +27,9 @@
 	<property name="main.class" value="${top.package}.runtime.OshaJavaMain" />
 	<property name="class.loader" value="${top.package}.instrument.InstrumentingClassLoader" />
 	
-	
-	<!-- <path id="libs.classpath" >
-		<pathelement location="${basedir}/${libs.dir}/acme-10-7-09.jar" />
-		<pathelement location="${basedir}/${asm.lib}/asm-${asm.version}.jar" />
-		<pathelement location="${basedir}/${asm.lib}/asm-analysis-${asm.version}.jar" />
-		<pathelement location="${basedir}/${asm.lib}/asm-commons-${asm.version}.jar" />
-		<pathelement location="${basedir}/${asm.lib}/asm-tree-${asm.version}.jar" />
-		<pathelement location="${basedir}/${asm.lib}/asm-util-${asm.version}.jar" />
-	</path> -->
-	
 	<!-- build targets -->
 	
-	<target name="build" depends="jar" description="Build the ${ant.project.name} jar." />
+	<target name="build" depends="jar,bin" description="Build ${ant.project.name}." />
 		
 	<target name="clean" description="Clean build files.">
 		<delete dir="${build.dir}" />
@@ -104,7 +94,5 @@ Agent-Class: ${agent.class}
 			<fileset dir="${bin.dir}" includes="*" />	
 		</chmod>
 	</target>
-	
-	<target name="install" depends="build,bin" description="Install ${ant.project.name}." />
 	
 </project>
