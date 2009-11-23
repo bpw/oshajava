@@ -117,6 +117,9 @@ public class MethodTable {
 	 * not yet been defined, then its ID will be added to the set when it is
 	 * defined later.
 	 * 
+	 * NOTE RuntimeMonitor.loadNewMethods depends on this lazy implementation to
+	 * guarantee "reasonable" ordering of IDs.
+	 * 
 	 * @param sig Method signature
 	 * @param readerSet Set that wants the ID as a member.
 	 */

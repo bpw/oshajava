@@ -105,6 +105,7 @@ public class RuntimeMonitor {
 		return ts;
 	}
 	
+	// NOTE This relies on the lazy MethodTable.requestID scheme.
 	public static synchronized void loadNewMethods() {
 		final int first = lastMethodTableSize;
 		lastMethodTableSize = MethodTable.size();
