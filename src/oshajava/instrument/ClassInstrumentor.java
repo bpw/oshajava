@@ -7,6 +7,7 @@ import oshajava.support.org.objectweb.asm.MethodVisitor;
 import oshajava.support.org.objectweb.asm.Opcodes;
 import oshajava.support.org.objectweb.asm.Type;
 import oshajava.support.org.objectweb.asm.commons.Method;
+import oshajava.support.org.objectweb.asm.commons.JSRInlinerAdapter;
 
 
 
@@ -88,6 +89,7 @@ public class ClassInstrumentor extends ClassAdapter {
 	protected Type classType;
 	protected InstrumentationAgent.Options opts;
 	protected String superName;
+	protected int classAccess;
 
 	public ClassInstrumentor(ClassVisitor cv, InstrumentationAgent.Options opts) {
 		super(cv);
@@ -100,6 +102,7 @@ public class ClassInstrumentor extends ClassAdapter {
 		className = name;
 		classDesc = getDescriptor(name);
 		classType = Type.getObjectType(name);
+		classAccess = access;
 		this.superName = superName;
 		if (opts.coarseFieldStates && (access & Opcodes.ACC_INTERFACE) == 0 && (superName == null || superName.equals("java/lang/Object"))) {
 			superName = Type.getType(oshajava.runtime.ObjectWithState.class).getInternalName();
@@ -119,7 +122,7 @@ public class ClassInstrumentor extends ClassAdapter {
 	
 	@Override
 	public FieldVisitor visitField(int access, String name, String desc, String signature, Object value) {
-		if (!opts.coarseFieldStates || (access & Opcodes.ACC_STATIC) != 0) {
+		if (  (!opts.coarseFieldStates || (access & Opcodes.ACC_STATIC) != 0)) {
 			// TODO option to ignore final fields. how?
 			// We make all state fields non-final to be able to set them from outside a constructor
 			if (shouldInstrumentField(name, desc)) {
@@ -138,8 +141,8 @@ public class ClassInstrumentor extends ClassAdapter {
 	@Override
 	public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
 		if ((access & Opcodes.ACC_NATIVE) == 0) {
-			return new MethodInstrumentor(super.visitMethod(access, name, desc, signature, exceptions),
-					access, name, desc, this);
+			return new JSRInlinerAdapter(new MethodInstrumentor(super.visitMethod(access, name, desc, signature, exceptions),
+					access, name, desc, this), access, name, desc, signature, exceptions);
 		} else {
 			return super.visitMethod(access, name, desc, signature, exceptions);
 		}
@@ -161,7 +164,8 @@ public class ClassInstrumentor extends ClassAdapter {
 	}
 	
 	protected boolean shouldInstrumentField(String name, String desc) {
-		return (outerClassDesc == null 
+		return (classAccess & Opcodes.ACC_INTERFACE) == 0 && // don't create shadows for interface fields
+		        (outerClassDesc == null 
 				|| ! (name.startsWith("this$") && desc.equals(outerClassDesc)));
 	}
 }
