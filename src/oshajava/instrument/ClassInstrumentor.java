@@ -35,6 +35,9 @@ public class ClassInstrumentor extends ClassAdapter {
 	protected static final String ANNOT_THREAD_PRIVATE_DESC = Type.getDescriptor(oshajava.annotation.ThreadPrivate.class);
 	protected static final String ANNOT_READ_BY_DESC        = Type.getDescriptor(oshajava.annotation.ReadBy.class);
 	protected static final String ANNOT_READ_BY_ALL_DESC    = Type.getDescriptor(oshajava.annotation.ReadByAll.class);
+	protected static final String ANNOT_GROUP_DESC    		= Type.getDescriptor(oshajava.annotation.Group.class);
+	protected static final String ANNOT_MEMBER_DESC    		= Type.getDescriptor(oshajava.annotation.Member.class);
+	
 	protected static final String OSHA_EXCEPT_TYPE_NAME     = Type.getInternalName(oshajava.runtime.OshaRuntimeException.class);
 	protected static final String SHADOW_FIELD_SUFFIX       = "__osha_state";
 	protected static final String STATE_DESC                = STATE_TYPE.getDescriptor();
@@ -62,6 +65,7 @@ public class ClassInstrumentor extends ClassAdapter {
 
 	//	protected static final Method HOOK_PRIVATE_READ   = new Method("privateRead", Type.VOID_TYPE, ARGS_STATE_INT);
 	protected static final Method HOOK_READ  = new Method("read",  Type.VOID_TYPE, ARGS_STATE_THREAD);
+	protected static final Method HOOK_RECORD_READ  = new Method("recordRead",  Type.VOID_TYPE, ARGS_STATE_THREAD);
 //	protected static final Method HOOK_WRITE = new Method("write", STATE_TYPE, ARGS_NONE);
 	
 //	protected static final Method HOOK_NEW_ARRAY       = new Method("newArray",      Type.VOID_TYPE, ARGS_INT_OBJECT);
@@ -88,6 +92,7 @@ public class ClassInstrumentor extends ClassAdapter {
 	protected Type classType;
 	protected InstrumentationAgent.Options opts;
 	protected String superName;
+//	protected Policy policy;
 
 	public ClassInstrumentor(ClassVisitor cv, InstrumentationAgent.Options opts) {
 		super(cv);
@@ -164,4 +169,8 @@ public class ClassInstrumentor extends ClassAdapter {
 		return (outerClassDesc == null 
 				|| ! (name.startsWith("this$") && desc.equals(outerClassDesc)));
 	}
+	
+//	protected Policy policy() {
+//		return policy;
+//	}
 }

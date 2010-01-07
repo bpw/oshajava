@@ -4,8 +4,6 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Target;
 
 @Target({ElementType.METHOD})
-public @interface ReadBy {
-	
-	String[] value();
-
+public @interface Member {
+	String id();
 }

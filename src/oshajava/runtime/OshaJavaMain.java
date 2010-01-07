@@ -5,6 +5,7 @@ import java.lang.reflect.Method;
 
 import oshajava.instrument.InstrumentationAgent;
 import oshajava.instrument.InstrumentingClassLoader;
+import oshajava.sourceinfo.MethodTable;
 import oshajava.support.acme.util.Util;
 
 public class OshaJavaMain {
@@ -39,6 +40,8 @@ public class OshaJavaMain {
 		Runtime.getRuntime().addShutdownHook(new Thread() {
 			public void run() {
 				InstrumentationAgent.stopInstrumentation();
+				MethodTable.dumpGraphML("oshajava.policy.graphml", MethodTable.policyTable);
+				MethodTable.dumpGraphML("oshajava.trace.graphml", RuntimeMonitor.graph);
 			}
 		});
 		Util.logf("Starting %s", args[0]);

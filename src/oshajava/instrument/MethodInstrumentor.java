@@ -1,6 +1,7 @@
 package oshajava.instrument;
 
 
+import oshajava.runtime.RuntimeMonitor;
 import oshajava.sourceinfo.BitVectorIntSet;
 import oshajava.sourceinfo.MethodTable;
 import oshajava.sourceinfo.UniversalIntSet;
@@ -11,6 +12,7 @@ import oshajava.support.org.objectweb.asm.MethodVisitor;
 import oshajava.support.org.objectweb.asm.Opcodes;
 import oshajava.support.org.objectweb.asm.Type;
 import oshajava.support.org.objectweb.asm.commons.AdviceAdapter;
+import oshajava.support.org.objectweb.asm.commons.Method;
 
 // TODO allow annotations on interface methods, applied to all their
 // implementers?  This opens a bigger can of worms:
@@ -27,6 +29,8 @@ public class MethodInstrumentor extends AdviceAdapter {
 	protected final boolean isStatic;
 
 	protected final String fullNameAndDesc;
+	
+	private final Method readHook;
 
 	// TODO policy names: @Inline, @Private, @ShareSelf, @ShareProtected, @SharePublic
 	// @Inline, @Private, @Self, @Group, @World
@@ -55,6 +59,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 		isConstructor = name.equals("<init>");
 		isClinit = name.equals("<clinit>");
 		fullNameAndDesc = inst.className + "." + name + desc;
+		readHook = ClassInstrumentor.HOOK_READ; //RuntimeMonitor.RECORD ? ClassInstrumentor.HOOK_RECORD_READ : ClassInstrumentor.HOOK_READ;
 	}
 
 	protected void myStackSize(int size) {
@@ -195,29 +200,37 @@ public class MethodInstrumentor extends AdviceAdapter {
 			policy = Policy.PROTECTED;
 			final BitVectorIntSet readerSet = new BitVectorIntSet();
 			mid = MethodTable.register(fullNameAndDesc, readerSet);
-			return new AnnotationRecorder(readerSet);
+			return new ReaderSetAnnotationVisitor(readerSet);
 		} else if (desc.equals(ClassInstrumentor.ANNOT_READ_BY_ALL_DESC)) {
 			policy = Policy.PUBLIC;
 			mid = MethodTable.register(fullNameAndDesc, UniversalIntSet.set);
 			//			Util.logf("%s (mid = %d) is ReadByAll. set in table = %s", fullNameAndDesc, mid, MethodRegistry.policyTable[mid]);
 			return null;
+		} else if (desc.equals(ClassInstrumentor.ANNOT_GROUP_DESC)) {
+			Util.fail("Group declared on a method.");
+			return null;
+		} else if (desc.equals(ClassInstrumentor.ANNOT_MEMBER_DESC)) {
+			//mid = MethodTable.
+			return super.visitAnnotation(desc, visible);
 		}  else {
 			// Not one of ours.
 			return super.visitAnnotation(desc, visible);
 		}
 	}
 
-	class AnnotationRecorder implements AnnotationVisitor {
+	class ReaderSetAnnotationVisitor implements AnnotationVisitor {
 		protected final BitVectorIntSet readerSet;
 
-		public AnnotationRecorder(BitVectorIntSet readerSet) {
+		public ReaderSetAnnotationVisitor(BitVectorIntSet readerSet) {
 			this.readerSet = readerSet;
 		}
 
 		public void visit(String name, Object value) {
 			if (name == null) {
+				// when visitArray calls this on each array elem.
 				MethodTable.requestID((String)value, readerSet);
 			} else if (name.equals("value")) {
+				// when called directly.
 				Util.log("add " + name);
 				for (String m : (String[])value) {
 					MethodTable.requestID(m, readerSet);
@@ -411,7 +424,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 				// stack -> obj | state threadstate
 				pushCurrentThread();
 				// call the read hook. stack -> obj | 
-				super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_READ);
+				super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, readHook);
 				Label ok = super.newLabel();
 				super.goTo(ok);
 				super.mark(homeFree);
@@ -428,7 +441,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 				//stack -> state threadstate
 				pushCurrentThread();
 				// call the read hook. stack -> 
-				super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_READ);
+				super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, readHook);
 				Label sEnd = super.newLabel();
 				super.goTo(sEnd);
 				super.mark(sHomeFree);

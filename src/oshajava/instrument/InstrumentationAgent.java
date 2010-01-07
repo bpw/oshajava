@@ -54,7 +54,7 @@ import oshajava.support.org.objectweb.asm.util.CheckClassAdapter;
  * 
  * TODO in premain, set the system class loader to be an ICL.
  * 
- * @author benw
+ * @author bpw
  *
  */
 public class InstrumentationAgent implements ClassFileTransformer {

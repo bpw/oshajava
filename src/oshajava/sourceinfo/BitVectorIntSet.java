@@ -14,7 +14,7 @@ public class BitVectorIntSet extends IntSet implements Serializable {
 	protected int maxBitIndex;
 	
 	public BitVectorIntSet(final int nbits) {
-		bits = new int[nbits];
+		bits = new int[nbits/SLOT_SIZE];
 		maxBitIndex = nbits - 1;
 	}
 	
@@ -29,6 +29,7 @@ public class BitVectorIntSet extends IntSet implements Serializable {
 		}
 		bits[bitIndex / SLOT_SIZE] |= 1 << (bitIndex % SLOT_SIZE);
 	}
+	public synchronized void syncedAdd(final int bitIndex) {add(bitIndex);}
 	
 	protected void upsize(int nbits) {
 		if (nbits < SLOT_SIZE) {
@@ -42,12 +43,13 @@ public class BitVectorIntSet extends IntSet implements Serializable {
 		maxBitIndex = nbits - 1;
 	}
 	
-	public boolean contains(int bitIndex) {
+	public boolean contains(final int bitIndex) {
 		if (bitIndex > maxBitIndex) {
 			return false;
 		}
 		return (bits[bitIndex / SLOT_SIZE] & (1 << (bitIndex % SLOT_SIZE))) != 0;
 	}
+	public synchronized boolean syncedContains(final int bitIndex) {return contains(bitIndex);}
 	
 	public int[] toArray() {
 		return bits;

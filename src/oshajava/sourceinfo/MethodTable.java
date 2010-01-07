@@ -1,5 +1,9 @@
 package oshajava.sourceinfo;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.Writer;
 import java.util.HashMap;
 
 import oshajava.support.acme.util.Util;
@@ -10,7 +14,7 @@ public class MethodTable {
 	/**
 	 * Initial size for the method ID -> signature map.
 	 */
-	private static final int INITIAL_METHOD_LIST_SIZE = 1024;
+	public static final int INITIAL_METHOD_LIST_SIZE = 1024;
 	
 	/**
 	 * Counter for introducing new method IDs.  Non-synchronized access illegal.
@@ -55,31 +59,35 @@ public class MethodTable {
 	 * @return Unique ID
 	 */
 	public static synchronized int register(final String sig, final IntSet readerSet) {
-		final int id = nextID;
-		methodSigToID.put(sig, id);
-		policyTable[id] = readerSet;
-		methodIDtoSig[id] = sig;
-		++nextID;
-		
-		// Add IDs to sets that have requested this signature.
-		for (Cons<BitVectorIntSet> c = idRequests.get(sig); c != null; c = c.rest) {
-			c.head.add(id);
-			/*
-			 *  TODO I've made the following assumption here:
-			 *  If we ever call contains(id) on this set, then we're in the method
-			 *  described by sig and id, so we must have finished loading this class.
-			 *  I assume that there is a happens-before edge from class loading to
-			 *  class use, so the accesses in add and contains should be well
-			 *  ordered.
-			 */
+		if (methodSigToID.containsKey(sig)) {
+			return methodSigToID.get(sig);
+		} else {
+			final int id = nextID;
+			methodSigToID.put(sig, id);
+			policyTable[id] = readerSet;
+			methodIDtoSig[id] = sig;
+			++nextID;
+
+			// Add IDs to sets that have requested this signature.
+			for (Cons<BitVectorIntSet> c = idRequests.get(sig); c != null; c = c.rest) {
+				c.head.add(id);
+				/*
+				 *  TODO I've made the following assumption here:
+				 *  If we ever call contains(id) on this set, then we're in the method
+				 *  described by sig and id, so we must have finished loading this class.
+				 *  I assume that there is a happens-before edge from class loading to
+				 *  class use, so the accesses in add and contains should be well
+				 *  ordered.
+				 */
+			}
+			idRequests.remove(sig);
+
+			// resize if necessary.
+			if (nextID == policyTable.length) {
+				upsize();
+			}
+			return id;
 		}
-		idRequests.remove(sig);
-		
-		// resize if necessary.
-		if (nextID == policyTable.length) {
-			upsize();
-		}
-		return id;
 	}
 	
 	private static synchronized void upsize() {
@@ -131,4 +139,43 @@ public class MethodTable {
 		} 
 	}
 	
+	public static void dumpGraphML(String file, IntSet[] table) {
+		try {
+			final Writer graphml = new PrintWriter(new File(file));
+			// print boilerplate.
+			graphml.write("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
+			graphml.write("<graphml xmlns=\"http://graphml.graphdrawing.org/xmlns\"\n");
+			graphml.write("xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"\n");
+			graphml.write("xsi:schemaLocation=\"http://graphml.graphdrawing.org/xmlns\n");
+			graphml.write(" http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd\">\n");
+			graphml.write("<graph id=\"G\" edgedefault=\"directed\">\n");
+			graphml.write("<!-- data schema -->\n\n");
+			graphml.write("<key id=\"fnname\" for=\"node\" attr.name=\"fnname\" attr.type=\"string\"/>\n");
+			graphml.write("<key id=\"file\" for=\"node\" attr.name=\"file\" attr.type=\"string\"/>\n");
+			graphml.write("<key id=\"kind\" for=\"edge\" attr.name=\"kind\" attr.type=\"string\"/>\n\n\n");
+			graphml.write("<key id=\"weight\" for=\"edge\" attr.name=\"weight\" attr.type=\"double\"/>\n");
+			for (int i = 0; i < nextID; i++) {
+				graphml.write("<node id=\"" + i + "\">\n");
+				graphml.write("\t<data key=\"fnname\">" + filterForXml(methodIDtoSig[i]) + "</data>\n");
+				graphml.write("\t<data key=\"file\">" + filterForXml(methodIDtoSig[i].substring(0, methodIDtoSig[i].lastIndexOf('.'))) + "</data>\n");
+				graphml.write("</node>\n");
+				for (int j = 0; j < nextID; j++) {
+					if (table[i] != null && table[i].contains(j)) {
+						graphml.write("<edge source=\"" + i + "\" target=\"" + j + "\">\n");
+						graphml.write("\t<data key=\"kind\">rw</data>\n");
+						graphml.write("\t<data key=\"weight\">" + 1 + "</data>\n");
+						graphml.write("</edge>\n");
+					}
+				}
+			}
+			graphml.write("</graph>\n</graphml>\n");
+			graphml.close();
+		} catch (final IOException e) {
+			Util.fail(e);
+		}
+	}
+	private static String filterForXml(String s) {
+		return s.replace('<', '{').replace('>', '}');
+	}
+
 }

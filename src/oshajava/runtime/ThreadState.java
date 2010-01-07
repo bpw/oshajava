@@ -48,7 +48,7 @@ public final class ThreadState {
 	/**
 	 * Cached copy of the current method id.
 	 */
-	public int currentMethod;
+	public int currentMethod = -1;
 	
 	/**
 	 * Cached copy of this thread's current State. Initially invalid.
