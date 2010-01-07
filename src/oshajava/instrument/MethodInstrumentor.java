@@ -19,6 +19,8 @@ import oshajava.support.org.objectweb.asm.commons.Method;
 // TODO allow annotation inheritance?
 
 public class MethodInstrumentor extends AdviceAdapter {
+	
+	protected final MethodTable methodTable;
 
 	protected static final int UNINITIALIZED = -1;
 	protected int mid = UNINITIALIZED;
@@ -49,8 +51,9 @@ public class MethodInstrumentor extends AdviceAdapter {
 
 	protected int originalMaxLocals = UNINITIALIZED, originalMaxStack = UNINITIALIZED;
 	
-	public MethodInstrumentor(MethodVisitor next, int access, String name, String desc, ClassInstrumentor inst) {
+	public MethodInstrumentor(MethodVisitor next, int access, String name, String desc, ClassInstrumentor inst, MethodTable methodTable) {
 		super(next, access, name, desc);
+		this.methodTable = methodTable;
 		this.inst = inst;
 		isStatic = (access & Opcodes.ACC_STATIC) != 0;
 		isMain = (access & Opcodes.ACC_PUBLIC ) != 0 && isStatic
@@ -194,16 +197,16 @@ public class MethodInstrumentor extends AdviceAdapter {
 			return null;
 		} else if (desc.equals(ClassInstrumentor.ANNOT_THREAD_PRIVATE_DESC)) {
 			policy = Policy.PRIVATE;
-			mid = MethodTable.register(fullNameAndDesc, null);
+			mid = methodTable.register(fullNameAndDesc, null);
 			return null;
 		} else if (desc.equals(ClassInstrumentor.ANNOT_READ_BY_DESC)) {
 			policy = Policy.PROTECTED;
 			final BitVectorIntSet readerSet = new BitVectorIntSet();
-			mid = MethodTable.register(fullNameAndDesc, readerSet);
+			mid = methodTable.register(fullNameAndDesc, readerSet);
 			return new ReaderSetAnnotationVisitor(readerSet);
 		} else if (desc.equals(ClassInstrumentor.ANNOT_READ_BY_ALL_DESC)) {
 			policy = Policy.PUBLIC;
-			mid = MethodTable.register(fullNameAndDesc, UniversalIntSet.set);
+			mid = methodTable.register(fullNameAndDesc, UniversalIntSet.set);
 			//			Util.logf("%s (mid = %d) is ReadByAll. set in table = %s", fullNameAndDesc, mid, MethodRegistry.policyTable[mid]);
 			return null;
 		} else if (desc.equals(ClassInstrumentor.ANNOT_GROUP_DESC)) {
@@ -228,12 +231,12 @@ public class MethodInstrumentor extends AdviceAdapter {
 		public void visit(String name, Object value) {
 			if (name == null) {
 				// when visitArray calls this on each array elem.
-				MethodTable.requestID((String)value, readerSet);
+				methodTable.requestID((String)value, readerSet);
 			} else if (name.equals("value")) {
 				// when called directly.
 				Util.log("add " + name);
 				for (String m : (String[])value) {
-					MethodTable.requestID(m, readerSet);
+					methodTable.requestID(m, readerSet);
 				}
 			}
 		}
@@ -251,19 +254,19 @@ public class MethodInstrumentor extends AdviceAdapter {
 		if (policy == null) {
 			if (isMain || isClinit) {
 				policy = Policy.PUBLIC;
-				mid = MethodTable.register(fullNameAndDesc, UniversalIntSet.set);
+				mid = methodTable.register(fullNameAndDesc, UniversalIntSet.set);
 			} else {
 				policy = POLICY_DEFAULT;
 			}
 			switch(policy) {
 			case PUBLIC:
-				mid = MethodTable.register(fullNameAndDesc, UniversalIntSet.set);
+				mid = methodTable.register(fullNameAndDesc, UniversalIntSet.set);
 				break;
 			case PROTECTED:
 				Util.fail("not sure what to do here. think this is prohibited.");
 				break;
 			case PRIVATE:
-				mid = MethodTable.register(fullNameAndDesc, null);
+				mid = methodTable.register(fullNameAndDesc, null);
 				break;
 			case INLINE:
 				break;

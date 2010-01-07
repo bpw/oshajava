@@ -37,10 +37,13 @@ public class MethodPolicyReader extends MethodAdapter {
 	protected final boolean isConstructor;
 	protected final boolean isClinit;
 	protected final boolean isStatic;
+	
+	protected final MethodTable methodTable;
 
-	public MethodPolicyReader(ClassInstrumentor inst, MethodVisitor next, int access, String name, String desc) {
-		super(new MethodInstrumentor(next, access, name, desc, inst));
+	public MethodPolicyReader(ClassInstrumentor inst, MethodVisitor next, int access, String name, String desc, MethodTable methodTable) {
+		super(new MethodInstrumentor(next, access, name, desc, inst, methodTable));
 		this.inst = inst;
+		this.methodTable = methodTable;
 		isStatic = (access & Opcodes.ACC_STATIC) != 0;
 		isMain = (access & Opcodes.ACC_PUBLIC ) != 0 && isStatic 
 			&& name.equals("main") && desc.equals("([Ljava/lang/String;)V");
@@ -69,16 +72,16 @@ public class MethodPolicyReader extends MethodAdapter {
 			return null;
 		} else if (desc.equals(ClassInstrumentor.ANNOT_THREAD_PRIVATE_DESC)) {
 			policy = Policy.PRIVATE;
-			mid = MethodTable.register(fullNameAndDesc, null);
+			mid = methodTable.register(fullNameAndDesc, null);
 			return null;
 		} else if (desc.equals(ClassInstrumentor.ANNOT_READ_BY_DESC)) {
 			policy = Policy.PROTECTED;
 			final BitVectorIntSet readerSet = new BitVectorIntSet();
-			mid = MethodTable.register(fullNameAndDesc, readerSet);
+			mid = methodTable.register(fullNameAndDesc, readerSet);
 			return new AnnotationRecorder(readerSet);
 		} else if (desc.equals(ClassInstrumentor.ANNOT_READ_BY_ALL_DESC)) {
 			policy = Policy.PUBLIC;
-			mid = MethodTable.register(fullNameAndDesc, UniversalIntSet.set);
+			mid = methodTable.register(fullNameAndDesc, UniversalIntSet.set);
 			//			Util.logf("%s (mid = %d) is ReadByAll. set in table = %s", fullNameAndDesc, mid, MethodRegistry.policyTable[mid]);
 			return null;
 		}  else {
@@ -96,11 +99,11 @@ public class MethodPolicyReader extends MethodAdapter {
 
 		public void visit(String name, Object value) {
 			if (name == null) {
-				MethodTable.requestID((String)value, readerSet);
+				methodTable.requestID((String)value, readerSet);
 			} else if (name.equals("value")) {
 				Util.log("add " + name);
 				for (String m : (String[])value) {
-					MethodTable.requestID(m, readerSet);
+					methodTable.requestID(m, readerSet);
 				}
 			}
 		}
@@ -118,19 +121,19 @@ public class MethodPolicyReader extends MethodAdapter {
 		if (policy == null) {
 			if (isMain || isClinit) {
 				policy = Policy.PUBLIC;
-				mid = MethodTable.register(fullNameAndDesc, UniversalIntSet.set);
+				mid = methodTable.register(fullNameAndDesc, UniversalIntSet.set);
 			} else {
 				policy = POLICY_DEFAULT;
 			}
 			switch(policy) {
 			case PUBLIC:
-				mid = MethodTable.register(fullNameAndDesc, UniversalIntSet.set);
+				mid = methodTable.register(fullNameAndDesc, UniversalIntSet.set);
 				break;
 			case PROTECTED:
 				Util.fail("not sure what to do here. think this is prohibited.");
 				break;
 			case PRIVATE:
-				mid = MethodTable.register(fullNameAndDesc, null);
+				mid = methodTable.register(fullNameAndDesc, null);
 				break;
 			case INLINE:
 				break;

@@ -11,6 +11,7 @@ import java.util.HashMap;
 
 
 import oshajava.runtime.RuntimeMonitor;
+import oshajava.sourceinfo.MethodTable;
 import oshajava.support.acme.util.Util;
 import oshajava.support.org.objectweb.asm.ClassReader;
 import oshajava.support.org.objectweb.asm.ClassVisitor;
@@ -19,6 +20,7 @@ import oshajava.support.org.objectweb.asm.commons.Remapper;
 import oshajava.support.org.objectweb.asm.commons.RemappingClassAdapter;
 import oshajava.support.org.objectweb.asm.commons.SimpleRemapper;
 import oshajava.support.org.objectweb.asm.util.CheckClassAdapter;
+import oshajava.util.ColdStorage;
 
 /**
  * TODO options
@@ -83,13 +85,14 @@ public class InstrumentationAgent implements ClassFileTransformer {
 	static class Options {	
 		public boolean debug = true;
 		public boolean verifyInput = true;
-		public String  bytecodeDump = "oshajdump";
+		public String  bytecodeDump = "oshajava-instrumentation-dump";
 		public boolean java6 = false;
 		public boolean instrument = true;
 		public boolean coarseArrayStates = true;
 		public boolean coarseFieldStates = false;
 		public boolean instrumentFinalFields = false;
 		public boolean remapJDK = false;
+		public String methodTableFile = null;
 
 		public boolean verifyOutput() {
 			return debug;
@@ -100,9 +103,13 @@ public class InstrumentationAgent implements ClassFileTransformer {
 	}
 
 	public final Options opts;
+	
+	protected final MethodTable methodTable;
 
 	public InstrumentationAgent(Options opts) {
 		this.opts = opts;
+		methodTable = opts.methodTableFile == null ? new MethodTable() : (MethodTable)ColdStorage.load(opts.methodTableFile);
+		RuntimeMonitor.useTable(methodTable);
 	}
 
 	public byte[] instrument(String className, byte[] bytecode) {
@@ -113,7 +120,7 @@ public class InstrumentationAgent implements ClassFileTransformer {
 		if (opts.verifyOutput()) {
 			chain = new CheckClassAdapter(chain);
 		}
-		chain = new ClassInstrumentor(chain, opts);
+		chain = new ClassInstrumentor(chain, opts, methodTable);
 		if (!opts.java6) {
 			chain = new RemoveJava6Adapter(chain);
 		}

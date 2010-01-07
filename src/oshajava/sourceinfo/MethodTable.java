@@ -9,64 +9,58 @@ import java.util.HashMap;
 import oshajava.support.acme.util.Util;
 
 
-public class MethodTable {
+public class MethodTable extends Graph {
 	
 	/**
 	 * Initial size for the method ID -> signature map.
 	 */
 	public static final int INITIAL_METHOD_LIST_SIZE = 1024;
-	
-	/**
-	 * Counter for introducing new method IDs.  Non-synchronized access illegal.
-	 * 
-	 * Invariant: must start strictly smaller than INITIAL_METHOD_LIST_SIZE;
-	 */
-	private static int nextID = 0;
-	
+		
 	/**
 	 * Map from method signature to method ID.  Non-synchronized access illegal.
 	 * 
 	 * FIXME Need my own copy of any standard lib I use so it is not instrumented.
 	 */
-	private static final HashMap<String,Integer> methodSigToID = new HashMap<String,Integer>();
+	private final HashMap<String,Integer> methodSigToID = new HashMap<String,Integer>();
 	
 	/**
 	 * Map from method ID to method signature.  Non-synchronized access illegal.
 	 */
-	private static String[] methodIDtoSig = new String[INITIAL_METHOD_LIST_SIZE];
-	
-	public static IntSet[] policyTable = new IntSet[INITIAL_METHOD_LIST_SIZE];
-	
+	private String[] methodIDtoSig = new String[INITIAL_METHOD_LIST_SIZE];
+
 	/**
 	 * ID requests for methods in classes that have not yet been loaded.  
 	 * Non-synchronized access illegal.
 	 * 
 	 * FIXME need local copies...
 	 */
-	private static final HashMap<String,Cons<BitVectorIntSet>> idRequests = new HashMap<String,Cons<BitVectorIntSet>>();
-		
+	private final HashMap<String,Cons<BitVectorIntSet>> idRequests = new HashMap<String,Cons<BitVectorIntSet>>();
 	
-	public static synchronized int size() {
-		return nextID;
+	public MethodTable() {
+		super(INITIAL_METHOD_LIST_SIZE);
 	}
-	public static synchronized int capacity() {
-		return policyTable.length;
+	
+	public synchronized int size() {
+		return super.size();
 	}
+	
+	public synchronized int capacity() {
+		return super.capacity();
+	}
+	
 	/**
 	 * Register a new method by its signature, returning its unique ID.
 	 * 
 	 * @param sig Method signature
 	 * @return Unique ID
 	 */
-	public static synchronized int register(final String sig, final IntSet readerSet) {
+	public synchronized int register(final String sig, final IntSet readerSet) {
 		if (methodSigToID.containsKey(sig)) {
 			return methodSigToID.get(sig);
 		} else {
-			final int id = nextID;
+			final int id = add(readerSet);
 			methodSigToID.put(sig, id);
-			policyTable[id] = readerSet;
 			methodIDtoSig[id] = sig;
-			++nextID;
 
 			// Add IDs to sets that have requested this signature.
 			for (Cons<BitVectorIntSet> c = idRequests.get(sig); c != null; c = c.rest) {
@@ -83,22 +77,20 @@ public class MethodTable {
 			idRequests.remove(sig);
 
 			// resize if necessary.
-			if (nextID == policyTable.length) {
+			if (size() == capacity()) {
 				upsize();
 			}
 			return id;
 		}
 	}
 	
-	private static synchronized void upsize() {
+	private synchronized void upsize() {
 		Util.yikes("!!!!! UNSAFE resize triggered. !!!!!");
-		String[] tmp = new String[2*nextID];
-		System.arraycopy(methodIDtoSig, 0, tmp, 0, nextID);
+		final int newSize = 2*size();
+		String[] tmp = new String[newSize];
+		System.arraycopy(methodIDtoSig, 0, tmp, 0, size());
 		methodIDtoSig = tmp;
-		IntSet[] p = new IntSet[2*nextID];
-		System.arraycopy(policyTable, 0, p, 0, nextID);
-		policyTable = p;
-		// upsize the state table.
+		resize(newSize);
 	}
 	
 	/**
@@ -107,15 +99,15 @@ public class MethodTable {
 	 * @param id Method ID
 	 * @return Method signature
 	 */
-	public static synchronized String lookup(int id) {
-		assert id >= 0 && id < nextID;
+	public synchronized String lookup(int id) {
+		assert id >= 0 && id < size();
 		return methodIDtoSig[id];
 	}
 	
-	public static synchronized IntSet getPolicy(String name) {
+	public synchronized IntSet getPolicy(String name) {
 		final Integer id = methodSigToID.get(name);
 		if (id == null) Util.fail("Not in there.");
-		return MethodTable.policyTable[id];
+		return getOutEdges(id);
 	}
 	
 	/**
@@ -131,7 +123,7 @@ public class MethodTable {
 	 * @param sig Method signature
 	 * @param readerSet Set that wants the ID as a member.
 	 */
-	public static synchronized void requestID(String sig, BitVectorIntSet readerSet) {
+	public synchronized void requestID(String sig, BitVectorIntSet readerSet) {
 		if (methodSigToID.containsKey(sig)) {
 			readerSet.add(methodSigToID.get(sig));
 		} else {
@@ -139,7 +131,10 @@ public class MethodTable {
 		} 
 	}
 	
-	public static void dumpGraphML(String file, IntSet[] table) {
+	public void dumpGraphML(String file) {
+		dumpGraphML(file, this);
+	}
+	public void dumpGraphML(String file, Graph g) {
 		try {
 			final Writer graphml = new PrintWriter(new File(file));
 			// print boilerplate.
@@ -154,13 +149,14 @@ public class MethodTable {
 			graphml.write("<key id=\"file\" for=\"node\" attr.name=\"file\" attr.type=\"string\"/>\n");
 			graphml.write("<key id=\"kind\" for=\"edge\" attr.name=\"kind\" attr.type=\"string\"/>\n\n\n");
 			graphml.write("<key id=\"weight\" for=\"edge\" attr.name=\"weight\" attr.type=\"double\"/>\n");
-			for (int i = 0; i < nextID; i++) {
+			for (int i = 0; i < g.size(); i++) {
 				graphml.write("<node id=\"" + i + "\">\n");
 				graphml.write("\t<data key=\"fnname\">" + filterForXml(methodIDtoSig[i]) + "</data>\n");
 				graphml.write("\t<data key=\"file\">" + filterForXml(methodIDtoSig[i].substring(0, methodIDtoSig[i].lastIndexOf('.'))) + "</data>\n");
 				graphml.write("</node>\n");
-				for (int j = 0; j < nextID; j++) {
-					if (table[i] != null && table[i].contains(j)) {
+				for (int j = 0; j < g.size(); j++) {
+					IntSet set = g.getOutEdges(i);
+					if (set != null && set.contains(j)) {
 						graphml.write("<edge source=\"" + i + "\" target=\"" + j + "\">\n");
 						graphml.write("\t<data key=\"kind\">rw</data>\n");
 						graphml.write("\t<data key=\"weight\">" + 1 + "</data>\n");

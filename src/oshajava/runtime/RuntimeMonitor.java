@@ -3,6 +3,7 @@ package oshajava.runtime;
 import java.lang.reflect.Array;
 
 import oshajava.sourceinfo.BitVectorIntSet;
+import oshajava.sourceinfo.Graph;
 import oshajava.sourceinfo.IntSet;
 import oshajava.sourceinfo.MethodTable;
 import oshajava.support.acme.util.Util;
@@ -67,7 +68,8 @@ import oshajava.support.acme.util.Util;
 public class RuntimeMonitor {
 
 	// temporary graph-collection hack.
-	protected static final BitVectorIntSet[] graph = new BitVectorIntSet[MethodTable.INITIAL_METHOD_LIST_SIZE];
+	protected static final Graph graph = new Graph(MethodTable.INITIAL_METHOD_LIST_SIZE);
+	private static MethodTable policy;
 
 	public static final boolean RECORD = true;
 
@@ -83,9 +85,8 @@ public class RuntimeMonitor {
 	private static final ThreadState[] threadTable = new ThreadState[MAX_THREADS];
 	private static int maxThreadId = 0;
 
-	private static boolean appStarted = false;
-	protected static void startApp() {
-		appStarted = true;
+	public static void useTable(MethodTable mt) {
+		policy = mt;
 	}
 
 	// TODO test the WCIHM implementation to make sure it actually works and isn't just dropping
@@ -104,7 +105,7 @@ public class RuntimeMonitor {
 		// called lazily - from threadState's lazy initializer, so whenever this thread's
 		// first action is.
 		private static synchronized ThreadState newThread() {
-			final ThreadState ts = new ThreadState(Thread.currentThread(), MethodTable.capacity());
+			final ThreadState ts = new ThreadState(Thread.currentThread(), policy.capacity());
 			Util.assertTrue(ts.id < MAX_THREADS, "MAX_THREADS exceeded.");
 			maxThreadId = ts.id;
 			threadTable[ts.id] = ts;
@@ -113,19 +114,19 @@ public class RuntimeMonitor {
 
 		// NOTE This relies on the lazy MethodTable.requestID scheme.
 		public static synchronized void loadNewMethods() {
-			final int newSize = MethodTable.size();
+			final int newSize = policy.size();
 			if (RECORD) {
 				for (int i = lastMethodTableSize; i < newSize; i++) {
-					graph[i] = new BitVectorIntSet();
+					graph.add(new BitVectorIntSet());
 				}
 			}
 			for (int t = 0; t <= maxThreadId; t++) {
 				final ThreadState ts = threadTable[t];
 				if (ts != null) {
-					ts.loadNewMethods(lastMethodTableSize, newSize);
+					ts.loadNewMethods(policy, lastMethodTableSize, newSize);
 				}
 			}
-			lastMethodTableSize = MethodTable.size();
+			lastMethodTableSize = policy.size();
 		}
 
 		/*******************************************************************/
@@ -163,12 +164,12 @@ public class RuntimeMonitor {
 		public static void read(final State write, final ThreadState reader) {
 			if (write.thread != reader) {
 				if (RECORD) {
-					graph[write.method].syncedAdd(reader.currentMethod);
+					recordEdge(write.method, reader.currentMethod);
 				}
 				final IntSet readerSet = write.readers;
 				if (readerSet == null || ! readerSet.contains(reader.currentMethod)) {
-					throw new IllegalSharingException(write.thread, MethodTable.lookup(write.method), 
-							reader, MethodTable.lookup(reader.currentMethod));
+					throw new IllegalSharingException(write.thread, policy.lookup(write.method), 
+							reader, policy.lookup(reader.currentMethod));
 				}
 
 			}
@@ -346,13 +347,13 @@ public class RuntimeMonitor {
 							lockState.depth++;
 							if (lastHolderState != null && lastHolderState.thread != holder) {
 								if (RECORD) {
-									graph[lockState.lastHolder.method].syncedAdd(holder.currentMethod);
+									recordEdge(lockState.lastHolder.method, holder.currentMethod);
 								}
 								final IntSet readerSet = holderState.readers;
 								if (readerSet == null || ! readerSet.contains(holderState.method)) {
 									throw new IllegalSynchronizationException(
-											lastHolderState.thread, MethodTable.lookup(lastHolderState.method), 
-											holder, MethodTable.lookup(holder.currentMethod)
+											lastHolderState.thread, policy.lookup(lastHolderState.method), 
+											holder, policy.lookup(holder.currentMethod)
 											// TODO refactor MethodTable to something like StateTable
 											// lookup to something like getMethodName(State...)
 									);
@@ -392,14 +393,14 @@ public class RuntimeMonitor {
 					ls.lastHolder = holderState;
 					ls.depth++;
 					if (RECORD) {
-						graph[lastHolderState.method].syncedAdd(holder.currentMethod);
+						recordEdge(lastHolderState.method, holder.currentMethod);
 					}
 					if (lastHolderState != null && lastHolderState.thread != holder) {
 						final IntSet readerSet = holderState.readers;
 						if (readerSet == null || ! readerSet.contains(holderState.method)) {
 							throw new IllegalSynchronizationException(
-									lastHolderState.thread, MethodTable.lookup(lastHolderState.method), 
-									holder, MethodTable.lookup(holder.currentMethod)
+									lastHolderState.thread, policy.lookup(lastHolderState.method), 
+									holder, policy.lookup(holder.currentMethod)
 							);
 						}
 					}
@@ -422,6 +423,10 @@ public class RuntimeMonitor {
 					writer.readers.add(reader.currentMethod);
 				}
 			}
+		}
+		
+		private static void recordEdge(int src, int dest) {
+			((BitVectorIntSet)graph.getOutEdges(src)).syncedAdd(dest);
 		}
 
 		// TODO watch out for assumptions in bytecode instrumentation... null check? etc.?
@@ -507,6 +512,11 @@ public class RuntimeMonitor {
 			//			t.setStackTrace(fudgedStack);
 			//		}
 			//		return t;
+		}
+		
+		public static void fini(String mainClass) {
+			policy.dumpGraphML(mainClass + ".oshajava.policy.graphml");
+			policy.dumpGraphML(mainClass + ".oshajava.trace.graphml", graph);
 		}
 
 }

@@ -1,5 +1,6 @@
 package oshajava.instrument;
 
+import oshajava.sourceinfo.MethodTable;
 import oshajava.support.org.objectweb.asm.ClassAdapter;
 import oshajava.support.org.objectweb.asm.ClassVisitor;
 import oshajava.support.org.objectweb.asm.FieldVisitor;
@@ -93,10 +94,12 @@ public class ClassInstrumentor extends ClassAdapter {
 	protected InstrumentationAgent.Options opts;
 	protected String superName;
 //	protected Policy policy;
+	protected final MethodTable methodTable;
 
-	public ClassInstrumentor(ClassVisitor cv, InstrumentationAgent.Options opts) {
+	public ClassInstrumentor(ClassVisitor cv, InstrumentationAgent.Options opts, MethodTable methodTable) {
 		super(cv);
 		this.opts = opts;
+		this.methodTable = methodTable;
 	}
 
 	@Override
@@ -144,7 +147,7 @@ public class ClassInstrumentor extends ClassAdapter {
 	public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
 		if ((access & Opcodes.ACC_NATIVE) == 0) {
 			return new MethodInstrumentor(super.visitMethod(access, name, desc, signature, exceptions),
-					access, name, desc, this);
+					access, name, desc, this, methodTable);
 		} else {
 			return super.visitMethod(access, name, desc, signature, exceptions);
 		}
