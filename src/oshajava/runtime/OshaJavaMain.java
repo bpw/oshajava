@@ -4,14 +4,13 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
 import oshajava.instrument.InstrumentationAgent;
-import oshajava.instrument.InstrumentingClassLoader;
 import oshajava.support.acme.util.Util;
 
 public class OshaJavaMain {
 	
 	public static void main(final String[] args) {
-		InstrumentationAgent.setMainClass(args[0]);
-		// TODO shutdown hooks
+		final String mainClass = args[0];
+		InstrumentationAgent.setMainClass(mainClass);
 		final ThreadGroup appGroup = new ThreadGroup("application thread group root");
 		InstrumentationAgent.setAppThreadGroupRoot(appGroup);
 		final Thread app = new Thread(appGroup, "application main") {
@@ -39,14 +38,14 @@ public class OshaJavaMain {
 		Runtime.getRuntime().addShutdownHook(new Thread() {
 			public void run() {
 				InstrumentationAgent.stopInstrumentation();
+				RuntimeMonitor.fini(mainClass);
 			}
 		});
-		Util.logf("Starting %s", args[0]);
+		Util.logf("Starting %s", mainClass);
 		app.start();
 		try {
 			app.join();
 		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
 			Util.fail(e);
 		}
 	}

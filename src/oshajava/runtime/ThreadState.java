@@ -48,7 +48,7 @@ public final class ThreadState {
 	/**
 	 * Cached copy of the current method id.
 	 */
-	public int currentMethod;
+	public int currentMethod = -1;
 	
 	/**
 	 * Cached copy of this thread's current State. Initially invalid.
@@ -154,9 +154,9 @@ public final class ThreadState {
 	 * @param next
 	 * @param endExcl
 	 */
-	public synchronized void loadNewMethods(int next, final int endExcl) {
+	public synchronized void loadNewMethods(MethodTable policy, int next, final int endExcl) {
 		for (; next < endExcl; next++) {
-			stateTable[next] = new State(this, next, MethodTable.policyTable[next]);
+			stateTable[next] = new State(this, next, policy.getOutEdges(next));
 		}
 	}
 	

@@ -1,5 +1,6 @@
 package oshajava.instrument;
 
+import oshajava.sourceinfo.MethodTable;
 import oshajava.support.org.objectweb.asm.ClassAdapter;
 import oshajava.support.org.objectweb.asm.ClassVisitor;
 import oshajava.support.org.objectweb.asm.FieldVisitor;
@@ -36,6 +37,9 @@ public class ClassInstrumentor extends ClassAdapter {
 	protected static final String ANNOT_THREAD_PRIVATE_DESC = Type.getDescriptor(oshajava.annotation.ThreadPrivate.class);
 	protected static final String ANNOT_READ_BY_DESC        = Type.getDescriptor(oshajava.annotation.ReadBy.class);
 	protected static final String ANNOT_READ_BY_ALL_DESC    = Type.getDescriptor(oshajava.annotation.ReadByAll.class);
+	protected static final String ANNOT_GROUP_DESC    		= Type.getDescriptor(oshajava.annotation.Group.class);
+	protected static final String ANNOT_MEMBER_DESC    		= Type.getDescriptor(oshajava.annotation.Member.class);
+	
 	protected static final String OSHA_EXCEPT_TYPE_NAME     = Type.getInternalName(oshajava.runtime.OshaRuntimeException.class);
 	protected static final String SHADOW_FIELD_SUFFIX       = "__osha_state";
 	protected static final String STATE_DESC                = STATE_TYPE.getDescriptor();
@@ -63,6 +67,7 @@ public class ClassInstrumentor extends ClassAdapter {
 
 	//	protected static final Method HOOK_PRIVATE_READ   = new Method("privateRead", Type.VOID_TYPE, ARGS_STATE_INT);
 	protected static final Method HOOK_READ  = new Method("read",  Type.VOID_TYPE, ARGS_STATE_THREAD);
+	protected static final Method HOOK_RECORD_READ  = new Method("recordRead",  Type.VOID_TYPE, ARGS_STATE_THREAD);
 //	protected static final Method HOOK_WRITE = new Method("write", STATE_TYPE, ARGS_NONE);
 	
 //	protected static final Method HOOK_NEW_ARRAY       = new Method("newArray",      Type.VOID_TYPE, ARGS_INT_OBJECT);
@@ -89,11 +94,13 @@ public class ClassInstrumentor extends ClassAdapter {
 	protected Type classType;
 	protected InstrumentationAgent.Options opts;
 	protected String superName;
-	protected int classAccess;
+//	protected Policy policy;
+	protected final MethodTable methodTable;
 
-	public ClassInstrumentor(ClassVisitor cv, InstrumentationAgent.Options opts) {
+	public ClassInstrumentor(ClassVisitor cv, InstrumentationAgent.Options opts, MethodTable methodTable) {
 		super(cv);
 		this.opts = opts;
+		this.methodTable = methodTable;
 	}
 
 	@Override
@@ -142,7 +149,7 @@ public class ClassInstrumentor extends ClassAdapter {
 	public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
 		if ((access & Opcodes.ACC_NATIVE) == 0) {
 			return new JSRInlinerAdapter(new MethodInstrumentor(super.visitMethod(access, name, desc, signature, exceptions),
-					access, name, desc, this), access, name, desc, signature, exceptions);
+					access, name, desc, this, methodTable), access, name, desc, signature, exceptions);
 		} else {
 			return super.visitMethod(access, name, desc, signature, exceptions);
 		}
@@ -168,4 +175,8 @@ public class ClassInstrumentor extends ClassAdapter {
 		        (outerClassDesc == null 
 				|| ! (name.startsWith("this$") && desc.equals(outerClassDesc)));
 	}
+	
+//	protected Policy policy() {
+//		return policy;
+//	}
 }
