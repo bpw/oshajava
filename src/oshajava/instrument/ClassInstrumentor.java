@@ -88,6 +88,7 @@ public class ClassInstrumentor extends ClassAdapter {
 
 	/**************************************************************************/
 
+	protected int classAccess;
 	protected String className;
 	protected String outerClassDesc = null;
 	protected String classDesc;
