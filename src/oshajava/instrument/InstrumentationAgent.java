@@ -68,6 +68,7 @@ public class InstrumentationAgent implements ClassFileTransformer {
 		// TODO
 		"java/util",
 		"sun/",
+		"java/io/",
 		"java/util/AbstractCollection",
 		"java/util/AbtractMap",
 		"java/util/AbstractSet",
