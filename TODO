@@ -88,27 +88,20 @@ Channels and their members must be mutually visible.
 
 * Channel Membership
 
-There are two possible (complementary) approaches to declaring
-channels and their writers and readers.  Each has certain modularity
-enforcement issues that must be addressed (in complementary ways).
+There are two complementary ways to declare channels and their writers
+and readers.  Each has modularity issues to address.
 
-** Decentralized Channel Membership Declaration
-
-In this approach, channel declarations include only a name and a list
-of delegates if any.  Each method declares what channels it reads from
-and writes on.  This approach is illustrated in the example above.  
-
-Decentralized membership is
-
-vis issues
 
 ** Centralized Channel Membership Declaration
 
 In this approach, channel declarations include a list of methods that
 read from the channel and a list of methods that write on the channel,
-in addition to name and delegates.  The sealing issue is moot for this
-approach, since the members of a channel can only be modified if the
-module containing that channel can be modified.
+in addition to the channel name and a list of other channels to which
+it delegates communication, if any.  Channel sealing (discussed with
+decentralized declarations) is a non-issue for this approach, since
+the members of a channel are set when that channel is declared and can
+only be modified if the module containing that channel can be
+modified.
 
 Centralized membership declaraion requires that we prohibit channels
 from declaring reader or writer methods that are not declared in the
@@ -120,96 +113,154 @@ Modules that need to allow communication from outside the module with
 methods inside the module may export open channels, described below.
 
 
+** Decentralized Channel Membership Declaration
 
-We need some mechanism by which a channel can be made visible for
-delegation but closed to additions of new readers and writers.  This
-is an artifact of methods declaring their channel memberships as
-opposed to channels declaring their members.  There are two options
-for generating "final," "sealed," or "read-only" channels:
+In this approach, channel declarations include only a name and a list
+of delegates if any.  Each method declares what channels it reads from
+and writes on.  This approach is illustrated in the example above.  
 
-1. Channels declare their writers and readers instead of methods
-   declaring their memberships.
+Since decentralized membership declaration requires no references to
+methods, the declaration of channels with readers or writers in
+different classes does not require the restrictions imposed on
+cross-module method reference with centralized declarations.  A method
+can only be added to a channel, if the module containing the method
+can be modified.  Open channels are nonetheless required for a
+different reason.
 
-   
-2. Channels are "sealed" at compilation, storing the actual list of
-   writers and readers of a channel in its declaration in the
-   bytecode.  @SealedChannel(id="C", delegates={...}, readers={...},
-   writers={...})
+Since decentralized channel declarations have no central authority
+declaring its members, a method may conceivably be declared as a
+reader or writer of a channel that is declared in an external module.
+Since this may allow communication the external module intended to
+disallow, we must provide some mechanism to "seal" a channel and
+prevent outside methods from being added to it as readers or writers.
+A simple solution would be to make the channel non-externally visible,
+but if we want to make the channel available as a delegate, this is
+not feasible.
+
+One solution would be to require that in addition to the requirement
+that a channel and its members be mutually visible, a method may only
+be a reader or writer of a channel that is declared in the same class,
+or in any parent of that class, such as an outer class, the package
+containing that class, or an "ancestor" of this package.
+
+A second solution would be to "seal" channels at compile time, storing
+the actual list of writers and readers of a channel in its declaration
+in the bytecode.  Assuming that libraries are distrubted as JARs or
+class files, this is sufficient.
+
+[Implementation side note: if channel declarations and member lists
+are stored in the bytecode with their data channels, it's ok if those
+edges aren't loaded into the MethodTable until that class is loaded,
+because the communication can't start until that class is loaded.
+Furthermore, we can remove all the annotations from methods in the
+bytecode, since that data will be stored with the channel declaration.
+Unfortunately, arrays break that.]
+
+
+** Practicalities of Centralized vs. Decentralized
+
+I prefer decentralized.
+
+Centralized declarations have the benefit of providing an overview of
+communication centrally.  The programmer can spot a channel
+declaration error more easily if all the readers and writers are
+listed in one place, together.  However, when examining a given
+method, it is not obvious how it might be communicating.  The
+programmer must look at all channel declarations to find which ones
+the method reads or writes on.  Decentralized declarations allow the
+programmer to see the channels on which it reads or writes right next
+to the method body, but to find out what other methods are on the same
+channels, the programmer must scour the entire program.
+
+Neither of these is a big problem, since a simple tool can easily take
+one form and produce the other (e.g. in an IDE or as a documentation
+tool).
+
+The changes required to annotate a program are obviously centralized
+or decentralized according to the declaration scheme.
+
 
 ** Open Channels
-In either case, the need for "open" channels, where one module
-communicates with another module, but the opposite end of the
-communication is unknown to both module writers, can be served by
-"inclusion."  Each module declares the open channel it needs, likely
-with only readers or only writers, leaving "the other end" empty.
-Only open channels can be included in other channels. @OpenChannel...
 
-The application writer declares a channel that includes its writers
-and readers from the two module-declared channels.  Inclusion is
-subject to the same visibility constraints as delegation.  Delegation
-is not sufficient for this task.  We cannot simply declare a new
-channel that delegates to both "endpoint" channels, since the
-communication will be happening between readers on one channel and
-writers on another.  Delegation requires the communication to happen
-on a single delegate channel at some level.  Perhaps a channel that
-includes other channels should be called a "link." For example:
-@LinkChannel(id="L", include={"C1", "C2"})
+In either case, we need "open channels," where methods in a module
+should be allowed to communicate with methods outside the module
+(undetermined by the module author).  To accomplish this, the module
+writer declares an open channel and makes the relevant module methods
+readers or writers on the open channel as necessary.
+
+An application writer who wants other methods to communicate with this
+module creates a new channel that "includes" the open channel with
+other open channels or application methods.  Inclusion is subject to
+the same visibility constraints as delegation, but delegation is not
+sufficient for this task.  We cannot simply declare a new channel that
+delegates to an open channel, since the communication will be
+happening between readers on one channel and writers on another.
+Delegation requires the communication to happen on a single delegate
+channel at some level.  Open channels allow structured addition of
+methods in external modules to channels outside those modules, in
+order to "instantiate" a new communication that is allowed generically
+by the module.
 
 The distinction between open channels, which can be included in other
 channels, and regular channels, which cannot be included, is
-necessary, since library writers will want to seal certain channels
-where communication *could* but *should not* occur.  For these
+necessary, since library writers will want certain channels sealed to
+disallow communication that *could* but *should not* occur.  For these
 channels application writers should not be able to change the allowed
-communication.
+communication, so regular channels must be distinct from open
+channels.
 
 
-If you need communication between A.f and B.g, even assuming both are
-public (and thus mutually visible), you must export and open channel
-for at least one. You're not allowed to reference methods outside the
-current class, only channels.
+* On Data and Communication Abstraction
 
+Good OO data abstraction keeps raw data channel communication within
+classes (private fields), or at least within packages or between super
+and subclasses (protected fields).  Higher-level channels that encode
+indirect communication may cut across class or package boundaries, but
+must eventually delegate to actual data channels for any real data
+communication.  If these data channels are restricted by good data
+abstraction boundaries, then it all works out.
 
-* Modularity
+(Outside OO land in, for example, ML land, the data abstraction
+properties would still hold, replacing classes by modules, etc. But
+this is for OOPSLA.)
 
-Good OO design keeps @DataChannel communication within classes, or at
-least packages.  Higher-level communication on @Channels may cut
-across class or package boundaries, but it delegates to @DataChannels
-for the real data communication.
-
-Of course, "Good OO design" is not pervasive. I write plenty of code
-that has @DataChannel communication across class boundaries. *** I
-cross package boundaries much less often. ***
+Of course, good data abstractions are not pervasive. I write plenty of
+code that has data channel communication across class boundaries,
+though it crosses package boundaries much less often.
 
 
 * Static Sanity Checking
 
 Communication is only possible (and I mean possible, not "allowed" or
-"intended" or "expected") on a @Channel C that meets the following
+"intended" or "expected") on a channel C that meets the following
 criteria:
 
 1. Every writer of C must:
 
-   a. write to a @DataChannel that is a delegate of C and that some
+   a. write to a data channel that is a delegate of C and that some
    	  reader of C reads from; or
 
-   b. call (or be) a writer of a @Channel that is a delegate of C and
+   b. call (or be) a writer of a channel that is a delegate of C and
       that has some reader that is called by (or is) a reader of C.
 
 2. Every reader of C must: 
 
-   a. read from a @DataChannel that is a delegate of C and that some
+   a. read from a data channel that is a delegate of C and that some
    	  writer of C writes to; or
 
-   b. call (or be) a reader of a @Channel that is a delegate of C and
+   b. call (or be) a reader of a channel that is a delegate of C and
       that has some writer that is called by (or is) a writer of C.
 
-3. As a corollary to 1 and 2, every @Channel must delegate to at least
-   one @Channel or @DataChannel.
+3. As a corollary to 1 and 2, every channel must delegate to at least
+   one channel or data channel.
 
-These criteria may be extended from the form "for each reader there
-must be some writer..." to "for each reader, for all writers..." to
-check that every communication declared by the @Channel is "possible."
-(Of course we're still using a broader approximation of possible.)
+These criteria may be extended from the exists form ("for each reader
+there must exist some writer...") to the for all form ("for each
+reader, for all writers...") to warn the programmer if any
+communication specified by a channel is definitely impossible.  (Of
+course we're still using quite a broad static approximation of
+possible, so we can't guarantee to find all impossible
+communications.)
 
 
 
