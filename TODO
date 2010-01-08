@@ -209,6 +209,63 @@ channels application writers should not be able to change the allowed
 communication, so regular channels must be distinct from open
 channels.
 
+*** Visibility and Inclusion
+
+
+
+*** On Visibility of Open Channels
+
+A natural restriction on open channels is that they must be (at least
+partially) externally visible to be of any use.  One case where they
+need not be public to be useful is with respect to inheritance.  A
+class that extends a superclass in another module may make use of
+protected open channels defined in the superclass. (There are still
+more open questions regarding inheritance, though!)  
+
+For other (compositional) situations, a public open channel is the
+only kind that's useful.  Therefore, by the visibility requirements we
+have placed on all channels (that a channel can be no more visible
+than any of its readers of writers), only externally visible methods
+will be readers or writers on externally visible open channels.  
+
+**** An Example
+
+Externally-Visible Data Channels, Non-Externally Visible Methods, and
+Open Channels
+
+Consider a non-externally visible method that could (and, regardless
+of design quality judgement, should be allowed to) communicate with
+other methods outside the module via some public data channel (e.g. an
+array, as shown here, or a public field).  Example:
+
+private Object[] expand(Object[] array) {
+	Object[] tmp = new Object[array.length * 2];
+	for (int i = 0; i < array.length; i++) {
+		tmp[i] = array[i];
+	}
+	return tmp;
+}
+
+There are two options for dealing with this case:
+
+1. Inline private until its communication is assigned up to an
+   externally-visible method that can be a reader and writer on an
+   externally-visible open channel.
+
+2. Make the expand method externally-visible enough that it can have
+   its own open channel.
+
+See Inlining and Open Questions: The Goals Question.
+
+
+* Inlining
+
+Presumably, inlining is often replaced by delegation, but (where) do
+we want honest-to-goodness I-don't-care-about-context inlining?  The
+above example seems to illustrate one situation where it's needed if
+we want to avoid changing the "original" code (see Open Questions: The
+Goals Question).
+
 
 * On Data and Communication Abstraction
 
@@ -271,50 +328,52 @@ communications.)
 
 * Open Questions (To do)
 
+** Inheritance, Subtyping, and Channel Membership
 
-** Visible Data Channels and Non-Externally Visible Methods
+*** Method Overriding
 
-Consider a non-externally visible library method that could (and,
-regardless of design quality judgement, should be allowed to)
-communicate with other methods outside the library package via some
-public data channel (e.g. an array or a public field).  Example:
+Does an overriding method have a communication policy that:
 
-private Object[] expand(Object[] array) {
-	Object[] tmp = new Object[array.length * 2];
-	for (int i = 0; i < array.length; i++) {
-		tmp[i] = array[i];
-	}
-	return tmp;
-}
+1. must allow at most a subset of the communication allowed for the
+   overridden method?
 
-The expand method should probably inlined in this case, so that any
-communication happening in it gets reassigned up to some externally
-visible method.  Is that always what you want to do?
+2. must allow at least a superset of the communication allowed for the
+   overridden method?
 
-Is this common?
+3. has no restrictions with respect to the 
 
-Should public/private work more like .mli?
+**** Precedent: Checked Exceptions
 
-Channels, not individual writers or readers of channels, are either
-internal-only (private) or externally visible (public).  It would
-probably work to allow certain members of a channel to be private and
-others public, but it seems confusing and a less intuitive
-alternative.  Members of externally visible channels must themselves
-be externally visible.
+If B is a subclass of A and A.f() throws E, then B.f() can throw E or
+throw nothing.  B.f() cannot throw any other checked exceptions (unless
+they are subtypes of E), since other methods call f() on something
+with static type A are not expecting anything more.
 
+Following this precedent could mean making it impossible to annotate
+existing programs without whole-program annotation control (to expand
+the super's communication policy as needed to encompass that of the
+subclass) of an escape mechanism.
+
+See Open Questions: The Goals Question.
+
+** The Goals Question
+
+Do we seek to be able to express all possible communication patterns
+without changing a character of the existing code (just the
+annotations)?  Or do we seek to provide something stronger or more
+elegant and end up preventing certain possible code from being
+expressible in this system?
+
+
+** Should public/private work more like .mli?
+
+* Miscellaneous Notes
 
 A Channel with member m may delegate to another channel that also has
 m as a member.  If m is a writer in both or a reader in both then m
-need not call itself to delegate. The delegation is legit from the
+need not call itself to delegate. The delegation can occur at the
 original call.
 
-
-INHERITANCE!
-
 * Semantics
-
-
-
-
 
 * Construct bugs.
