@@ -40,13 +40,9 @@ import oshajava.support.acme.util.Util;
  * 
  * + Copy (partial) of java.*
  * 
- * + Copy of acme.* (using our copy of java.*)
- * 
- * + Copy of asm.* (using our copy of java.*)
- * 
  * + command line options
  * 
- * + Graph recording (as annotation inference? i.e. insert annotations in the bytecode?)
+ * + Graph recording as annotation inference? i.e. insert annotations in the bytecode?
  * 
  * + Static spec reading
  * 
