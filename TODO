@@ -1,0 +1,183 @@
+== Overview
+
+@Channels (formerly referred to as groups) have writers and readers
+(methods).  Each method declares its own write- and read-memberships,
+subject to certain restrictions described below.  @Channels delegate
+to other @Channels to perform indirect higher-level communications and
+to @DataChannels to perform direct communications.  @DataChannels
+represent the medium for the lowest-level communication: from write
+operations to read operations on the same data.
+
+== Example
+
+@Channel(
+	id = "C",
+	via = { "D" }
+)
+@Channel(
+	id = "D",
+	via = { @DataChannel("A.x") }
+)
+class A {
+	private int x = 0;
+
+	@Writer("C")
+	@Reader("C")
+	public void f() {
+		g();
+	}
+
+	@Writer("D")
+	@Reader("D")
+	private void g() {
+		x++;
+	}
+}
+
+
+
+== Qualified Names 
+
+@Channel names work like other Java names.  They are qualified.  Thus
+the @Channel declared with id C above has the qualified name A.C
+because it is attached to class A.
+
+
+== @DataChannels
+
+Given the private field x in class A above, we automatically get the
+private @DataChannel("A.x").  All reads (not the methods containing
+the reads--think of the reads as getter methods) of field x are
+automatically @DataReader("A.x").  All writes (think of setter
+methods) to field x are automatically @DataWriter("A.x").
+
+In coarse-grained object mode, a class A would yield a single
+@DataChannel("A") representing all of its fields.  An int array would
+yield protected a @DataChannel("int[]") in coarse-grained array mode
+and a set @DataChannel("int[0]"), ..., @DataChannel("int[n]") in
+fine-grained array mode.
+
+The @DataChannels described above are all conservative approximations
+of real data channels (they allow for a superset of the actually
+possible data channel communication) and can be inferred simply from
+type information.  Pointer analysis or explicit declarations could
+yield more precise @DataChannels.
+
+
+== Visibility
+
+@Channels can be public, protected, or private, according to the
+standard Java notions of these keywords.  @Channels are not allowed to
+be any "more visible" than their least visible writer or reader.  For
+example, a @Channel with a private reader must be a private @Channel.
+A @Channel with only public readers and writers can be public,
+protected, or private.
+
+
+@Channels may only delegate to other channels that are visible from
+the context in which they are declared.
+
+
+TODO writer visibility and reader visibility.
+
+
+
+== Sealing
+
+We need some mechanism by which a @Channel can be made visible for
+delegation but closed to additions of new readers and writers.  This
+is need is an artifact of methods declaring their @Channel memberships
+as opposed to @Channels declaring their members.  There are therefore
+two options:
+
+1. @Channels declare their writers and readers instead of methods
+   declaring their memberships.  All @Channels are final (read-only).
+   
+   The need for non-final @Channels, where one module communicates
+   with another module, but the opposite end of the communication is
+   unknown to both module writers, can be served with inclusion.  Each
+   module declares the channel it needs, likely with only readers or
+   only writers, leaving "the other end" empty.  Then, the application
+   writer declares a @Channel that includes its writers and readers
+   from the two module-declared channels.  Inclusion is subject to the
+   same visibility constraints as delegation.
+
+  ***
+Also need some read-only notion so you can seal a public channel such
+that the outside world can read it but can't add writers or readers.
+To this end, we may want to switch things up and have @Channels list
+their writers and readers rather than have methods list their
+memberships.  This just makes it simple to "seal" the @Channel, since
+there's the list. It's in the library and you can't change it without
+changing the library. ***
+
+No external member can be added.  (?)  But what about when I
+have a private lib method that can communicate with a method outside
+the lib via some public @DataChannel.  In this case, you want to
+@Inline the private lib method such that its communication is assigned
+up to a public caller. Is that always acceptable?
+
+== Modularity
+
+Good OO design keeps @DataChannel communication within classes, or at
+least packages.  Higher-level communication on @Channels may cut
+across class or package boundaries, but it delegates to @DataChannels
+for the real data communication.
+
+Of course, "Good OO design" is not pervasive. I write plenty of code
+that has @DataChannel communication across class boundaries. *** I
+cross package boundaries much less often. ***
+
+
+== Static sanity checking
+
+Communication is only possible (and I mean possible, not "allowed" or
+"intended" or "expected") on a @Channel C that meets the following
+criteria:
+
+1. Every writer of C must:
+
+   a. write to a @DataChannel that is a delegate of C and that some
+   	  reader of C reads from; or
+
+   b. call (or be) a writer of a @Channel that is a delegate of C and
+      that has some reader that is called by (or is) a reader of C.
+
+2. Every reader of C must: 
+
+   a. read from a @DataChannel that is a delegate of C and that some
+   	  writer of C writes to; or
+
+   b. call (or be) a reader of a @Channel that is a delegate of C and
+      that has some writer that is called by (or is) a writer of C.
+
+3. As a corollary to 1 and 2, every @Channel must delegate to at least
+   one @Channel or @DataChannel.
+
+These criteria may be extended from the form "for each reader there
+must be some writer..." to "for each reader, for all writers..." to
+check that every communication declared by the @Channel is "possible."
+(Of course we're still using a broader approximation of possible.)
+
+
+Channels, not individual writers or readers of channels, are either
+internal-only (private) or externally visible (public).  It would
+probably work to allow certain members of a channel to be private and
+others public, but it seems confusing and a less intuitive
+alternative.  Members of externally visible channels must themselves
+be externally visible.
+
+
+A Channel with member m may delegate to another channel that also has
+m as a member.  If m is a writer in both or a reader in both then m
+need not call itself to delegate. The delegation is legit from the
+original call.
+
+
+Semantics
+
+
+
+
+
+Construct bugs.
