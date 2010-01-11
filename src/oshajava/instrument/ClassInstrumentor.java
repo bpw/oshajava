@@ -9,6 +9,7 @@ import oshajava.support.org.objectweb.asm.Opcodes;
 import oshajava.support.org.objectweb.asm.Type;
 import oshajava.support.org.objectweb.asm.commons.Method;
 import oshajava.support.org.objectweb.asm.commons.JSRInlinerAdapter;
+import oshajava.support.acme.util.Util;
 
 
 
@@ -97,6 +98,7 @@ public class ClassInstrumentor extends ClassAdapter {
 	protected String superName;
 //	protected Policy policy;
 	protected final MethodTable methodTable;
+	protected int classAccess;
 
 	public ClassInstrumentor(ClassVisitor cv, InstrumentationAgent.Options opts, MethodTable methodTable) {
 		super(cv);
@@ -156,6 +158,68 @@ public class ClassInstrumentor extends ClassAdapter {
 		}
 	}
 
+
+    /**
+     * Determines the (internal name of the) class in which a field was declared. The class is
+     * some class in the owner's inheritance heirarchy.
+     *
+     * @param ownerInternalName
+     * @param fieldName
+     * @return internal name of the declaring class
+     */
+    private static String fieldDeclarerHelper(String ownerInternalName, String fieldName) {
+        Class owner;
+        try {
+            owner = Class.forName(Type.getObjectType(ownerInternalName).getClassName());
+        } catch (ClassNotFoundException e) {
+            Util.fail("class not found when looking for declarer: " + Type.getObjectType(ownerInternalName).getClassName());
+            return null;
+        }
+        
+        // Try to look up the field in the current class.
+        try {
+            
+            // Throws NoSuchFieldError if fieldName does not exist.
+            owner.getDeclaredField(fieldName);
+        
+        } catch (NoSuchFieldException e) {
+            
+            // Not found in this class. Try recursing to the parent.
+            Class superclass = owner.getSuperclass();
+            if (superclass == null) {
+                // We've recursed past Object -- field not found!
+                return null;
+            } else {
+                return fieldDeclarerHelper(Type.getInternalName(superclass), fieldName);
+            }
+            
+        }
+        
+        // No exception thrown => field found here.
+        return ownerInternalName;
+    }
+    
+    /**
+     * Determines the (internal name of the) class in which a field was declared for a field in
+     * the currently-visiting class. This function exists to get around the fact that the
+     * current class doesn't exist yet and thus can't be inspected using the Class class.
+     *
+     * @param fieldName
+     * @return internal name of the declaring class
+     */
+    // TODO: This method assumes that the field is declared in the current class, which is
+    // probably wrong.
+    private String fieldDeclarer(String fieldName) {
+        String declarer = fieldDeclarerHelper(superName, fieldName);
+	    if (declarer == null) {
+	        // Field not found in the superclass hierarchy. Assume it's declared here.
+	        // TODO: this assumption seems sort of unsafe
+	        declarer = className;
+	    }
+	    System.out.println(className + " " + fieldName + " " + declarer + " " + InstrumentationAgent.shouldInstrument(declarer));
+	    return declarer;
+    }
+
 	/**
 	 * Decides whether a field in class owner with name name and type desc should be instrumented.
 	 * Avoids instrumenting this$0, this$1, etc. fields in inner classes.  Just hope there aren't
@@ -167,6 +231,8 @@ public class ClassInstrumentor extends ClassAdapter {
 	 * @param desc
 	 * @return
 	 */
+	// TODO: using "shouldInstrument(owner)" is sort of wrong because the field may not be declared
+	// in the owner (it may belong to a superclass).
 	public boolean shouldInstrumentField(String owner, String name, String desc) {
 		return InstrumentationAgent.shouldInstrument(owner) && shouldInstrumentField(name, desc);
 	}
