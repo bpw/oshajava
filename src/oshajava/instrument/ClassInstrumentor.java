@@ -98,7 +98,6 @@ public class ClassInstrumentor extends ClassAdapter {
 	protected String superName;
 //	protected Policy policy;
 	protected final MethodTable methodTable;
-	protected int classAccess;
 
 	public ClassInstrumentor(ClassVisitor cv, InstrumentationAgent.Options opts, MethodTable methodTable) {
 		super(cv);
