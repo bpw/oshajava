@@ -112,7 +112,14 @@ public class ClassInstrumentor extends ClassAdapter {
 		this.methodTable = methodTable;
 	}
 	
-	public static boolean hasShadowField(Class cls, String name) {
+	/**
+	 * Decides whether a given class has a shadow field (inherited or declared) for a particular field.
+	 * 
+	 * @param cls
+	 * @param name
+	 * @return
+	 */
+	private static boolean hasShadowField(Class cls, String name) {
 		try {
 			cls.getField(name + SHADOW_FIELD_SUFFIX);
 		} catch (SecurityException e) {
@@ -124,10 +131,14 @@ public class ClassInstrumentor extends ClassAdapter {
 		return true;
 	}
 	
-	
-	private static String fieldId(Field fld) {
-		return fld.getName() + " " + Type.getDescriptor(fld.getType());
-	}
+	/**
+	 * Recursively gathers all the fields of a class into a list. The set of usedIds contains
+	 * strings indicating already-seen fields, used to avoid duplicates in the output list.
+	 * 
+	 * @param cls
+	 * @param usedIds
+	 * @param fields
+	 */
 	private static void getAllFieldsHelper(Class cls, Set<String> usedIds, List<Field> fields) {
 		if (cls == null) {
 			
@@ -140,7 +151,7 @@ public class ClassInstrumentor extends ClassAdapter {
 
 			// Add all fields declared here, if they aren't redefinitions.
 			for (Field fld : cls.getDeclaredFields()) {
-				if (usedIds.add(fieldId(fld))) {
+				if (usedIds.add(fld.getName() + " " + Type.getDescriptor(fld.getType()))) {
 					// Not a duplicate.
 					fields.add(fld);
 				}
@@ -148,14 +159,29 @@ public class ClassInstrumentor extends ClassAdapter {
 			
 		}
 	}
-	public static List<Field> getAllFields(Class cls) {
+	
+	/**
+	 * Returns a list of all the fields (declared or inherited) in a class. Existing methods
+	 * won't suffice because they list either only declared fields or only public fields.
+	 * 
+	 * @param cls
+	 * @return
+	 */
+	private static List<Field> getAllFields(Class cls) {
 		Set<String> usedIds = new HashSet<String>();
 		List<Field> fields = new LinkedList<Field>();
 		getAllFieldsHelper(cls, usedIds, fields);
 		return fields;
 	}
 
-	public void addShadowField(int access, String name, String desc) {
+	/**
+	 * Add a shadow field for a given field.
+	 * 
+	 * @param access
+	 * @param name
+	 * @param desc
+	 */
+	private void addShadowField(int access, String name, String desc) {
 		if (shouldInstrumentField(name, desc)) {
 			final FieldVisitor fv = super.visitField(
 					access & ~(Opcodes.ACC_FINAL | Opcodes.ACC_VOLATILE),
@@ -164,6 +190,20 @@ public class ClassInstrumentor extends ClassAdapter {
 			if (fv != null) {
 				fv.visitEnd();
 			}
+		}
+	}
+	
+	/**
+	 * Get a Class object for a qualified name using the system class loader.
+	 * 
+	 * @param name
+	 * @return a Class object
+	 */
+	private static Class classForName(String name) {
+		try {
+			return Class.forName(name, true, ClassLoader.getSystemClassLoader());
+		} catch (ClassNotFoundException e) {
+			return null;
 		}
 	}
 	
@@ -183,12 +223,11 @@ public class ClassInstrumentor extends ClassAdapter {
 //		Util.log("class " + name + " extends " + superName);
 		
 		// Get this class' superclass to find inherited fields that need to be shadowed.
-		Class superclass = null;
-		try {
-			superclass = Class.forName(Type.getObjectType(superName).getClassName());
-		} catch (ClassNotFoundException e) {
+		Class superclass = classForName(Type.getObjectType(superName).getClassName());
+		if (superclass == null) {
 			Util.fail("superclass not found: " + Type.getObjectType(superName).getClassName());
 		}
+		Util.log("superclass found: " + Type.getObjectType(superName).getClassName());
 		
 		// Shadow any unshadowed inherited fields. Keep track of which fields we shadow here
 		// to avoid conflicts with fields declared here.
