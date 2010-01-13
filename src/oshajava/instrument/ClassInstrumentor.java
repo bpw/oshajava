@@ -10,6 +10,12 @@ import oshajava.support.org.objectweb.asm.Type;
 import oshajava.support.org.objectweb.asm.commons.Method;
 import oshajava.support.org.objectweb.asm.commons.JSRInlinerAdapter;
 import oshajava.support.acme.util.Util;
+import java.lang.Class;
+import java.lang.reflect.Field;
+import java.util.Set;
+import java.util.HashSet;
+import java.util.List;
+import java.util.LinkedList;
 
 
 
@@ -98,13 +104,69 @@ public class ClassInstrumentor extends ClassAdapter {
 	protected String superName;
 //	protected Policy policy;
 	protected final MethodTable methodTable;
+	protected Set<String> shadowedInheritedFields;
 
 	public ClassInstrumentor(ClassVisitor cv, InstrumentationAgent.Options opts, MethodTable methodTable) {
 		super(cv);
 		this.opts = opts;
 		this.methodTable = methodTable;
 	}
+	
+	public static boolean hasShadowField(Class cls, String name) {
+		try {
+			cls.getField(name + SHADOW_FIELD_SUFFIX);
+		} catch (SecurityException e) {
+			Util.fail(e);
+			return false;
+		} catch (NoSuchFieldException e) {
+			return false;
+		}
+		return true;
+	}
+	
+	
+	private static String fieldId(Field fld) {
+		return fld.getName() + " " + Type.getDescriptor(fld.getType());
+	}
+	private static void getAllFieldsHelper(Class cls, Set<String> usedIds, List<Field> fields) {
+		if (cls == null) {
+			
+			// Base case: top of class heirarchy has no fields.
+			
+		} else {
+			
+			// Add all inherited fields.
+			getAllFieldsHelper(cls.getSuperclass(), usedIds, fields);
 
+			// Add all fields declared here, if they aren't redefinitions.
+			for (Field fld : cls.getDeclaredFields()) {
+				if (usedIds.add(fieldId(fld))) {
+					// Not a duplicate.
+					fields.add(fld);
+				}
+			}
+			
+		}
+	}
+	public static List<Field> getAllFields(Class cls) {
+		Set<String> usedIds = new HashSet<String>();
+		List<Field> fields = new LinkedList<Field>();
+		getAllFieldsHelper(cls, usedIds, fields);
+		return fields;
+	}
+
+	public void addShadowField(int access, String name, String desc) {
+		if (shouldInstrumentField(name, desc)) {
+			final FieldVisitor fv = super.visitField(
+					access & ~(Opcodes.ACC_FINAL | Opcodes.ACC_VOLATILE),
+					name + SHADOW_FIELD_SUFFIX, STATE_DESC, null, null
+			);
+			if (fv != null) {
+				fv.visitEnd();
+			}
+		}
+	}
+	
 	@Override
 	public void visit(int version, int access, String name, String signature,
 			String superName, String[] interfaces) {
@@ -119,6 +181,24 @@ public class ClassInstrumentor extends ClassAdapter {
 		// TODO 5/6
 		super.visit((version == Opcodes.V1_6 ? Opcodes.V1_5 : version), access, name, signature, superName, interfaces);
 //		Util.log("class " + name + " extends " + superName);
+		
+		// Get this class' superclass to find inherited fields that need to be shadowed.
+		Class superclass = null;
+		try {
+			superclass = Class.forName(Type.getObjectType(superName).getClassName());
+		} catch (ClassNotFoundException e) {
+			Util.fail("superclass not found: " + Type.getObjectType(superName).getClassName());
+		}
+		
+		// Shadow any unshadowed inherited fields. Keep track of which fields we shadow here
+		// to avoid conflicts with fields declared here.
+		shadowedInheritedFields = new HashSet<String>();
+		for (Field fld : getAllFields(superclass)) {
+			if (!hasShadowField(superclass, name)) {
+				addShadowField(fld.getModifiers(), fld.getName(), Type.getDescriptor(fld.getType()));
+				shadowedInheritedFields.add(fld.getName());
+			}
+		}
 	}
 	
 	// TODO allow the annotations on a class... just send to all methods...
@@ -134,15 +214,9 @@ public class ClassInstrumentor extends ClassAdapter {
 		if (  (!opts.coarseFieldStates || (access & Opcodes.ACC_STATIC) != 0)) {
 			// TODO option to ignore final fields. how?
 			// We make all state fields non-final to be able to set them from outside a constructor
-			if (shouldInstrumentField(name, desc)) {
-				final FieldVisitor fv = super.visitField(
-						access & ~(Opcodes.ACC_FINAL | Opcodes.ACC_VOLATILE),
-						name + SHADOW_FIELD_SUFFIX, STATE_DESC, signature, null
-				);
-				if (fv != null) {
-					fv.visitEnd();
-				}
-			}
+        	if (!shadowedInheritedFields.contains(name)) {
+        		addShadowField(access, name, desc);
+        	}
 		}
 		return super.visitField(access, name, desc, signature, value);
 	}
@@ -157,68 +231,6 @@ public class ClassInstrumentor extends ClassAdapter {
 		}
 	}
 
-
-    /**
-     * Determines the (internal name of the) class in which a field was declared. The class is
-     * some class in the owner's inheritance heirarchy.
-     *
-     * @param ownerInternalName
-     * @param fieldName
-     * @return internal name of the declaring class
-     */
-    private static String fieldDeclarerHelper(String ownerInternalName, String fieldName) {
-        Class owner;
-        try {
-            owner = Class.forName(Type.getObjectType(ownerInternalName).getClassName());
-        } catch (ClassNotFoundException e) {
-            Util.fail("class not found when looking for declarer: " + Type.getObjectType(ownerInternalName).getClassName());
-            return null;
-        }
-        
-        // Try to look up the field in the current class.
-        try {
-            
-            // Throws NoSuchFieldError if fieldName does not exist.
-            owner.getDeclaredField(fieldName);
-        
-        } catch (NoSuchFieldException e) {
-            
-            // Not found in this class. Try recursing to the parent.
-            Class superclass = owner.getSuperclass();
-            if (superclass == null) {
-                // We've recursed past Object -- field not found!
-                return null;
-            } else {
-                return fieldDeclarerHelper(Type.getInternalName(superclass), fieldName);
-            }
-            
-        }
-        
-        // No exception thrown => field found here.
-        return ownerInternalName;
-    }
-    
-    /**
-     * Determines the (internal name of the) class in which a field was declared for a field in
-     * the currently-visiting class. This function exists to get around the fact that the
-     * current class doesn't exist yet and thus can't be inspected using the Class class.
-     *
-     * @param fieldName
-     * @return internal name of the declaring class
-     */
-    // TODO: This method assumes that the field is declared in the current class, which is
-    // probably wrong.
-    private String fieldDeclarer(String fieldName) {
-        String declarer = fieldDeclarerHelper(superName, fieldName);
-	    if (declarer == null) {
-	        // Field not found in the superclass hierarchy. Assume it's declared here.
-	        // TODO: this assumption seems sort of unsafe
-	        declarer = className;
-	    }
-	    System.out.println(className + " " + fieldName + " " + declarer + " " + InstrumentationAgent.shouldInstrument(declarer));
-	    return declarer;
-    }
-
 	/**
 	 * Decides whether a field in class owner with name name and type desc should be instrumented.
 	 * Avoids instrumenting this$0, this$1, etc. fields in inner classes.  Just hope there aren't
@@ -230,8 +242,6 @@ public class ClassInstrumentor extends ClassAdapter {
 	 * @param desc
 	 * @return
 	 */
-	// TODO: using "shouldInstrument(owner)" is sort of wrong because the field may not be declared
-	// in the owner (it may belong to a superclass).
 	public boolean shouldInstrumentField(String owner, String name, String desc) {
 		return InstrumentationAgent.shouldInstrument(owner) && shouldInstrumentField(name, desc);
 	}
