@@ -267,8 +267,11 @@ public class ClassInstrumentor extends ClassAdapter {
 	@Override
 	public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
 		if ((access & Opcodes.ACC_NATIVE) == 0) {
-			return new JSRInlinerAdapter(new MethodInstrumentor(super.visitMethod(access, name, desc, signature, exceptions),
-					access, name, desc, this, methodTable), access, name, desc, signature, exceptions);
+		    MethodVisitor chain = super.visitMethod(access, name, desc, signature, exceptions);
+		    chain = new HandlerSorterAdapter(chain, access, name, desc, signature, exceptions);
+		    chain = new MethodInstrumentor(chain, access, name, desc, this, methodTable);
+		    chain = new JSRInlinerAdapter(chain, access, name, desc, signature, exceptions);
+		    return chain;
 		} else {
 			return super.visitMethod(access, name, desc, signature, exceptions);
 		}
