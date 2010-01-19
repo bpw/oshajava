@@ -194,16 +194,20 @@ public class ClassInstrumentor extends ClassAdapter {
 	}
 	
 	/**
-	 * Get a Class object for a qualified name using the system class loader.
+	 * Get a Class object for a qualified name using a minimal class loader.
 	 * 
 	 * @param name
 	 * @return a Class object
 	 */
 	private static Class classForName(String name) {
 		try {
-			return Class.forName(name, true, ClassLoader.getSystemClassLoader());
-		} catch (ClassNotFoundException e) {
-			return null;
+			return Class.forName(name, true, null);
+		} catch (ClassNotFoundException ex) {
+			try {
+				return Class.forName(name, true, ClassLoader.getSystemClassLoader());
+			} catch (ClassNotFoundException e) {
+				return null;
+			}
 		}
 	}
 	
@@ -218,6 +222,7 @@ public class ClassInstrumentor extends ClassAdapter {
 		if (opts.coarseFieldStates && (access & Opcodes.ACC_INTERFACE) == 0 && (superName == null || superName.equals("java/lang/Object"))) {
 			superName = Type.getType(oshajava.runtime.ObjectWithState.class).getInternalName();
 		}
+
 		// TODO 5/6
 		super.visit((version == Opcodes.V1_6 ? Opcodes.V1_5 : version), access, name, signature, superName, interfaces);
 //		Util.log("class " + name + " extends " + superName);
@@ -227,7 +232,6 @@ public class ClassInstrumentor extends ClassAdapter {
 		if (superclass == null) {
 			Util.fail("superclass not found: " + Type.getObjectType(superName).getClassName());
 		}
-		Util.log("superclass found: " + Type.getObjectType(superName).getClassName());
 		
 		// Shadow any unshadowed inherited fields. Keep track of which fields we shadow here
 		// to avoid conflicts with fields declared here.
