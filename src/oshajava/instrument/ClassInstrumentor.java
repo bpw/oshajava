@@ -227,21 +227,28 @@ public class ClassInstrumentor extends ClassAdapter {
 		super.visit((version == Opcodes.V1_6 ? Opcodes.V1_5 : version), access, name, signature, superName, interfaces);
 //		Util.log("class " + name + " extends " + superName);
 		
-		// Get this class' superclass to find inherited fields that need to be shadowed.
-		Class superclass = classForName(Type.getObjectType(superName).getClassName());
-		if (superclass == null) {
-			Util.fail("superclass not found: " + Type.getObjectType(superName).getClassName());
+		// Ensure all fields here (including inherited ones) are shadowed. First, check whether our
+		// superclass is instrumented.
+		shadowedInheritedFields = new HashSet<String>();
+		if (!InstrumentationAgent.shouldInstrument(superName)) {
+		
+			// Get this class' superclass to find inherited fields that need to be shadowed.
+			Class superclass = classForName(Type.getObjectType(superName).getClassName());
+			if (superclass == null) {
+				Util.fail("superclass not found: " + Type.getObjectType(superName).getClassName());
+			}
+			
+			// Shadow any unshadowed inherited fields. Keep track of which fields we shadow here
+			// to avoid conflicts with fields declared here.
+			for (Field fld : getAllFields(superclass)) {
+				if (!hasShadowField(superclass, name)) {
+					addShadowField(fld.getModifiers(), fld.getName(), Type.getDescriptor(fld.getType()));
+					shadowedInheritedFields.add(fld.getName());
+				}
+			}
+
 		}
 		
-		// Shadow any unshadowed inherited fields. Keep track of which fields we shadow here
-		// to avoid conflicts with fields declared here.
-		shadowedInheritedFields = new HashSet<String>();
-		for (Field fld : getAllFields(superclass)) {
-			if (!hasShadowField(superclass, name)) {
-				addShadowField(fld.getModifiers(), fld.getName(), Type.getDescriptor(fld.getType()));
-				shadowedInheritedFields.add(fld.getName());
-			}
-		}
 	}
 	
 	// TODO allow the annotations on a class... just send to all methods...
