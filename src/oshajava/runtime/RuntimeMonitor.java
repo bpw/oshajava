@@ -341,7 +341,7 @@ public class RuntimeMonitor {
 					if (lastHolderState != holderState) {
 						lockState.lastHolder = holderState;
 						lockState.depth++;
-						if (lastHolderState != null && lastHolderState.thread != holder) {
+						if (lastHolderState != null && lastHolderState.thread != holder && holderState != null) { //TODO Is this right? --ALDS
 							if (RECORD) {
 								recordEdge(lockState.lastHolder.method, holder.currentMethod);
 							}
@@ -359,6 +359,7 @@ public class RuntimeMonitor {
 					} else {
 						lockState.depth++;
 					}
+				    
 					// push it in the holder's cache.
 					holder.pushLock(lock, lockState);
 				} else {
