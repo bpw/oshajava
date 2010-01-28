@@ -1,3 +1,5 @@
+import java.io.IOException;
+
 
 public class Except {
 	
@@ -43,4 +45,6 @@ public class Except {
 	public static void main(String[] args){
 		new Except().bar(10);
 	}
+	
+	void thrower() throws IOException {}
 }

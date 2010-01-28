@@ -44,8 +44,6 @@ public class ClassInstrumentor extends ClassAdapter {
 	protected static final String ANNOT_THREAD_PRIVATE_DESC = Type.getDescriptor(oshajava.annotation.ThreadPrivate.class);
 	protected static final String ANNOT_READ_BY_DESC        = Type.getDescriptor(oshajava.annotation.ReadBy.class);
 	protected static final String ANNOT_READ_BY_ALL_DESC    = Type.getDescriptor(oshajava.annotation.ReadByAll.class);
-	protected static final String ANNOT_GROUP_DESC    		= Type.getDescriptor(oshajava.annotation.Group.class);
-	protected static final String ANNOT_MEMBER_DESC    		= Type.getDescriptor(oshajava.annotation.Member.class);
 	
 	protected static final String OSHA_EXCEPT_TYPE_NAME     = Type.getInternalName(oshajava.runtime.OshaRuntimeException.class);
 	protected static final String SHADOW_FIELD_SUFFIX       = "__osha_state";

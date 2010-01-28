@@ -209,12 +209,6 @@ public class MethodInstrumentor extends AdviceAdapter {
 			mid = methodTable.register(fullNameAndDesc, UniversalIntSet.set);
 			//			Util.logf("%s (mid = %d) is ReadByAll. set in table = %s", fullNameAndDesc, mid, MethodRegistry.policyTable[mid]);
 			return null;
-		} else if (desc.equals(ClassInstrumentor.ANNOT_GROUP_DESC)) {
-			Util.fail("Group declared on a method.");
-			return null;
-		} else if (desc.equals(ClassInstrumentor.ANNOT_MEMBER_DESC)) {
-			//mid = MethodTable.
-			return super.visitAnnotation(desc, visible);
 		}  else {
 			// Not one of ours.
 			return super.visitAnnotation(desc, visible);
