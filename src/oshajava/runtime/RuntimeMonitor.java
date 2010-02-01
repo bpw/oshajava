@@ -291,7 +291,8 @@ public class RuntimeMonitor {
 	public static void release(final Object lock, final ThreadState holder) {
 		try {
 			final LockState ls = lockStates.get(lock);
-			final int depth = --ls.depth;
+    	    ls.decrementDepth();
+			final int depth = ls.getDepth();
 			if (depth < 1) {
 				if (depth < 0) {
 					Util.fail("Bad lock scoping");
@@ -304,7 +305,8 @@ public class RuntimeMonitor {
 		}
 	}
 	public static void release(final ObjectWithState lock, final ThreadState holder) {
-		final int depth = --lock.__osha_lock_state.depth;
+	    lock.__osha_lock_state.decrementDepth();
+		final int depth = lock.__osha_lock_state.getDepth();
 		if (depth < 0) Util.fail("Bad lock scoping");
 	}
 
@@ -320,28 +322,28 @@ public class RuntimeMonitor {
 			LockState lockState = holder.getLockState(lock);
 			if (lockState != null) {
 				// if it's in that stack, then it's already been acquired, so just increment the depth.
-				lockState.depth++;
+				lockState.incrementDepth();
 			} else {
 				// else look it up.
 				lockState = lockStates.get(lock);
 				if (lockState == null) {
 					lockState = new LockState(holder.currentState);
-					lockState.depth = 1;
+					lockState.setDepth(1);
 					// push it in the holder's cache.
 					holder.pushLock(lock, lockState);
 					lockState = lockStates.putIfAbsent(lock, lockState);
 					Util.assertTrue(lockState == null);
-				} else if (lockState.depth < 0) {
+				} else if (lockState.getDepth() < 0) {
 					Util.fail("Bad lock scoping.");
-				} else if (lockState.depth == 0) {
+				} else if (lockState.getDepth() == 0) {
 					// First (non-reentrant) acquire by this thread.
 					// NOTE: this is atomic, because we hold lock and no other thread can call
 					// the acquire or release hooks until they hold the lock.
 					final State lastHolderState = lockState.lastHolder;
 					if (lastHolderState != holderState) {
 						lockState.lastHolder = holderState;
-						lockState.depth++;
-						if (lastHolderState != null && lastHolderState.thread != holder && holderState != null) { //TODO Is this right? --ALDS
+						lockState.incrementDepth();
+						if (lastHolderState != null && lastHolderState.thread != holder && holderState != null) {
 							if (RECORD) {
 								recordEdge(lockState.lastHolder.method, holder.currentMethod);
 							}
@@ -357,14 +359,14 @@ public class RuntimeMonitor {
 
 						}
 					} else {
-						lockState.depth++;
+						lockState.incrementDepth();
 					}
 				    
 					// push it in the holder's cache.
 					holder.pushLock(lock, lockState);
 				} else {
 					// if we're already reentrant, just go one deeper.
-					lockState.depth++;
+					lockState.incrementDepth();
 				}
 			}
 		} catch (IllegalCommunicationException e) {
@@ -377,18 +379,18 @@ public class RuntimeMonitor {
 		LockState ls = lock.__osha_lock_state;
 		if (ls == null) {
 			ls = new LockState(holderState);
-			ls.depth = 1;
+			ls.setDepth(1);
 			lock.__osha_lock_state = ls;
-		} else if (ls.depth < 0) {
+		} else if (ls.getDepth() < 0) {
 			Util.fail("Bad lock scoping.");
-		} else if (ls.depth == 0) {
+		} else if (ls.getDepth() == 0) {
 			// First (non-reentrant) acquire by this thread.
 			// NOTE: this is atomic, because we hold lock and no other thread can call
 			// the acquire or release hooks until they hold the lock.
 			final State lastHolderState = ls.lastHolder;
 			if (lastHolderState != holderState) {
 				ls.lastHolder = holderState;
-				ls.depth++;
+				ls.incrementDepth();
 				if (RECORD) {
 					recordEdge(lastHolderState.method, holder.currentMethod);
 				}
@@ -403,11 +405,11 @@ public class RuntimeMonitor {
 				}
 
 			} else {
-				ls.depth++;
+				ls.incrementDepth();
 			}
 		} else {
 			// if we're already reentrant, just go one deeper.
-			ls.depth++;
+			ls.incrementDepth();
 		}
 	}
 

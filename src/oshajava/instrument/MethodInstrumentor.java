@@ -588,9 +588,6 @@ public class MethodInstrumentor extends AdviceAdapter {
 			break;
 		case Opcodes.MONITORENTER:
 			myStackSize(1);
-			// put in a try/finally to put in the release if needed...
-			final Label start = super.newLabel(), handler = super.newLabel(), done = super.newLabel();
-			mv.visitTryCatchBlock(start, handler, handler, ClassInstrumentor.OSHA_EXCEPT_TYPE_NAME);
 
 			// dup the target. stack -> lock | lock
 			super.dup();
@@ -602,31 +599,15 @@ public class MethodInstrumentor extends AdviceAdapter {
 			// do the monitorenter. stack -> lock |
 			super.visitInsn(opcode);
 
-			super.mark(start);
-			pushCurrentThread();
-			pushCurrentState();
-			// call acquire hook. stack ->
-			super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_ACQUIRE);
-
-			super.goTo(done);
-
-			// handler. We get thee exception on the stack. stack -> e |
-			super.mark(handler);
-			// reload lock. stack -> e | lock
-			super.loadLocal(lock);
-			// monitorexit. stack -> e |
-			super.monitorExit();
-			// rethrow. -> _ |
-			super.throwException();
-			super.mark(done);
+            acquireHook(lock);
+			
 			break;
 		case Opcodes.MONITOREXIT:
 			myStackSize(2);
-			// dup the target. stack -> lock | lock
+			
 			super.dup();
-			pushCurrentThread();
-			// call release hook. stack -> lock |
-			super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_RELEASE);
+			releaseHook();
+			
 			super.visitInsn(opcode);
 			break;
 		case Opcodes.IRETURN:
@@ -641,6 +622,37 @@ public class MethodInstrumentor extends AdviceAdapter {
 			super.visitInsn(opcode);
 		break;			
 		}
+	}
+	
+	// should be called with the lock on the stack
+	private void acquireHook(int lock) {
+    	// put in a try/finally to put in the release if needed...
+    	final Label start = super.newLabel(), handler = super.newLabel(), done = super.newLabel();
+    	mv.visitTryCatchBlock(start, handler, handler, ClassInstrumentor.OSHA_EXCEPT_TYPE_NAME);
+	
+	    super.mark(start);
+		pushCurrentThread();
+		pushCurrentState();
+		// call acquire hook. stack ->
+		super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_ACQUIRE);
+
+		super.goTo(done);
+
+		// handler. We get thee exception on the stack. stack -> e |
+		super.mark(handler);
+		// reload lock. stack -> e | lock
+		super.loadLocal(lock);
+		// monitorexit. stack -> e |
+		super.monitorExit();
+		// rethrow. -> _ |
+		super.throwException();
+		super.mark(done);
+	}
+	
+	// should be called with the lock on the stack
+	private void releaseHook() {
+	    pushCurrentThread();
+		super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_RELEASE);
 	}
 
 	//	@Override
@@ -715,8 +727,49 @@ public class MethodInstrumentor extends AdviceAdapter {
 		if (isConstructor && inst.superName.equals(ClassInstrumentor.OBJECT_WITH_STATE_NAME) 
 				&& opcode == Opcodes.INVOKESPECIAL && owner.equals("java/lang/Object") && name.equals("<init>")) {
 			owner = ClassInstrumentor.OBJECT_WITH_STATE_NAME;
-		}
-		super.visitMethodInsn(opcode, owner, name, desc);
+		    super.visitMethodInsn(opcode, owner, name, desc);
+	
+		} else if (opcode == Opcodes.INVOKEVIRTUAL && owner.equals("java/lang/Object") && name.equals("wait")) {
+		    myStackSize(2);
+		    
+		    // There are three forms of wait(). Put the arguments aside.
+		    final int longArg = super.newLocal(Type.LONG_TYPE);
+		    final int intArg = super.newLocal(Type.INT_TYPE);
+		    if (desc.equals("()V")) {
+		        // No arguments. Do nothing.
+		    } else if (desc.equals("(J)V")) {
+		        super.storeLocal(longArg);
+		    } else if (desc.equals("(JI)V")) {
+		        super.storeLocal(intArg);
+		        super.storeLocal(longArg);
+		    } else {
+		        Util.fail("wait() call with unknown descriptor");
+		    }
+		    
+		    // Save the lock for the acquire hook and invoke the release hook.
+		    super.dup();
+		    final int lock = super.newLocal(ClassInstrumentor.OBJECT_TYPE);
+			super.storeLocal(lock);
+		    releaseHook();
+		    
+		    // Put the arguments back.
+		    super.loadLocal(lock);
+		    if (desc.equals("(J)V")) {
+		        super.loadLocal(longArg);
+		    } else if (desc.equals("(JI)V")) {    
+		        super.loadLocal(longArg);
+		        super.loadLocal(intArg);
+		    }
+		    
+		    // Invoke wait().
+		    super.visitMethodInsn(opcode, owner, name, desc);
+		    
+		    super.loadLocal(lock);
+		    acquireHook(lock);
+		    
+		} else {
+		    super.visitMethodInsn(opcode, owner, name, desc);
+        }
 	}
 
 }

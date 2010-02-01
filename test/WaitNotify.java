@@ -19,7 +19,7 @@ public class WaitNotify {
             		LOCK.notifyAll();
             	}
             	try {
-            	    Thread.sleep(10);
+            	    Thread.sleep(1);
             	} catch (InterruptedException e) {
             	    System.out.println("interrupted!");
             	}
@@ -40,6 +40,7 @@ class MyThread extends Thread {
                     WaitNotify.LOCK.wait();
                     Thread.sleep(4);
                     WaitNotify.iterations++;
+                    System.out.println(WaitNotify.iterations);
                 }    
                 Thread.sleep(10);
             } catch (InterruptedException e) {
