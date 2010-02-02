@@ -25,7 +25,7 @@ public class BitVectorIntSet extends IntSet implements Serializable {
 	// TODO not thread safe! Requires external synchronization!
 	public void add(final int bitIndex) {
 		if (bitIndex > maxBitIndex) {
-			upsize(bitIndex);
+			upsize(bitIndex+1);
 		}
 		bits[bitIndex / SLOT_SIZE] |= 1 << (bitIndex % SLOT_SIZE);
 	}
@@ -38,9 +38,10 @@ public class BitVectorIntSet extends IntSet implements Serializable {
 		if (nbits < maxBitIndex) {
 			return;
 		}
-		final long[] tmp = new long[(nbits % SLOT_SIZE == 0 ? nbits/SLOT_SIZE : nbits/SLOT_SIZE + 1)];
+		final int[] tmp = new int[(nbits % SLOT_SIZE == 0 ? nbits/SLOT_SIZE : nbits/SLOT_SIZE + 1)];
 		System.arraycopy(bits, 0, tmp, 0, bits.length);
-		maxBitIndex = nbits - 1;
+		maxBitIndex = tmp.length*SLOT_SIZE - 1;
+		bits = tmp;
 	}
 	
 	public boolean contains(final int bitIndex) {

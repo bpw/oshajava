@@ -241,6 +241,7 @@ public final class ThreadState {
 	 */
 	protected void popLock() {
 		lockStack[--lockStateStackSize] = null;
+		lockStateStack[lockStateStackSize] = null;
 	}
 	
 	/**
