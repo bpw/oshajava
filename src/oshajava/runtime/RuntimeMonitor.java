@@ -415,8 +415,11 @@ public class RuntimeMonitor {
 	
 	// TODO other granularity version.
 	public static int prewait(final Object lock, final ThreadState holder) {
-		final LockState lockState = holder.getLockState(lock);
-		Util.assertTrue(lockState != null && lockState.getDepth() > 0, "Bad prewait");
+		LockState lockState = holder.getLockState(lock);
+		if (lockState == null) {
+			lockState = lockStates.get(lock);
+			Util.assertTrue(lockState != null && lockState.getDepth() > 0, "Bad prewait");
+		}
 		final int depth = lockState.getDepth();
 		lockState.setDepth(0);
 		return depth;
@@ -424,8 +427,11 @@ public class RuntimeMonitor {
 	
 	// TODO other granularity version.
 	public static void postwait(final Object lock, final int resumeDepth, final ThreadState ts, final State s) {
-		final LockState lockState = ts.getLockState(lock);
-		Util.assertTrue(lockState != null && lockState.getDepth() == 0, "Bad postwait");
+		LockState lockState = ts.getLockState(lock);
+		if (lockState == null) {
+			lockState = lockStates.get(lock);
+			Util.assertTrue(lockState != null && lockState.getDepth() == 0, "Bad postwait");
+		}
 		final State lastHolderState = lockState.lastHolder;
 		if (lastHolderState != s) {
 			lockState.lastHolder = s;

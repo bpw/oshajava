@@ -84,7 +84,7 @@ public class ClassInstrumentor extends ClassAdapter {
 
 	protected static final Method HOOK_ACQUIRE        = new Method("acquire", Type.VOID_TYPE, new Type[] {OBJECT_TYPE, THREAD_STATE_TYPE, STATE_TYPE});
 	protected static final Method HOOK_RELEASE        = new Method("release", Type.VOID_TYPE, ARGS_OBJECT_THREAD);
-	protected static final Method HOOK_PREWAIT        = new Method("prewait", Type.VOID_TYPE, ARGS_OBJECT_THREAD);
+	protected static final Method HOOK_PREWAIT        = new Method("prewait", Type.INT_TYPE, ARGS_OBJECT_THREAD);
 	protected static final Method HOOK_POSTWAIT       = new Method("postwait", Type.VOID_TYPE, new Type[] {OBJECT_TYPE, Type.INT_TYPE, THREAD_STATE_TYPE, STATE_TYPE});
 
 	/****************************************************************************/
