@@ -67,7 +67,7 @@ public class RuntimeMonitor {
 	protected static final Graph graph = new Graph(MethodTable.INITIAL_METHOD_LIST_SIZE);
 	private static MethodTable policy;
 
-	public static final boolean RECORD = true;
+	public static final boolean RECORD = false;
 
 	private static final ThreadLocal<ThreadState> threadState = new ThreadLocal<ThreadState>(); //{
 	//		@Override protected ThreadState initialValue() { return newThread(); }
@@ -410,6 +410,38 @@ public class RuntimeMonitor {
 		} else {
 			// if we're already reentrant, just go one deeper.
 			ls.incrementDepth();
+		}
+	}
+	
+	// TODO other granularity version.
+	public static int prewait(final Object lock, final ThreadState holder) {
+		final LockState lockState = holder.getLockState(lock);
+		Util.assertTrue(lockState != null && lockState.getDepth() > 0, "Bad prewait");
+		final int depth = lockState.getDepth();
+		lockState.setDepth(0);
+		return depth;
+	}
+	
+	// TODO other granularity version.
+	public static void postwait(final Object lock, final int resumeDepth, final ThreadState ts, final State s) {
+		final LockState lockState = ts.getLockState(lock);
+		Util.assertTrue(lockState != null && lockState.getDepth() == 0, "Bad postwait");
+		final State lastHolderState = lockState.lastHolder;
+		if (lastHolderState != s) {
+			lockState.lastHolder = s;
+			lockState.setDepth(resumeDepth);
+			if (RECORD) {
+				recordEdge(lastHolderState.method, ts.currentMethod);
+			}
+			if (lastHolderState != null && lastHolderState.thread != ts) {
+				final IntSet readerSet = s.readers;
+				if (readerSet == null || ! readerSet.contains(s.method)) {
+					throw new IllegalSynchronizationException(
+							lastHolderState.thread, policy.lookup(lastHolderState.method), 
+							ts, policy.lookup(ts.currentMethod)
+					);
+				}
+			}
 		}
 	}
 

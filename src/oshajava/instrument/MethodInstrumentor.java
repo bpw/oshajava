@@ -724,7 +724,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 		    super.visitMethodInsn(opcode, owner, name, desc);
 	
 		} else if (opcode == Opcodes.INVOKEVIRTUAL && owner.equals("java/lang/Object") && name.equals("wait")) {
-		    myStackSize(2);
+		    myStackSize(3);
 		    
 		    // There are three forms of wait(). Put the arguments aside.
 		    final int longArg = super.newLocal(Type.LONG_TYPE);
@@ -741,13 +741,19 @@ public class MethodInstrumentor extends AdviceAdapter {
 		    }
 		    
 		    // Save the lock for the acquire hook and invoke the release hook.
+		    // stack -> lock lock
 		    super.dup();
-		    final int lock = super.newLocal(ClassInstrumentor.OBJECT_TYPE);
-			super.storeLocal(lock);
-		    releaseHook();
+		    // stack -> lock lock lock
+		    super.dup();
+		    // stack -> lock lock lock thread
+		    pushCurrentThread();
+		    // stack -> lock lock depth
+			super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_PREWAIT);
+			// stack -> lock depth lock
+			super.swap();
+			
 		    
-		    // Put the arguments back.
-		    super.loadLocal(lock);
+		    // Put the arguments back. stack -> lock depth lock ...
 		    if (desc.equals("(J)V")) {
 		        super.loadLocal(longArg);
 		    } else if (desc.equals("(JI)V")) {    
@@ -755,11 +761,14 @@ public class MethodInstrumentor extends AdviceAdapter {
 		        super.loadLocal(intArg);
 		    }
 		    
-		    // Invoke wait().
+		    // Invoke wait(). stack -> lock depth
 		    super.visitMethodInsn(opcode, owner, name, desc);
-		    
-		    super.loadLocal(lock);
-		    acquireHook(lock);
+		    // stack -> lock depth thread
+		    pushCurrentThread();
+		    // stack -> lock depth thread state
+		    pushCurrentState();
+		    // stack -> 
+			super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_POSTWAIT);
 		    
 		} else {
 		    super.visitMethodInsn(opcode, owner, name, desc);
