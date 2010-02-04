@@ -1,5 +1,7 @@
 syntax: regexp
 
 ^test/.*\.class$
+^test/.*\.graphml$
 ^build/.*
 ^setup.sh$
+\.DS_Store$
