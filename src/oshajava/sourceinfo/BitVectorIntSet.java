@@ -57,6 +57,30 @@ public class BitVectorIntSet extends IntSet implements Serializable {
 	}
 	public synchronized boolean syncedContains(final int bitIndex) {return contains(bitIndex);}
 	
+	public boolean containsAll(final BitVectorIntSet other) {
+		int min, max;
+		int[] longer;
+		final int[] otherbits = other.bits;
+		if (bits.length < otherbits.length) {
+			min = bits.length;
+			max = otherbits.length;
+			longer = otherbits;
+		} else {
+			min = otherbits.length;
+			max = bits.length;
+			longer = bits;
+		}
+		for (int i = 0; i < min; i++) {
+			if ((bits[i] | otherbits[i]) != bits[i]) {
+				return false;
+			}
+		}
+		for (int i = min; i < max; i++) {
+			if (longer[i] != 0) return false;
+		}
+		return true;
+	}
+	
 	public int[] toArray() {
 		return bits;
 	}

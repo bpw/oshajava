@@ -2,6 +2,7 @@ package oshajava.runtime;
 
 import java.lang.ref.WeakReference;
 
+import oshajava.sourceinfo.BitVectorIntSet;
 import oshajava.sourceinfo.MethodTable;
 import oshajava.support.acme.util.Util;
 
@@ -70,6 +71,7 @@ public final class ThreadState {
 	 */
 	private int stackSize  = 0;
 
+	private BitVectorIntSet[] moduleStack;
 	/**
 	 * Cached copy of the last accessed array.
 	 * TODO weak reference or just some GC of my own. e.g. delete after n method calls.	
