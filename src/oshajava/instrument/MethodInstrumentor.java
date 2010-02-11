@@ -2,9 +2,13 @@ package oshajava.instrument;
 
 
 import oshajava.runtime.RuntimeMonitor;
+
 import oshajava.sourceinfo.BitVectorIntSet;
 import oshajava.sourceinfo.MethodTable;
+import oshajava.sourceinfo.ModuleSpec;
+import oshajava.sourceinfo.ModuleSpec.CommunicationKind;
 import oshajava.sourceinfo.UniversalIntSet;
+
 import oshajava.support.acme.util.Util;
 import oshajava.support.org.objectweb.asm.AnnotationVisitor;
 import oshajava.support.org.objectweb.asm.Label;
@@ -20,30 +24,22 @@ import oshajava.support.org.objectweb.asm.commons.Method;
 
 public class MethodInstrumentor extends AdviceAdapter {
 	
-	protected final MethodTable methodTable;
-
-	protected static final int UNINITIALIZED = -1;
-	protected int mid = UNINITIALIZED;
+	private static final int UNINITIALIZED = -1;
 	protected final boolean isMain;
 	protected final boolean isSynchronized;
 	protected final boolean isConstructor;
 	protected final boolean isClinit;
 	protected final boolean isStatic;
+	
+	private final ModuleSpec module;
 
 	protected final String fullNameAndDesc;
 	
+	private final int mid;
+	
 	private final Method readHook;
 
-	// TODO policy names: @Inline, @Private, @ShareSelf, @ShareProtected, @SharePublic
-	// @Inline, @Private, @Self, @Group, @World
-	// @Inline, @Private, @Self, @Some, @All
-	// @Inline, @Private, @Self, @Shared, @Global
-	public static enum Policy { INLINE, PRIVATE, PROTECTED, PUBLIC }
-
-	// TODO make this a command line option, and a per-class option
-	protected static final Policy POLICY_DEFAULT = Policy.INLINE;
-
-	protected Policy policy = null;
+	protected final CommunicationKind policy;
 
 	protected final ClassInstrumentor inst;
 
@@ -51,9 +47,9 @@ public class MethodInstrumentor extends AdviceAdapter {
 
 	protected int originalMaxLocals = UNINITIALIZED, originalMaxStack = UNINITIALIZED;
 	
-	public MethodInstrumentor(MethodVisitor next, int access, String name, String desc, ClassInstrumentor inst, MethodTable methodTable) {
+	public MethodInstrumentor(MethodVisitor next, int access, String name, String desc, ClassInstrumentor inst, ModuleSpec module) {
 		super(next, access, name, desc);
-		this.methodTable = methodTable;
+		this.module = module;
 		this.inst = inst;
 		isStatic = (access & Opcodes.ACC_STATIC) != 0;
 		isMain = (access & Opcodes.ACC_PUBLIC ) != 0 && isStatic
@@ -62,6 +58,9 @@ public class MethodInstrumentor extends AdviceAdapter {
 		isConstructor = name.equals("<init>");
 		isClinit = name.equals("<clinit>");
 		fullNameAndDesc = inst.className + "." + name + desc;
+		mid = module.getMethodId(fullNameAndDesc);
+		policy = module.getCommunicationKind(mid);
+		
 		readHook = ClassInstrumentor.HOOK_READ; //RuntimeMonitor.RECORD ? ClassInstrumentor.HOOK_RECORD_READ : ClassInstrumentor.HOOK_READ;
 	}
 
@@ -89,23 +88,39 @@ public class MethodInstrumentor extends AdviceAdapter {
 	private int varCurrentState;
 	private boolean threadVarInitialized = false, stateVarInitialized = false;
 	
+	
+	/* Helper methods for inserting common bytecode sequences *******************************************/
+	
+	/**
+	 * Lookup the current ThreadState from the RuntimeMonitor and store it int the
+	 * varCurrentThread local variable.
+	 */
 	protected void initializeThreadVar() {
 		varCurrentThread = super.newLocal(ClassInstrumentor.THREAD_STATE_TYPE);
+		// stack -> thread
 		super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_THREAD_STATE);
-		// sotre the current threadState into a local.
+		// stack ->
 		super.storeLocal(varCurrentThread, ClassInstrumentor.THREAD_STATE_TYPE);
 		threadVarInitialized = true;
 	}
 
-	private void initializeThreadVarFromEnterHook() {
+	/**
+	 * Store a ThreadState on the top of the stack into the varCurrentThread local variable.
+	 */
+	private void initializeThreadVarFromStack() {
 		varCurrentThread = super.newLocal(ClassInstrumentor.THREAD_STATE_TYPE);
-		// sotre the current threadState into a local.
+		// stack == thread
+		// stack -> 
 		super.storeLocal(varCurrentThread, ClassInstrumentor.THREAD_STATE_TYPE);
 		threadVarInitialized = true;
 	}
 
+	/**
+	 * Get the current State from the current ThreadState and store it in the
+	 * varCurrentState local variable.
+	 */
 	protected void initializeStateVar() {
-		if (policy != Policy.PUBLIC) {
+		if (policy != CommunicationKind.UNCHECKED) {
 			myStackSize(1);
 			varCurrentState  = super.newLocal(ClassInstrumentor.STATE_TYPE);
 			// stack -> threadstate
@@ -118,19 +133,11 @@ public class MethodInstrumentor extends AdviceAdapter {
 		}
 	}
 
-	@Override
-	public void visitLineNumber(int line, Label start) {
-		// TODO Auto-generated method stub
-//		Util.logf("Line %d ------------------------------------", line);
-		super.visitLineNumber(line, start);
-	}
-
 	/**
 	 * Push the current threadstate onto the stack.
 	 */
 	protected void pushCurrentThread() {
 		Util.assertTrue(threadVarInitialized);
-//		initializeThreadVar();
 		super.loadLocal(varCurrentThread, ClassInstrumentor.THREAD_STATE_TYPE);
 	}
 
@@ -139,7 +146,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 	 */
 	protected void pushCurrentState() {
 		// stack == 
-		if (policy == Policy.PUBLIC) {
+		if (policy == CommunicationKind.UNCHECKED) {
 			// stack ->  null
 			mv.visitInsn(Opcodes.ACONST_NULL);
 		} else {
@@ -155,7 +162,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 	 * jump to l.
 	 * @param l
 	 */
-	protected void ifSameThread(Label l) {
+	protected void ifSameThreadGoto(Label l) {
 		// stack == threadstate'
 		// stack -> threadstate' threadstate
 		pushCurrentThread();
@@ -163,7 +170,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 		super.ifCmp(ClassInstrumentor.THREAD_STATE_TYPE, EQ, l);
 	}
 	
-	protected void ifSameState(Label l) {
+	protected void ifSameStateGoto(Label l) {
 		// stack == state'
 		pushCurrentState();
 		super.ifCmp(ClassInstrumentor.STATE_TYPE, EQ, l);
@@ -180,100 +187,127 @@ public class MethodInstrumentor extends AdviceAdapter {
 		super.ifNull(l);
 	}
 	
+
+	// should be called with the lock on the stack
+	private void acquireHook(int lock) {
+    	// put in a try/finally to put in the release if needed...
+    	final Label start = super.newLabel(), handler = super.newLabel(), done = super.newLabel();
+    	mv.visitTryCatchBlock(start, handler, handler, ClassInstrumentor.OSHA_EXCEPT_TYPE_NAME);
 	
-	/**
-	 * If the current state is not null, jump to l.
-	 * @param l
-	 */
-//	protected void ifNullState(Label l) {}
+	    super.mark(start);
+		pushCurrentThread();
+		pushCurrentState();
+		// call acquire hook. stack ->
+		super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_ACQUIRE);
 
-	@Override
-	public AnnotationVisitor visitAnnotation(String desc, boolean visible) {
-		// Only one osha annotation allowed per method.
-		Util.assertTrue(policy == null, "Only one policy allowed per method.");
+		super.goTo(done);
 
-		if (desc.equals(ClassInstrumentor.ANNOT_INLINE_DESC)) {
-			policy = Policy.INLINE;
-			return null;
-		} else if (desc.equals(ClassInstrumentor.ANNOT_THREAD_PRIVATE_DESC)) {
-			policy = Policy.PRIVATE;
-			mid = methodTable.register(fullNameAndDesc, null);
-			return null;
-		} else if (desc.equals(ClassInstrumentor.ANNOT_READ_BY_DESC)) {
-			policy = Policy.PROTECTED;
-			final BitVectorIntSet readerSet = new BitVectorIntSet();
-			mid = methodTable.register(fullNameAndDesc, readerSet);
-			return new ReaderSetAnnotationVisitor(readerSet);
-		} else if (desc.equals(ClassInstrumentor.ANNOT_READ_BY_ALL_DESC)) {
-			policy = Policy.PUBLIC;
-			mid = methodTable.register(fullNameAndDesc, UniversalIntSet.set);
-			//			Util.logf("%s (mid = %d) is ReadByAll. set in table = %s", fullNameAndDesc, mid, MethodRegistry.policyTable[mid]);
-			return null;
-		}  else {
-			// Not one of ours.
-			return super.visitAnnotation(desc, visible);
-		}
+		// handler. We get thee exception on the stack. stack -> e |
+		super.mark(handler);
+		// reload lock. stack -> e | lock
+		super.loadLocal(lock);
+		// monitorexit. stack -> e |
+		super.monitorExit();
+		// rethrow. -> _ |
+		super.throwException();
+		super.mark(done);
+	}
+	
+	// should be called with the lock on the stack
+	private void releaseHook() {
+		// stack == lock
+		// stack -> lock thread
+	    pushCurrentThread();
+	    // stack -> 
+		super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_RELEASE);
 	}
 
-	class ReaderSetAnnotationVisitor implements AnnotationVisitor {
-		protected final BitVectorIntSet readerSet;
-
-		public ReaderSetAnnotationVisitor(BitVectorIntSet readerSet) {
-			this.readerSet = readerSet;
-		}
-
-		public void visit(String name, Object value) {
-			if (name == null) {
-				// when visitArray calls this on each array elem.
-				methodTable.requestID((String)value, readerSet);
-			} else if (name.equals("value")) {
-				// when called directly.
-				Util.log("add " + name);
-				for (String m : (String[])value) {
-					methodTable.requestID(m, readerSet);
-				}
+	protected void makeReleaseExitHook(int extraStack) {
+		if (isSynchronized) {
+			myStackSize(2 + extraStack);
+			if (isStatic) {
+				// get class (lock). stack -> lock
+				super.push(inst.classType);
+			} else {
+				// get object (lock). stack -> lock
+				super.loadThis();
 			}
+			pushCurrentThread();
+			// call release hook. stack ->
+			super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_RELEASE);
 		}
-
-		public AnnotationVisitor visitAnnotation(String name, String desc) { return null; }
-		public AnnotationVisitor visitArray(String name) {
-			return name.equals("value") ? this : null;
+		if (policy != CommunicationKind.INLINE) {
+			super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_EXIT);
 		}
-		public void visitEnd() { }
-		public void visitEnum(String name, String desc, String value) { }
 	}
 
+	private void xastore(int opcode, int local, int width) {
+		// stack == array index value |
+		if (inst.opts.coarseArrayStates) {
+			myStackSize(3 - width);
+			Label afterHook = super.newLabel();
+			// stack -> array index _ |
+			super.storeLocal(local);
+			// stack -> index array _ |
+			super.swap();
+			// stack -> index array array |
+			super.dup();
+			// null check. stack -> index array _ |
+			super.ifNull(afterHook);
+			
+			// NON-NULL CASE:
+			// stack -> index array array |
+			super.dup();
+			// stack -> index array array | state
+			pushCurrentState();
+			pushCurrentThread();
+			// call the hook. stack -> index array _ |
+			super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_COARSE_ARRAY_STORE);
+
+			super.mark(afterHook);
+			// BOTH CASES
+			// stack -> array index _ |
+			super.swap();
+			// stack -> array index value |
+			super.loadLocal(local);
+		} else {
+			myStackSize(4 - width);
+			// stack -> array index _ |
+			super.storeLocal(local);
+			// stack -> array index array | index
+			super.dup2();
+			// stack -> array index array | index state threadstate
+			pushCurrentState();
+			pushCurrentThread();
+			// stack -> array index _ |
+			super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_ARRAY_STORE);
+			// stack -> array index value |
+			super.loadLocal(local);
+		}
+
+	}
+
+	/* Visitor methods ****************************************************************/
+
+	protected final Label beginTry = super.newLabel();
+	protected final Label endTryBeginHandler = super.newLabel();
+
+	/**
+	 * On non-inlined method entry, we load the current ThreadState and State and call
+	 * the enter hook.  On synchronized method entry, we call the acquire hook. For both, we
+	 * start an exception handler that will be used to make sure the release/exit hooks are
+	 * called even if an exception is thrown.
+	 */
 	@Override
 	public void visitCode() {
-		if (policy == null) {
-			if (isMain || isClinit) {
-				policy = Policy.PUBLIC;
-				mid = methodTable.register(fullNameAndDesc, UniversalIntSet.set);
-			} else {
-				policy = POLICY_DEFAULT;
-			}
-			switch(policy) {
-			case PUBLIC:
-				mid = methodTable.register(fullNameAndDesc, UniversalIntSet.set);
-				break;
-			case PROTECTED:
-				Util.fail("not sure what to do here. think this is prohibited.");
-				break;
-			case PRIVATE:
-				mid = methodTable.register(fullNameAndDesc, null);
-				break;
-			case INLINE:
-				break;
-			}
-		}
 		super.visitCode();
 		myStackSize(1);
 		
-		if (policy != Policy.INLINE) {
+		if (policy != CommunicationKind.INLINE) {
 			super.push(mid);
 			// stack -> threadstate
 			super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_ENTER);
-			initializeThreadVarFromEnterHook();
+			initializeThreadVarFromStack();
 		} else {
 			initializeThreadVar();
 		}
@@ -293,34 +327,23 @@ public class MethodInstrumentor extends AdviceAdapter {
 			pushCurrentState();
 			// call acquire hook. stack ->
 			super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_ACQUIRE);
-
-			// start try block.
-			if (policy != Policy.INLINE || isSynchronized) {
-				mv.visitTryCatchBlock(beginTry, endTryBeginHandler, endTryBeginHandler, null);
-				super.mark(beginTry);
-			}
 		}
-	}
-
-	protected final Label beginTry = super.newLabel();
-	protected final Label endTryBeginHandler = super.newLabel();
-
-	@Override
-	protected void onMethodEnter() {
-	}
-
-	@Override
-	public void visitMaxs(int maxStack, int maxLocals) {
-		originalMaxLocals = maxLocals;
-		originalMaxStack = maxStack;
+		// start try block. This block is used to catch any exception and call the
+		// exit hook for non-inlined methods and the release hook for syncrhonized methods.
+		// Even though we've hit an error condition, we still want to preserve instrumentation that is
+		// in sync with reality because a programmer could catch our exception and continue.
+		if (policy != CommunicationKind.INLINE || isSynchronized) {
+			mv.visitTryCatchBlock(beginTry, endTryBeginHandler, endTryBeginHandler, null);
+			super.mark(beginTry);
+		}
 	}
 
 	@Override
 	public void visitEnd() {
 		// If this is a non-abstract, non-interface, real, warm-blooded method.
 		if (originalMaxStack != UNINITIALIZED) {
-			// on ICEs, call release and exit hooks as needed and
-			if (policy != Policy.INLINE || isSynchronized) {
+			// on ICEs, call release and exit hooks as needed 
+			if (policy != CommunicationKind.INLINE || isSynchronized) {
 				super.mark(endTryBeginHandler);
 				makeReleaseExitHook(1);
 				super.throwException();
@@ -333,23 +356,10 @@ public class MethodInstrumentor extends AdviceAdapter {
 		super.visitEnd();
 	}
 
-	protected void makeReleaseExitHook(int extraStack) {
-		if (isSynchronized) {
-			myStackSize(2 + extraStack);
-			if (isStatic) {
-				// get class (lock). stack -> lock
-				super.push(inst.classType);
-			} else {
-				// get object (lock). stack -> lock
-				super.loadThis();
-			}
-			pushCurrentThread();
-			// call release hook. stack ->
-			super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_RELEASE);
-		}
-		if (policy != Policy.INLINE) {
-			super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_EXIT);
-		}
+	@Override
+	public void visitMaxs(int maxStack, int maxLocals) {
+		originalMaxLocals = maxLocals;
+		originalMaxStack = maxStack;
 	}
 
 	@Override
@@ -453,52 +463,6 @@ public class MethodInstrumentor extends AdviceAdapter {
 		super.visitFieldInsn(opcode, owner, name, desc);
 	}
 
-
-	private void xastore(int opcode, int local, int width) {
-		// stack == array index value |
-		if (inst.opts.coarseArrayStates) {
-			myStackSize(3 - width);
-			Label afterHook = super.newLabel();
-			// stack -> array index _ |
-			super.storeLocal(local);
-			// stack -> index array _ |
-			super.swap();
-			// stack -> index array array |
-			super.dup();
-			// null check. stack -> index array _ |
-			super.ifNull(afterHook);
-			
-			// NON-NULL CASE:
-			// stack -> index array array |
-			super.dup();
-			// stack -> index array array | state
-			pushCurrentState();
-			pushCurrentThread();
-			// call the hook. stack -> index array _ |
-			super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_COARSE_ARRAY_STORE);
-
-			super.mark(afterHook);
-			// BOTH CASES
-			// stack -> array index _ |
-			super.swap();
-			// stack -> array index value |
-			super.loadLocal(local);
-		} else {
-			myStackSize(4 - width);
-			// stack -> array index _ |
-			super.storeLocal(local);
-			// stack -> array index array | index
-			super.dup2();
-			// stack -> array index array | index state threadstate
-			pushCurrentState();
-			pushCurrentThread();
-			// stack -> array index _ |
-			super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_ARRAY_STORE);
-			// stack -> array index value |
-			super.loadLocal(local);
-		}
-
-	}
 
 	@Override
 	public void visitInsn(int opcode) { 
@@ -618,37 +582,6 @@ public class MethodInstrumentor extends AdviceAdapter {
 		}
 	}
 	
-	// should be called with the lock on the stack
-	private void acquireHook(int lock) {
-    	// put in a try/finally to put in the release if needed...
-    	final Label start = super.newLabel(), handler = super.newLabel(), done = super.newLabel();
-    	mv.visitTryCatchBlock(start, handler, handler, ClassInstrumentor.OSHA_EXCEPT_TYPE_NAME);
-	
-	    super.mark(start);
-		pushCurrentThread();
-		pushCurrentState();
-		// call acquire hook. stack ->
-		super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_ACQUIRE);
-
-		super.goTo(done);
-
-		// handler. We get thee exception on the stack. stack -> e |
-		super.mark(handler);
-		// reload lock. stack -> e | lock
-		super.loadLocal(lock);
-		// monitorexit. stack -> e |
-		super.monitorExit();
-		// rethrow. -> _ |
-		super.throwException();
-		super.mark(done);
-	}
-	
-	// should be called with the lock on the stack
-	private void releaseHook() {
-	    pushCurrentThread();
-		super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_RELEASE);
-	}
-
 	//	@Override
 	//	public void visitIntInsn(int opcode, int operand) {
 	//		if (opcode == Opcodes.NEWARRAY) {

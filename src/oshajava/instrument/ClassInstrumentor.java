@@ -1,6 +1,10 @@
 package oshajava.instrument;
 
 import oshajava.sourceinfo.MethodTable;
+import oshajava.sourceinfo.ModuleSpec;
+import oshajava.sourceinfo.ModuleSpecNotFoundException;
+import oshajava.sourceinfo.Spec;
+import oshajava.support.org.objectweb.asm.AnnotationVisitor;
 import oshajava.support.org.objectweb.asm.ClassAdapter;
 import oshajava.support.org.objectweb.asm.ClassVisitor;
 import oshajava.support.org.objectweb.asm.FieldVisitor;
@@ -42,8 +46,9 @@ public class ClassInstrumentor extends ClassAdapter {
 
 	protected static final String ANNOT_INLINE_DESC         = Type.getDescriptor(oshajava.annotation.Inline.class);
 	protected static final String ANNOT_THREAD_PRIVATE_DESC = Type.getDescriptor(oshajava.annotation.ThreadPrivate.class);
-	protected static final String ANNOT_READ_BY_DESC        = Type.getDescriptor(oshajava.annotation.ReadBy.class);
-	protected static final String ANNOT_READ_BY_ALL_DESC    = Type.getDescriptor(oshajava.annotation.ReadByAll.class);
+	protected static final String ANNOT_READER_DESC = Type.getDescriptor(oshajava.annotation.Reader.class);
+	protected static final String ANNOT_WRITER_DESC = Type.getDescriptor(oshajava.annotation.Writer.class);
+	protected static final String ANNOT_MODULE_MEMBER_DESC = Type.getDescriptor(oshajava.annotation.Member.class);
 	
 	protected static final String OSHA_EXCEPT_TYPE_NAME     = Type.getInternalName(oshajava.runtime.OshaRuntimeException.class);
 	protected static final String SHADOW_FIELD_SUFFIX       = "__osha_state";
@@ -102,14 +107,14 @@ public class ClassInstrumentor extends ClassAdapter {
 	protected Type classType;
 	protected InstrumentationAgent.Options opts;
 	protected String superName;
-//	protected Policy policy;
-	protected final MethodTable methodTable;
+	protected ModuleSpec module;
+	protected final Spec spec;
 	protected Set<String> shadowedInheritedFields;
 
-	public ClassInstrumentor(ClassVisitor cv, InstrumentationAgent.Options opts, MethodTable methodTable) {
+	public ClassInstrumentor(ClassVisitor cv, InstrumentationAgent.Options opts, Spec spec) {
 		super(cv);
 		this.opts = opts;
-		this.methodTable = methodTable;
+		this.spec = spec;
 	}
 	
 	/**
@@ -251,7 +256,31 @@ public class ClassInstrumentor extends ClassAdapter {
 		
 	}
 	
-	// TODO allow the annotations on a class... just send to all methods...
+	// TODO allow READER/WRITER annotations on a class... just send to all methods...
+	@Override
+	public AnnotationVisitor visitAnnotation(String desc, boolean visible) {
+		if (ANNOT_MODULE_MEMBER_DESC.equals(desc)) {
+			return new AnnotationVisitor() {
+
+				@Override
+				public void visit(String name, Object value) { // throws ModuleSpecNotFoundException
+					ClassInstrumentor.this.module = spec.getModule((String)name);
+				}
+
+				@Override
+				public AnnotationVisitor visitAnnotation(String name, String desc) { return null; }
+				@Override
+				public AnnotationVisitor visitArray(String name) { return null; }
+				@Override
+				public void visitEnd() { }
+				@Override
+				public void visitEnum(String name, String desc, String value) { }
+				
+			};
+		} else {
+			return null;
+		}
+	}
 	
 	@Override
 	public void visitOuterClass(String owner, String name, String desc) {
@@ -273,10 +302,11 @@ public class ClassInstrumentor extends ClassAdapter {
 
 	@Override
 	public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
+		Util.assertTrue(module != null, "No module specified for %s.", className);
 		if ((access & Opcodes.ACC_NATIVE) == 0) {
 		    MethodVisitor chain = super.visitMethod(access, name, desc, signature, exceptions);
 		    chain = new HandlerSorterAdapter(chain, access, name, desc, signature, exceptions);
-		    chain = new MethodInstrumentor(chain, access, name, desc, this, methodTable);
+		    chain = new MethodInstrumentor(chain, access, name, desc, this, module);
 		    chain = new JSRInlinerAdapter(chain, access, name, desc, signature, exceptions);
 		    return chain;
 		} else {
@@ -305,7 +335,4 @@ public class ClassInstrumentor extends ClassAdapter {
 				|| ! (name.startsWith("this$") && desc.equals(outerClassDesc)));
 	}
 	
-//	protected Policy policy() {
-//		return policy;
-//	}
 }

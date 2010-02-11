@@ -12,4 +12,8 @@ public class UniversalIntSet extends IntSet {
 	public String toString() {
 		return "UniversalIntSet";
 	}
+	
+	public boolean isEmpty() {
+		return false;
+	}
 }

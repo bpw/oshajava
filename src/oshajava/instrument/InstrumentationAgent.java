@@ -9,24 +9,20 @@ import java.lang.instrument.Instrumentation;
 import java.security.ProtectionDomain;
 import java.util.HashMap;
 
-
 import oshajava.runtime.RuntimeMonitor;
-import oshajava.sourceinfo.MethodTable;
+import oshajava.sourceinfo.ModuleSpecNotFoundException;
+import oshajava.sourceinfo.Spec;
 import oshajava.support.acme.util.Util;
 import oshajava.support.org.objectweb.asm.ClassReader;
 import oshajava.support.org.objectweb.asm.ClassVisitor;
 import oshajava.support.org.objectweb.asm.ClassWriter;
-import oshajava.support.org.objectweb.asm.commons.Remapper;
 import oshajava.support.org.objectweb.asm.commons.RemappingClassAdapter;
 import oshajava.support.org.objectweb.asm.commons.SimpleRemapper;
 import oshajava.support.org.objectweb.asm.util.CheckClassAdapter;
-import oshajava.util.ColdStorage;
 
 /**
  * TODO options
- * 
  * + dump instrumented class files? where?
- * 
  * + on illegal communication: throw, log, both?
  * 
  * 
@@ -51,8 +47,6 @@ import oshajava.util.ColdStorage;
  * 
  * TODO in transform(), if loader is ICL, do the instrumentation.  If not, don't.  Actually, push this
  * all to the ICL? No, because we don't get to hook the byte array there.
- * 
- * TODO OshaJavaMain for installing shutdown hook to dump recorded graph in inference mode.
  * 
  * TODO in premain, set the system class loader to be an ICL.
  * 
@@ -107,15 +101,14 @@ public class InstrumentationAgent implements ClassFileTransformer {
 
 	public final Options opts;
 	
-	protected final MethodTable methodTable;
+	protected final Spec spec = new Spec();
 
 	public InstrumentationAgent(Options opts) {
 		this.opts = opts;
-		methodTable = opts.methodTableFile == null ? new MethodTable() : (MethodTable)ColdStorage.load(opts.methodTableFile);
-		RuntimeMonitor.useTable(methodTable);
+//		methodTable = opts.methodTableFile == null ? new MethodTable() : (MethodTable)ColdStorage.load(opts.methodTableFile);
 	}
 
-	public byte[] instrument(String className, byte[] bytecode) {
+	public byte[] instrument(String className, byte[] bytecode) throws ModuleSpecNotFoundException {
 		final ClassReader in = new ClassReader(bytecode);
 		final ClassWriter out = new ClassWriter(in, opts.frames() ? ClassWriter.COMPUTE_FRAMES : 0);
 		ClassVisitor chain = out;
@@ -123,7 +116,7 @@ public class InstrumentationAgent implements ClassFileTransformer {
 		if (opts.verifyOutput()) {
 			chain = new CheckClassAdapter(chain);
 		}
-		chain = new ClassInstrumentor(chain, opts, methodTable);
+		chain = new ClassInstrumentor(chain, opts, spec);
 		if (!opts.java6) {
 			chain = new RemoveJava6Adapter(chain);
 		}
@@ -198,6 +191,8 @@ public class InstrumentationAgent implements ClassFileTransformer {
 				insFile.close();
 			}
 			return instrumentedBytecode;
+		} catch (ModuleSpecNotFoundException e) {
+			throw e;
 		} catch (Throwable e) {
 			Util.log("Problem running oshajava instrumentor");
 			Util.fail(e);

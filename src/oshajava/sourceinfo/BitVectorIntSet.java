@@ -2,6 +2,11 @@ package oshajava.sourceinfo;
 
 import java.io.Serializable;
 
+/**
+ * A set of ints represented by a bit vector.
+ * @author bpw
+ *
+ */
 public class BitVectorIntSet extends IntSet implements Serializable {
 
 	/**
@@ -67,5 +72,12 @@ public class BitVectorIntSet extends IntSet implements Serializable {
 			}
 		}
 		return "{" + s + "}";
+	}
+	
+	public boolean isEmpty() {
+		for (int i : bits) {
+			if (i > 0) return true;
+		}
+		return false;
 	}
 }
