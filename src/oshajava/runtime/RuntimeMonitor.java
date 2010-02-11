@@ -73,7 +73,7 @@ public class RuntimeMonitor {
 	//		@Override protected ThreadState initialValue() { return newThread(); }
 	//	};
 
-	protected static final int MAX_THREADS = 16;
+	protected static final int MAX_THREADS = 32;
 
 	// TODO must be resize if too many threads.
 	// TODO GC when a thread exits.
