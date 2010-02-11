@@ -439,7 +439,7 @@ public class RuntimeMonitor {
 			if (RECORD) {
 				recordEdge(lastHolderState.method, ts.currentMethod);
 			}
-			if (lastHolderState != null && lastHolderState.thread != ts) {
+			if (s != null && lastHolderState != null && lastHolderState.thread != ts) {
 				final IntSet readerSet = s.readers;
 				if (readerSet == null || ! readerSet.contains(s.method)) {
 					throw new IllegalSynchronizationException(
