@@ -108,13 +108,11 @@ public class ClassInstrumentor extends ClassAdapter {
 	protected InstrumentationAgent.Options opts;
 	protected String superName;
 	protected ModuleSpec module;
-	protected final Spec spec;
 	protected Set<String> shadowedInheritedFields;
 
-	public ClassInstrumentor(ClassVisitor cv, InstrumentationAgent.Options opts, Spec spec) {
+	public ClassInstrumentor(ClassVisitor cv, InstrumentationAgent.Options opts) {
 		super(cv);
 		this.opts = opts;
-		this.spec = spec;
 	}
 	
 	/**
@@ -264,7 +262,7 @@ public class ClassInstrumentor extends ClassAdapter {
 
 				@Override
 				public void visit(String name, Object value) { // throws ModuleSpecNotFoundException
-					ClassInstrumentor.this.module = spec.getModule((String)name);
+					ClassInstrumentor.this.module = Spec.getModule((String)name);
 				}
 
 				@Override

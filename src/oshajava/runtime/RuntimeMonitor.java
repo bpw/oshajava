@@ -6,7 +6,9 @@ import oshajava.sourceinfo.BitVectorIntSet;
 import oshajava.sourceinfo.Graph;
 import oshajava.sourceinfo.IntSet;
 import oshajava.sourceinfo.MethodTable;
+import oshajava.sourceinfo.Spec;
 import oshajava.support.acme.util.Util;
+import oshajava.support.acme.util.identityhash.ConcurrentIdentityHashMap;
 
 /**
  * TODO Possible optimizations:
@@ -108,23 +110,6 @@ public class RuntimeMonitor {
 		return ts;
 	}
 
-	// NOTE This relies on the lazy MethodTable.requestID scheme.
-	public static synchronized void loadNewMethods() {
-		final int newSize = policy.size();
-		if (RECORD) {
-			for (int i = lastMethodTableSize; i < newSize; i++) {
-				graph.add(new BitVectorIntSet());
-			}
-		}
-		for (int t = 0; t <= maxThreadId; t++) {
-			final ThreadState ts = threadTable[t];
-			if (ts != null) {
-				ts.loadNewMethods(policy, lastMethodTableSize, newSize);
-			}
-		}
-		lastMethodTableSize = policy.size();
-	}
-
 	/*******************************************************************/
 
 	//	public static void newArray(int length, Object array) {
@@ -160,12 +145,11 @@ public class RuntimeMonitor {
 	public static void read(final State write, final ThreadState reader) {
 		if (write.thread != reader) {
 			if (RECORD) {
-				recordEdge(write.method, reader.currentMethod);
+				recordEdge(write.stack.method, reader.stack.method);
 			}
-			final IntSet readerSet = write.readers;
-			if (readerSet == null || ! readerSet.contains(reader.currentMethod)) {
-				throw new IllegalSharingException(write.thread, policy.lookup(write.method), 
-						reader, policy.lookup(reader.currentMethod));
+			if (check(write.stack, reader.stack)) {
+				throw new IllegalSharingException(write.thread, "writer method FIXME", 
+						reader, "reader method FIXME");
 			}
 
 		}
@@ -345,15 +329,12 @@ public class RuntimeMonitor {
 						lockState.incrementDepth();
 						if (lastHolderState != null && lastHolderState.thread != holder && holderState != null) {
 							if (RECORD) {
-								recordEdge(lockState.lastHolder.method, holder.currentMethod);
+								recordEdge(lockState.lastHolder.stack.method, holder.stack.method);
 							}
-							final IntSet readerSet = holderState.readers;
-							if (readerSet == null || ! readerSet.contains(holderState.method)) {
+							if (check(lockState.lastHolder.stack, holder.stack)) {
 								throw new IllegalSynchronizationException(
-										lastHolderState.thread, policy.lookup(lastHolderState.method), 
-										holder, policy.lookup(holder.currentMethod)
-										// TODO refactor MethodTable to something like StateTable
-										// lookup to something like getMethodName(State...)
+										lastHolderState.thread, "FIXME", 
+										holder, "FIXME"
 								);
 							}
 
@@ -392,14 +373,13 @@ public class RuntimeMonitor {
 				ls.lastHolder = holderState;
 				ls.incrementDepth();
 				if (RECORD) {
-					recordEdge(lastHolderState.method, holder.currentMethod);
+					recordEdge(lastHolderState.stack.method, holder.stack.method);
 				}
 				if (lastHolderState != null && lastHolderState.thread != holder) {
-					final IntSet readerSet = holderState.readers;
-					if (readerSet == null || ! readerSet.contains(holderState.method)) {
+					if (check(lastHolderState.stack, holder.stack)) {
 						throw new IllegalSynchronizationException(
-								lastHolderState.thread, policy.lookup(lastHolderState.method), 
-								holder, policy.lookup(holder.currentMethod)
+								lastHolderState.thread, "FIXME", 
+								holder, "FIXME"
 						);
 					}
 				}
@@ -437,14 +417,13 @@ public class RuntimeMonitor {
 			lockState.lastHolder = s;
 			lockState.setDepth(resumeDepth);
 			if (RECORD) {
-				recordEdge(lastHolderState.method, ts.currentMethod);
+				recordEdge(lastHolderState.stack.method, ts.stack.method);
 			}
 			if (lastHolderState != null && lastHolderState.thread != ts) {
-				final IntSet readerSet = s.readers;
-				if (readerSet == null || ! readerSet.contains(s.method)) {
+				if (check(lastHolderState.stack, ts.stack)) {
 					throw new IllegalSynchronizationException(
-							lastHolderState.thread, policy.lookup(lastHolderState.method), 
-							ts, policy.lookup(ts.currentMethod)
+							lastHolderState.thread, "FIXME", 
+							ts, "FIXME"
 					);
 				}
 			}
@@ -452,12 +431,33 @@ public class RuntimeMonitor {
 	}
 
 
-	// -- Recording --------------------------------------------------------------------
+	// TODO make thread local? is sharing the checks worth it in time saved or does sync cost enough that it
+	// should just be thread local?
+	private static final ConcurrentIdentityHashMap<Stack,ConcurrentIdentityHashMap<Stack,Object>> memoTable = 
+		new ConcurrentIdentityHashMap<Stack,ConcurrentIdentityHashMap<Stack,Object>>();
+	
+	private static final Object yes = new Object();
 
+	public static boolean check(final Stack writer, final Stack reader) {
+		try {
+			if (memoTable.get(writer).contains(reader)) return true;
+		} catch (NullPointerException e) {
+			memoTable.putIfAbsent(writer, new ConcurrentIdentityHashMap<Stack,Object>());
+		}
+		if (Spec.isAllowed(writer, reader)) {
+			memoTable.get(writer).putIfAbsent(reader, yes);
+			return true;
+		} else {
+			return false;
+		}
+	}
+
+	// -- Recording --------------------------------------------------------------------
+	
 	public static void recordRead(final State writer, final ThreadState reader) {
 		if (writer.thread != reader) {
 			synchronized(writer) {
-				writer.readers.add(reader.currentMethod);
+				//writer.readers.add(reader.currentMethod); //FIXME
 			}
 		}
 	}

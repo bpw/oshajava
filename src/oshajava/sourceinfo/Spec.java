@@ -3,6 +3,9 @@ package oshajava.sourceinfo;
 import java.io.IOException;
 import java.util.HashMap;
 
+import oshajava.runtime.Stack;
+import oshajava.support.acme.util.Util;
+import oshajava.support.acme.util.identityhash.ConcurrentIdentityHashMap;
 import oshajava.util.ColdStorage;
 
 /**
@@ -20,7 +23,7 @@ public class Spec {
 	/**
 	 * Map module name to ModuleSpec.
 	 */
-	protected final HashMap<String,ModuleSpec> nameToModule = new HashMap<String,ModuleSpec>();
+	protected static final HashMap<String,ModuleSpec> nameToModule = new HashMap<String,ModuleSpec>();
 	
 	/**
 	 * Load a ModuleSpec from disk given its name.
@@ -28,7 +31,7 @@ public class Spec {
 	 * @return
 	 * @throws ModuleSpecNotFoundException if there was a problem finding or loading the spec.
 	 */
-	protected ModuleSpec loadModule(String name) throws ModuleSpecNotFoundException {
+	protected static ModuleSpec loadModule(String name) throws ModuleSpecNotFoundException {
 		try {
 			return (ModuleSpec)ColdStorage.load(ClassLoader.getSystemResourceAsStream(name));
 		} catch (IOException e) {
@@ -46,7 +49,7 @@ public class Spec {
 	 * @return
 	 * @throws ModuleSpecNotFoundException
 	 */
-	public ModuleSpec getModule(String name) throws ModuleSpecNotFoundException {
+	public static ModuleSpec getModule(String name) throws ModuleSpecNotFoundException {
 		ModuleSpec module = nameToModule.get(name);
 		if (module == null) {
 			module = loadModule(name);
@@ -54,5 +57,31 @@ public class Spec {
 			nameToModule.put(name, module);
 		}
 		return module;
+	}
+	
+	public static boolean isAllowed(final Stack writer, final Stack reader) {
+		return false; // FIXME
+	}
+
+	/**
+	 * Define a new module.
+	 * @param name
+	 * @param module
+	 */
+	public static void defineModule(String name, ModuleSpec module) {
+		Util.assertTrue(!nameToModule.containsKey(name));
+		nameToModule.put(name, module);
+	}
+
+	/**
+	 * Serialize all ModuleSpecs and dump to disk in their own files by name.
+	 * @throws IOException
+	 */
+	public static void dumpModules() throws IOException {
+		for (ModuleSpec m : nameToModule.values()) {
+			// FIXME get the path right. Module "a.b.c.Mod" should be dumped as a file
+			// "Mod.om" in the directory where the contents of package a.b.c are held.
+			ColdStorage.dump(m.getName() + Spec.MODULE_FILE_EXT, m);
+		}
 	}
 }

@@ -101,8 +101,6 @@ public class InstrumentationAgent implements ClassFileTransformer {
 
 	public final Options opts;
 	
-	protected final Spec spec = new Spec();
-
 	public InstrumentationAgent(Options opts) {
 		this.opts = opts;
 //		methodTable = opts.methodTableFile == null ? new MethodTable() : (MethodTable)ColdStorage.load(opts.methodTableFile);
@@ -116,7 +114,7 @@ public class InstrumentationAgent implements ClassFileTransformer {
 		if (opts.verifyOutput()) {
 			chain = new CheckClassAdapter(chain);
 		}
-		chain = new ClassInstrumentor(chain, opts, spec);
+		chain = new ClassInstrumentor(chain, opts);
 		if (!opts.java6) {
 			chain = new RemoveJava6Adapter(chain);
 		}
@@ -181,7 +179,7 @@ public class InstrumentationAgent implements ClassFileTransformer {
 		try {
 			if (!shouldTransform(className)) return null;
 			final byte[] instrumentedBytecode = instrument(className, bytecode);
-			RuntimeMonitor.loadNewMethods();
+//			RuntimeMonitor.loadNewMethods();
 			if (opts.bytecodeDump != null && instrumentedBytecode != bytecode) {
 				File f = new File(opts.bytecodeDump + File.separator + className + ".class");
 				f.getParentFile().mkdirs();

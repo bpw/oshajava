@@ -1,10 +1,14 @@
 package oshajava.runtime;
 
 import java.lang.ref.WeakReference;
+import java.util.IdentityHashMap;
 
 import oshajava.sourceinfo.BitVectorIntSet;
 import oshajava.sourceinfo.MethodTable;
+import oshajava.sourceinfo.Spec;
 import oshajava.support.acme.util.Util;
+import oshajava.support.acme.util.identityhash.ConcurrentIdentityHashMap;
+import oshajava.support.acme.util.identityhash.IdentityHashSet;
 
 
 /**
@@ -24,6 +28,10 @@ public final class ThreadState {
 	private static synchronized int newID() {
 		Util.assertTrue(idCounter < Integer.MAX_VALUE, "Ran out of thread IDs.");
 		return ++idCounter;
+	}
+	
+	public static synchronized int lastID() {
+		return idCounter;
 	}
 	
 	public final int id;
@@ -56,22 +64,13 @@ public final class ThreadState {
 	 */
 	public State currentState = State.INVALID_STATE;
 	
-	/**
-	 * Stack of States representing current call stack with inlining taken into account.
-	 */
-	private State[] stateStack = new State[INITIAL_STACK_CAPACITY];
-	
-	/**
-	 * Stack of method ids.
-	 */
-	private int[] stack = new int[INITIAL_STACK_CAPACITY];
+	protected Stack stack;
 	
 	/**
 	 * Size of the state stack.
 	 */
 	private int stackSize  = 0;
 
-	private BitVectorIntSet[] moduleStack;
 	/**
 	 * Cached copy of the last accessed array.
 	 * TODO weak reference or just some GC of my own. e.g. delete after n method calls.	
@@ -151,42 +150,13 @@ public final class ThreadState {
 		stateTable = (State[])expand(stateTable, newSize);
 	}
 	
-	/**
-	 * Load States into the stateTable for new methods declared since the last time...
-	 * @param next
-	 * @param endExcl
-	 */
-	public synchronized void loadNewMethods(MethodTable policy, int next, final int endExcl) {
-		for (; next < endExcl; next++) {
-			stateTable[next] = new State(this, next, policy.getOutEdges(next));
-		}
+	protected synchronized void enter(final int mid) {
+		stack = Stack.push(mid, stack);
 	}
 	
-	/**
-	 * Enter a new method, pushing the associated state on the state stack and 
-	 * updating the cached copies of the current state and the current method id.
-	 * 
-	 * @param mid
-	 */
-	protected synchronized void enter(final int mid) {
-		if (stackSize > stateStack.length - 1) {
-			stateStack = (State[])expand(stateStack, stackSize * 2);
-			stack = expand(stack, stackSize*2);
-		}
-		// TODO is this optimization for recursion (or indirect-turned-direct 
-		// recursion induced by inlining) worth it?
-		if (mid == currentMethod) {
-			stateStack[stackSize] = stateStack[stackSize-1];
-			stack[stackSize] = mid;
-			stackSize++;
-		} else {
-			currentMethod = mid;
-			final State newState = stateTable[mid];
-			currentState = newState;
-			stateStack[stackSize] = newState;
-			stack[stackSize] = mid;
-			stackSize++;
-		}
+	protected boolean exit() {
+		stack = Stack.pop(stack);
+		return stack != null;
 	}
 	
 	/**
@@ -204,24 +174,6 @@ public final class ThreadState {
 		final int[] newArray = new int[n];
 		System.arraycopy(array, 0, newArray, 0, array.length);
 		return newArray;
-	}
-	
-	/**
-	 * Pop the current state off the state stack and update the current method id
-	 * and current state.
-	 * @return
-	 */
-	protected boolean exit() {
-		--stackSize;
-		if (stackSize > 0) {
-			currentState = stateStack[stackSize-1];
-			currentMethod = stack[stackSize-1];
-			return true;
-		} else {
-			currentState = State.INVALID_STATE;
-			currentMethod = INVALID_ID;
-			return false;
-		}
 	}
 	
 	/**
@@ -263,4 +215,5 @@ public final class ThreadState {
 		}
 		return null;
 	}
+	
 }

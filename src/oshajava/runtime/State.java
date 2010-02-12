@@ -1,6 +1,5 @@
 package oshajava.runtime;
 
-import oshajava.sourceinfo.IntSet;
 
 /**
  * A representation of the state of a field as a channel for communication
@@ -11,7 +10,7 @@ import oshajava.sourceinfo.IntSet;
  */
 public final class State {
 	
-	public static final State INVALID_STATE = new State(null, -1, null);
+	public static final State INVALID_STATE = new State(null, null);
 	
 	/**
 	 * Thread id of the last thread to write to the field.
@@ -19,24 +18,12 @@ public final class State {
 	protected final ThreadState thread;
 	
 	/**
-	 * Method id of the last method in which the field was written.
+	 * Stack when the field was written.
 	 */
-	protected final int method;
+	protected final Stack stack;
 	
-	/**
-	 * Method allowed to read the field from a different thread in the current state.
-	 */
-	protected final IntSet readers;
-	
-	protected State(ThreadState thread, int method, IntSet successors) {
-		this.method = method;
-		this.readers = successors;
-		this.thread = thread;
-	}
-	
-	protected State(ThreadState thread, int method) {
-		this.method = method;
-		this.readers = null;
+	protected State(ThreadState thread, Stack stack) {
+		this.stack = stack;
 		this.thread = thread;
 	}
 	
