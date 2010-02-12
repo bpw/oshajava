@@ -45,7 +45,6 @@ public class ClassInstrumentor extends ClassAdapter {
 	protected static final Type OBJECT_TYPE          = Type.getType(java.lang.Object.class);
 
 	protected static final String ANNOT_INLINE_DESC         = Type.getDescriptor(oshajava.annotation.Inline.class);
-	protected static final String ANNOT_THREAD_PRIVATE_DESC = Type.getDescriptor(oshajava.annotation.ThreadPrivate.class);
 	protected static final String ANNOT_READER_DESC = Type.getDescriptor(oshajava.annotation.Reader.class);
 	protected static final String ANNOT_WRITER_DESC = Type.getDescriptor(oshajava.annotation.Writer.class);
 	protected static final String ANNOT_MODULE_MEMBER_DESC = Type.getDescriptor(oshajava.annotation.Member.class);
