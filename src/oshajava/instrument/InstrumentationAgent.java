@@ -83,6 +83,7 @@ public class InstrumentationAgent implements ClassFileTransformer {
 		"java/util/HashSet",
 		"java/util/LinkedHashMap",
 		"java/util/Vector",
+		"java/awt/RenderingHints",
 	};
 	
 	static class Options {	
