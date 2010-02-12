@@ -67,10 +67,7 @@ public class ClassInstrumentor extends ClassAdapter {
 
 	protected static final Method HOOK_THREAD_STATE = new Method("getThreadState", THREAD_STATE_TYPE, ARGS_NONE);
 
-	//	protected static final Method HOOK_PRIVATE_READ   = new Method("privateRead", Type.VOID_TYPE, ARGS_STATE_INT);
-	protected static final Method HOOK_READ  = new Method("read",  Type.VOID_TYPE, ARGS_STATE_THREAD);
-	protected static final Method HOOK_RECORD_READ  = new Method("recordRead",  Type.VOID_TYPE, ARGS_STATE_THREAD);
-//	protected static final Method HOOK_WRITE = new Method("write", STATE_TYPE, ARGS_NONE);
+	protected static final Method HOOK_READ  = new Method("read",  Type.VOID_TYPE, new Type[] { STATE_TYPE, STATE_TYPE });
 	
 //	protected static final Method HOOK_NEW_ARRAY       = new Method("newArray",      Type.VOID_TYPE, ARGS_INT_OBJECT);
 //	protected static final Method HOOK_NEW_MULTI_ARRAY = new Method("newMultiArray", Type.VOID_TYPE, ARGS_OBJECT_INT);
@@ -315,6 +312,11 @@ public class ClassInstrumentor extends ClassAdapter {
 		return (classAccess & Opcodes.ACC_INTERFACE) == 0 && // don't create shadows for interface fields
 		        (outerClassDesc == null 
 				|| ! (name.startsWith("this$") && desc.equals(outerClassDesc)));
+	}
+	
+	@Override
+	public void visitEnd() {
+		// FIXME Generate a method that initializes all shadow fields belonging to this class.
 	}
 	
 }

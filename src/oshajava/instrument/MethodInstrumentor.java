@@ -9,7 +9,6 @@ import oshajava.support.org.objectweb.asm.MethodVisitor;
 import oshajava.support.org.objectweb.asm.Opcodes;
 import oshajava.support.org.objectweb.asm.Type;
 import oshajava.support.org.objectweb.asm.commons.AdviceAdapter;
-import oshajava.support.org.objectweb.asm.commons.Method;
 
 // TODO allow annotations on interface methods, applied to all their
 // implementers?  This opens a bigger can of worms:
@@ -21,6 +20,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 	protected final boolean isMain;
 	protected final boolean isSynchronized;
 	protected final boolean isConstructor;
+	protected boolean usesThisConstructor = false;
 	protected final boolean isClinit;
 	protected final boolean isStatic;
 	
@@ -30,7 +30,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 	
 	private final int mid;
 	
-	private final Method readHook;
+//	private final Method readHook;
 
 	protected final CommunicationKind policy;
 
@@ -54,7 +54,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 		mid = module.getMethodId(fullNameAndDesc);
 		policy = module.getCommunicationKind(mid);
 		
-		readHook = ClassInstrumentor.HOOK_READ; //RuntimeMonitor.RECORD ? ClassInstrumentor.HOOK_RECORD_READ : ClassInstrumentor.HOOK_READ;
+//		readHook = ClassInstrumentor.HOOK_READ; //RuntimeMonitor.RECORD ? ClassInstrumentor.HOOK_RECORD_READ : ClassInstrumentor.HOOK_READ;
 	}
 
 	protected void myStackSize(int size) {
@@ -402,30 +402,22 @@ public class MethodInstrumentor extends AdviceAdapter {
 				super.putStatic(ownerType, stateFieldName, ClassInstrumentor.STATE_TYPE);
 				break;
 			case Opcodes.GETFIELD:
-				myStackSize(2);
+				myStackSize(3);
+				Label homeFree = super.newLabel();
 				// dup the target. stack -> obj | obj
 				super.dup();
 				// Get the State for this field. stack -> obj | state
 				super.getField(ownerType, stateFieldName, ClassInstrumentor.STATE_TYPE);
 				// stack -> obj | state state
 				super.dup();
-				Label homeFree = super.newLabel();
-//				//stack -> obj | state
-//				ifSameState(homeFree); // OK if same state (same thread, same method, state maybe == null)
-//				// stack -> obj | state state
-//				super.dup();
-				// stack -> obj | state
-				super.ifNull(homeFree);
-//				// stack -> obj | state state
-//				super.dup();
-//				// stack -> obj | state threadstate
-//				loadThreadFromState();
-//				// stack -> obj | state
-//				ifSameThread(homeFree);
-				// stack -> obj | state threadstate
-				pushCurrentThread();
+				// stack -> obj | state writerThread
+				loadThreadFromState();
+				// stack -> obj | state writerThread currentThread -> obj | state
+				ifSameThreadGoto(homeFree);
+				// stack -> obj | state currentState
+				pushCurrentState();
 				// call the read hook. stack -> obj | 
-				super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, readHook);
+				super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_READ);
 				Label ok = super.newLabel();
 				super.goTo(ok);
 				super.mark(homeFree);
@@ -434,15 +426,19 @@ public class MethodInstrumentor extends AdviceAdapter {
 				break;
 			case Opcodes.GETSTATIC:
 				myStackSize(2);
+				Label sHomeFree = super.newLabel();
 				// Get the State for this field. stack -> state
 				super.getStatic(ownerType, stateFieldName, ClassInstrumentor.STATE_TYPE);
+				// stack -> state state
 				super.dup();
-				Label sHomeFree = super.newLabel();
-				super.ifNull(sHomeFree);
-				//stack -> state threadstate
-				pushCurrentThread();
+				// stack -> state writerThread
+				loadThreadFromState();
+				// stack -> state writerThread currentThread -> state
+				ifSameThreadGoto(sHomeFree);
+				//stack -> state currentState
+				pushCurrentState();
 				// call the read hook. stack -> 
-				super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, readHook);
+				super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_READ);
 				Label sEnd = super.newLabel();
 				super.goTo(sEnd);
 				super.mark(sHomeFree);
@@ -700,6 +696,12 @@ public class MethodInstrumentor extends AdviceAdapter {
 		} else {
 		    super.visitMethodInsn(opcode, owner, name, desc);
         }
+		/*if (isConstructor && opcode == Opcodes.INVOKESPECIAL 
+		&& owner.equals(inst.superName) && name.equals("<init>")
+		&& super is not and will not be instrumented) {
+			FIXME call the shadow field initer.
+		}
+		*/
 	}
 
 }

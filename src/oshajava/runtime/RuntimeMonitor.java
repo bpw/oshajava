@@ -122,17 +122,19 @@ public class RuntimeMonitor {
 	 * @param state
 	 * @param readerMethod
 	 */
-	public static void read(final State write, final ThreadState reader) {
-		if (write.thread != reader) {
+	public static void read(final State write, final State read) {
+//		if (write.thread != reader) {
 			if (RECORD) {
-				recordEdge(write.stack.method, reader.stack.method);
+				recordEdge(write.stack.method, read.stack.method);
 			}
-			if (check(write.stack, reader.stack)) {
+			if (checkStacks(write.stack, read.stack)) {
 				throw new IllegalSharingException(write.thread, "writer method FIXME", 
-						reader, "reader method FIXME");
+						read.thread, "reader method FIXME");
 			}
-
-		}
+//		}
+	}
+	public static void readHelper(final State write, final ThreadState reader) {
+		if (write.thread != reader) read(write, reader.state);
 	}
 
 	// OK if array == null. Slower, but the program is about to throw a NullPointerException anyway.
@@ -145,7 +147,7 @@ public class RuntimeMonitor {
 				throw fudgeTrace(e);
 			}
 			if (write != null) {
-				read(write, reader);
+				readHelper(write, reader);
 			}
 		} else {
 			final State[] states;
@@ -157,7 +159,7 @@ public class RuntimeMonitor {
 			if (states != null) {
 				final State write = states[index];
 				if (write != null) {
-					read(write, reader);
+					readHelper(write, reader);
 				}
 				reader.cachedArray = array;
 				reader.cachedArrayIndexStates = states;
@@ -212,7 +214,7 @@ public class RuntimeMonitor {
 			reader.cachedArrayStateRef = writeRef;
 		}
 		if (write != null) {
-			read(write, reader);
+			readHelper(write, reader);
 		}
 	}
 
@@ -311,7 +313,7 @@ public class RuntimeMonitor {
 							if (RECORD) {
 								recordEdge(lockState.lastHolder.stack.method, holder.stack.method);
 							}
-							if (check(lockState.lastHolder.stack, holder.stack)) {
+							if (checkStacks(lockState.lastHolder.stack, holder.stack)) {
 								throw new IllegalSynchronizationException(
 										lastHolderState.thread, "FIXME", 
 										holder, "FIXME"
@@ -356,7 +358,7 @@ public class RuntimeMonitor {
 					recordEdge(lastHolderState.stack.method, holder.stack.method);
 				}
 				if (lastHolderState != null && lastHolderState.thread != holder) {
-					if (check(lastHolderState.stack, holder.stack)) {
+					if (checkStacks(lastHolderState.stack, holder.stack)) {
 						throw new IllegalSynchronizationException(
 								lastHolderState.thread, "FIXME", 
 								holder, "FIXME"
@@ -400,7 +402,7 @@ public class RuntimeMonitor {
 				recordEdge(lastHolderState.stack.method, ts.stack.method);
 			}
 			if (lastHolderState != null && lastHolderState.thread != ts) {
-				if (check(lastHolderState.stack, ts.stack)) {
+				if (checkStacks(lastHolderState.stack, ts.stack)) {
 					throw new IllegalSynchronizationException(
 							lastHolderState.thread, "FIXME", 
 							ts, "FIXME"
@@ -418,7 +420,7 @@ public class RuntimeMonitor {
 	
 	private static final Object yes = new Object();
 
-	public static boolean check(final Stack writer, final Stack reader) {
+	public static boolean checkStacks(final Stack writer, final Stack reader) {
 		try {
 			if (memoTable.get(writer).contains(reader)) return true;
 		} catch (NullPointerException e) {
