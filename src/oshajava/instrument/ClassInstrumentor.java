@@ -289,7 +289,11 @@ public class ClassInstrumentor extends ClassAdapter {
 
 	@Override
 	public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
-		if ((access & Opcodes.ACC_NATIVE) == 0) {
+		if ((access & Opcodes.ACC_NATIVE) == 0 && !name.equals("<clinit>")) {
+		    // (Not instrumenting class initializers avoids balooning the size
+		    //  of large literal table constructions. It also makes sense, I
+		    //  think, because no "communication" should occur (semantically)
+		    //  from class loading.)
 		    MethodVisitor chain = super.visitMethod(access, name, desc, signature, exceptions);
 		    chain = new HandlerSorterAdapter(chain, access, name, desc, signature, exceptions);
 		    chain = new MethodInstrumentor(chain, access, name, desc, this, methodTable);
