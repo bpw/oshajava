@@ -433,9 +433,11 @@ public class RuntimeMonitor {
 			Util.assertTrue(lockState != null && lockState.getDepth() == 0, "Bad postwait");
 		}
 		final State lastHolderState = lockState.lastHolder;
+		
+		lockState.setDepth(resumeDepth);
+		
 		if (lastHolderState != s) {
 			lockState.lastHolder = s;
-			lockState.setDepth(resumeDepth);
 			if (RECORD) {
 				recordEdge(lastHolderState.method, ts.currentMethod);
 			}
