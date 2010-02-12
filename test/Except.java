@@ -5,7 +5,6 @@ public class Except {
 	
 	int z;
 	
-	@oshajava.annotation.ThreadPrivate
 	void foo(int x) {
 		if ( x > 1) throw new RuntimeException();
 		else {
@@ -13,12 +12,10 @@ public class Except {
 		}
 	}
 	
-	@oshajava.annotation.ThreadPrivate
 	void bar(int x) {
 		foo(x);
 	}
 	
-	@oshajava.annotation.ThreadPrivate
 	void qux(boolean b) {
 		try {
 			if (b) {

@@ -29,7 +29,6 @@ public class WaitNotify {
 }
 
 class MyThread extends Thread {    
-    @ReadByAll
     public void run() {
         for (int i=0; i<50; i++) {
             
