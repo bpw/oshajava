@@ -48,8 +48,6 @@ public class OshaJavaMain {
 		} catch (InterruptedException e) {
 			Util.fail(e);
 		}
-		Util.logf("Distinct threads created: %s", ThreadState.lastID());
-		Util.logf("Distinct stacks with writes or reads: %s", Stack.lastID());
 	}
 
 }

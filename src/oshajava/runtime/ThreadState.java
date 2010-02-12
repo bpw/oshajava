@@ -1,14 +1,8 @@
 package oshajava.runtime;
 
 import java.lang.ref.WeakReference;
-import java.util.IdentityHashMap;
 
-import oshajava.sourceinfo.BitVectorIntSet;
-import oshajava.sourceinfo.MethodTable;
-import oshajava.sourceinfo.Spec;
 import oshajava.support.acme.util.Util;
-import oshajava.support.acme.util.identityhash.ConcurrentIdentityHashMap;
-import oshajava.support.acme.util.identityhash.IdentityHashSet;
 
 
 /**
@@ -18,10 +12,6 @@ import oshajava.support.acme.util.identityhash.IdentityHashSet;
  *
  */
 public final class ThreadState {
-	
-	private static final int INITIAL_STACK_CAPACITY = 128;
-	
-	private static final int INVALID_ID = -1;
 	
 	private static int idCounter = -1;
 	
@@ -50,27 +40,12 @@ public final class ThreadState {
 	private final String name;
 	
 	/**
-	 * Table of the State for every (this, method) pair, indexed by method id.
-	 */
-	private State[] stateTable;
-	
-	/**
-	 * Cached copy of the current method id.
-	 */
-	public int currentMethod = -1;
-	
-	/**
 	 * Cached copy of this thread's current State. Initially invalid.
 	 */
-	public State currentState = State.INVALID_STATE;
+	public State state = State.root(this);
 	
-	protected Stack stack;
-	
-	/**
-	 * Size of the state stack.
-	 */
-	private int stackSize  = 0;
-
+	public Stack stack = state.stack;
+		
 	/**
 	 * Cached copy of the last accessed array.
 	 * TODO weak reference or just some GC of my own. e.g. delete after n method calls.	
@@ -114,21 +89,12 @@ public final class ThreadState {
 	 * @param thread
 	 * @param stateTableSize
 	 */
-	public ThreadState(final Thread thread, final int stateTableSize) {
+	public ThreadState(final Thread thread) {
 		threadRef = new WeakReference<Thread>(thread);
 		name = thread.getName();
 		id = newID();
-		stateTable = new State[stateTableSize];
 	}
 
-	/**
-	 * Get the actual java.lang.Thread this ThreadState represents.
-	 * @return
-	 */
-	public Thread getThread() {
-		return threadRef.get();
-	}
-	
 	/**
 	 * Get the name of the Thread this ThreadState represents.
 	 * @return
@@ -142,21 +108,14 @@ public final class ThreadState {
 		return "Thread " + id + " (\"" + getName() + "\")";
 	}
 	
-	/**
-	 * Expand the state table if there are new methods coming in and it's too small.
-	 * @param newSize
-	 */
-	public synchronized void expandStateTable(final int newSize) {
-		stateTable = (State[])expand(stateTable, newSize);
-	}
-	
 	protected synchronized void enter(final int mid) {
-		stack = Stack.push(mid, stack);
+		state = state.call(mid);
+		stack = state.stack;
 	}
 	
-	protected boolean exit() {
-		stack = Stack.pop(stack);
-		return stack != null;
+	protected void exit() {
+		state = state.ret();
+		stack = state.stack;
 	}
 	
 	/**
@@ -170,11 +129,11 @@ public final class ThreadState {
 		System.arraycopy(array, 0, newArray, 0, array.length);
 		return newArray;
 	}
-	private int[] expand(final int[] array, int n) {
-		final int[] newArray = new int[n];
-		System.arraycopy(array, 0, newArray, 0, array.length);
-		return newArray;
-	}
+//	private int[] expand(final int[] array, int n) {
+//		final int[] newArray = new int[n];
+//		System.arraycopy(array, 0, newArray, 0, array.length);
+//		return newArray;
+//	}
 	
 	/**
 	 * Push the given lock state onto the lock state stack.

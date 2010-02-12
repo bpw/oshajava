@@ -1,9 +1,14 @@
 package oshajava.instrument;
 
-import oshajava.sourceinfo.MethodTable;
+import java.lang.reflect.Field;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Set;
+
 import oshajava.sourceinfo.ModuleSpec;
-import oshajava.sourceinfo.ModuleSpecNotFoundException;
 import oshajava.sourceinfo.Spec;
+import oshajava.support.acme.util.Util;
 import oshajava.support.org.objectweb.asm.AnnotationVisitor;
 import oshajava.support.org.objectweb.asm.ClassAdapter;
 import oshajava.support.org.objectweb.asm.ClassVisitor;
@@ -11,21 +16,9 @@ import oshajava.support.org.objectweb.asm.FieldVisitor;
 import oshajava.support.org.objectweb.asm.MethodVisitor;
 import oshajava.support.org.objectweb.asm.Opcodes;
 import oshajava.support.org.objectweb.asm.Type;
-import oshajava.support.org.objectweb.asm.commons.Method;
 import oshajava.support.org.objectweb.asm.commons.JSRInlinerAdapter;
-import oshajava.support.acme.util.Util;
-import java.lang.Class;
-import java.lang.reflect.Field;
-import java.util.Set;
-import java.util.HashSet;
-import java.util.List;
-import java.util.LinkedList;
+import oshajava.support.org.objectweb.asm.commons.Method;
 
-
-
-// TODO make asm Method, GenericAdapter, etc. use copies of java.util stuff.
-// TODO repackage asm into oshaj.org.... so that oshaj can be run on apps that
-// use asm.
 
 public class ClassInstrumentor extends ClassAdapter {
 
@@ -52,7 +45,7 @@ public class ClassInstrumentor extends ClassAdapter {
 	protected static final String OSHA_EXCEPT_TYPE_NAME     = Type.getInternalName(oshajava.runtime.OshaRuntimeException.class);
 	protected static final String SHADOW_FIELD_SUFFIX       = "__osha_state";
 	protected static final String STATE_DESC                = STATE_TYPE.getDescriptor();
-	protected static final String CURRENT_STATE_FIELD       = "currentState";
+	protected static final String CURRENT_STATE_FIELD       = "state";
 	protected static final String THREAD_FIELD              = "thread";
 	protected static final String OBJECT_WITH_STATE_NAME    = Type.getInternalName(oshajava.runtime.ObjectWithState.class);
 
@@ -70,7 +63,7 @@ public class ClassInstrumentor extends ClassAdapter {
 	protected static final Type[] ARGS_OBJECT_STATE    = { OBJECT_TYPE, STATE_TYPE };
 	
 	protected static final Method HOOK_ENTER = new Method("enter", THREAD_STATE_TYPE, ARGS_INT);
-	protected static final Method HOOK_EXIT  = new Method("exit",  Type.VOID_TYPE, ARGS_NONE);
+	protected static final Method HOOK_EXIT  = new Method("exit",  Type.VOID_TYPE, new Type[] { THREAD_STATE_TYPE });
 
 	protected static final Method HOOK_THREAD_STATE = new Method("getThreadState", THREAD_STATE_TYPE, ARGS_NONE);
 

@@ -21,6 +21,7 @@ public class Locking {
 		Locking l = new Locking(3);
 		l.i = 9;
 		l.foo();
+		bar();
 	}
 	
 	public static synchronized void bar() {

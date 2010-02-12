@@ -1,6 +1,12 @@
 package oshajava.sourceinfo;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.io.Serializable;
+import java.io.Writer;
+
+import oshajava.support.acme.util.Util;
 
 /**
  * A graph representation targeted at method communication graphs.
@@ -107,5 +113,5 @@ public class Graph implements Serializable {
 		System.arraycopy(table, 0, p, 0, n > nextID ? nextID : n);
 		table = p;
 	}
-	
+
 }

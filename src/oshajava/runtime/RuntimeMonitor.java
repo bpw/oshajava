@@ -1,14 +1,14 @@
 package oshajava.runtime;
 
+import java.io.IOException;
 import java.lang.reflect.Array;
 
 import oshajava.sourceinfo.BitVectorIntSet;
 import oshajava.sourceinfo.Graph;
-import oshajava.sourceinfo.IntSet;
-import oshajava.sourceinfo.MethodTable;
 import oshajava.sourceinfo.Spec;
 import oshajava.support.acme.util.Util;
 import oshajava.support.acme.util.identityhash.ConcurrentIdentityHashMap;
+import oshajava.util.GraphMLWriter;
 
 /**
  * TODO Possible optimizations:
@@ -66,26 +66,16 @@ import oshajava.support.acme.util.identityhash.ConcurrentIdentityHashMap;
 public class RuntimeMonitor {
 
 	// temporary graph-collection hack.
-	protected static final Graph graph = new Graph(MethodTable.INITIAL_METHOD_LIST_SIZE);
-	private static MethodTable policy;
+	protected static final Graph executionGraph = new Graph(1024);
 
 	public static final boolean RECORD = false;
 
-	private static final ThreadLocal<ThreadState> threadState = new ThreadLocal<ThreadState>(); //{
-	//		@Override protected ThreadState initialValue() { return newThread(); }
-	//	};
-
-	protected static final int MAX_THREADS = 16;
-
-	// TODO must be resize if too many threads.
-	// TODO GC when a thread exits.
-	private static int lastMethodTableSize = 0;
-	private static final ThreadState[] threadTable = new ThreadState[MAX_THREADS];
-	private static int maxThreadId = 0;
-
-	public static void useTable(MethodTable mt) {
-		policy = mt;
-	}
+	private static final ThreadLocal<ThreadState> threadState = new ThreadLocal<ThreadState>() {
+		@Override
+		public ThreadState initialValue() {
+			return new ThreadState(Thread.currentThread());
+		}
+	};
 
 	// TODO test the WCIHM implementation to make sure it actually works and isn't just dropping
 	// all the keys or something weird.
@@ -98,16 +88,6 @@ public class RuntimeMonitor {
 
 	static class Ref<T> {
 		T contents;
-	}
-
-	// called lazily - from threadState's lazy initializer, so whenever this thread's
-	// first action is.
-	private static synchronized ThreadState newThread() {
-		final ThreadState ts = new ThreadState(Thread.currentThread(), policy.capacity());
-		Util.assertTrue(ts.id < MAX_THREADS, "MAX_THREADS exceeded.");
-		maxThreadId = ts.id;
-		threadTable[ts.id] = ts;
-		return ts;
 	}
 
 	/*******************************************************************/
@@ -311,7 +291,7 @@ public class RuntimeMonitor {
 				// else look it up.
 				lockState = lockStates.get(lock);
 				if (lockState == null) {
-					lockState = new LockState(holder.currentState);
+					lockState = new LockState(holder.state);
 					lockState.setDepth(1);
 					// push it in the holder's cache.
 					holder.pushLock(lock, lockState);
@@ -463,7 +443,7 @@ public class RuntimeMonitor {
 	}
 
 	private static void recordEdge(int src, int dest) {
-		((BitVectorIntSet)graph.getOutEdges(src)).syncedAdd(dest);
+		((BitVectorIntSet)executionGraph.getOutEdges(src)).syncedAdd(dest);
 	}
 
 	// TODO watch out for assumptions in bytecode instrumentation... null check? etc.?
@@ -501,38 +481,17 @@ public class RuntimeMonitor {
 
 
 	public static ThreadState getThreadState() {
-		final ThreadState t = threadState.get();
-		if (t == null) {
-			throw new InlinedEntryPointException();
-		} else {
-			return t;
-		}
+		return threadState.get();
 	}
 
 	public static ThreadState enter(final int mid) {
-		try {
-			//			Util.logf("enter %d", mid);
-			final ThreadState ts = threadState.get();
-			ts.enter(mid);
-			return ts;
-		} catch (NullPointerException e) {
-			final ThreadState ts = newThread();
-			threadState.set(ts);
-			ts.enter(mid);
-			return ts;
-		} catch (Throwable t) {
-			Util.fail(t);
-			return null;
-		}
+		final ThreadState ts = threadState.get();
+		ts.enter(mid);
+		return ts;
 	}
 
-	public static void exit() {
-		try {
-			//			Util.log("exit");
-			if (!threadState.get().exit()) threadState.set(null);
-		} catch (Throwable t) {
-			Util.fail(t);
-		}
+	public static void exit(final ThreadState ts) {
+		ts.exit();
 	}
 
 	private static <T extends Throwable> T fudgeTrace(T t) {
@@ -552,8 +511,18 @@ public class RuntimeMonitor {
 	}
 
 	public static void fini(String mainClass) {
-		policy.dumpGraphML(mainClass + ".oshajava.policy.graphml");
-		policy.dumpGraphML(mainClass + ".oshajava.trace.graphml", graph);
+		if (RECORD) {
+			try {
+				final GraphMLWriter graphml = new GraphMLWriter(mainClass + ".oshajava.execution.graphml");
+				//FIXME
+				graphml.close();
+			} catch (IOException e) {
+				Util.log("Failed to dump execution graph due to IOException.");
+			}
+		}
+		Util.logf("Distinct threads created: %s", ThreadState.lastID());
+		Util.logf("Distinct stacks with writes or reads: %s", Stack.lastID());
 	}
+	
 
 }

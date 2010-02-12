@@ -1,16 +1,9 @@
 package oshajava.instrument;
 
 
-import oshajava.runtime.RuntimeMonitor;
-
-import oshajava.sourceinfo.BitVectorIntSet;
-import oshajava.sourceinfo.MethodTable;
 import oshajava.sourceinfo.ModuleSpec;
 import oshajava.sourceinfo.ModuleSpec.CommunicationKind;
-import oshajava.sourceinfo.UniversalIntSet;
-
 import oshajava.support.acme.util.Util;
-import oshajava.support.org.objectweb.asm.AnnotationVisitor;
 import oshajava.support.org.objectweb.asm.Label;
 import oshajava.support.org.objectweb.asm.MethodVisitor;
 import oshajava.support.org.objectweb.asm.Opcodes;
@@ -71,7 +64,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 	}
 
 	private Integer tempLocalAddress = null;
-	private Integer tempLocalBoolean = null;
+//	private Integer tempLocalBoolean = null;
 	private Integer tempLocalByte = null;
 	private Integer tempLocalChar = null;
 	private Integer tempLocalDouble = null;
@@ -237,6 +230,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 			super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_RELEASE);
 		}
 		if (policy != CommunicationKind.INLINE) {
+			pushCurrentThread();
 			super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_EXIT);
 		}
 	}
