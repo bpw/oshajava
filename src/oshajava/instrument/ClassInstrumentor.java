@@ -259,21 +259,13 @@ public class ClassInstrumentor extends ClassAdapter {
 	public AnnotationVisitor visitAnnotation(String desc, boolean visible) {
 		if (ANNOT_MODULE_MEMBER_DESC.equals(desc)) {
 			return new AnnotationVisitor() {
-
-				@Override
 				public void visit(String name, Object value) { // throws ModuleSpecNotFoundException
 					ClassInstrumentor.this.module = Spec.getModule((String)name);
 				}
-
-				@Override
 				public AnnotationVisitor visitAnnotation(String name, String desc) { return null; }
-				@Override
 				public AnnotationVisitor visitArray(String name) { return null; }
-				@Override
 				public void visitEnd() { }
-				@Override
 				public void visitEnum(String name, String desc, String value) { }
-				
 			};
 		} else {
 			return null;
