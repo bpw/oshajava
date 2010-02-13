@@ -1,4 +1,4 @@
-package oshajava.sourceinfo;
+package oshajava.util.intset;
 
 /**
  * A set of ints.
@@ -7,7 +7,6 @@ package oshajava.sourceinfo;
  */
 public abstract class IntSet {
 
-	public abstract void add(int i);
 	public abstract boolean contains(int i);
 	public abstract boolean isEmpty();	
 }

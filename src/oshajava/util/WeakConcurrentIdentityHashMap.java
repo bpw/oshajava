@@ -36,7 +36,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************/
 
-package oshajava.runtime;
+package oshajava.util;
 
 import java.lang.ref.WeakReference;
 import java.util.concurrent.locks.ReentrantLock;

@@ -1,4 +1,6 @@
-package oshajava.runtime;
+package oshajava.runtime.exceptions;
+
+import oshajava.runtime.ThreadState;
 
 public class IllegalSynchronizationException extends
 		IllegalCommunicationException {

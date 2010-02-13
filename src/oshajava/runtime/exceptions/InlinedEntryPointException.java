@@ -1,4 +1,4 @@
-package oshajava.runtime;
+package oshajava.runtime.exceptions;
 
 
 public class InlinedEntryPointException extends RuntimeException {

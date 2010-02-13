@@ -6,25 +6,60 @@ import oshajava.support.acme.util.Util;
 
 
 /**
- * All non-final fields are for thread private access only.
+ * State information associated with a thread. ThreadStates represent 
+ * threads and their metadata and store the current call stacks and 
+ * communication state, in addition to caching lock and array states
+ * recently accessed by the thread to avoid expensive HashMap lookups
+ * where possible.
+ * 
+ * NOTE: All non-final fields are for thread private access only.
  * 
  * @author bpw
  *
  */
 public final class ThreadState {
 	
+	/**
+	 * Create a new ThreadState.
+	 * @param thread
+	 * @param stateTableSize
+	 */
+	public ThreadState(final Thread thread) {
+		threadRef = new WeakReference<Thread>(thread);
+		name = thread.getName();
+		id = newID();
+	}
+
+	// -- Thread IDs -------------------------------------------------
+	
+	/**
+	 * Counter for thread ids.
+	 */
 	private static int idCounter = -1;
 	
+	/**
+	 * Get a new thread id.
+	 * @return
+	 */
 	private static synchronized int newID() {
 		Util.assertTrue(idCounter < Integer.MAX_VALUE, "Ran out of thread IDs.");
 		return ++idCounter;
 	}
 	
+	/**
+	 * Get the last thread id allocated.
+	 * @return
+	 */
 	public static synchronized int lastID() {
 		return idCounter;
 	}
 	
+	/**
+	 * Thread id.
+	 */
 	public final int id;
+	
+	// -- Thread metadata --------------------------------------------------------
 	
 	/**
 	 * Let GC go as planned... We have refs to ThreadStates in ThreadLocals in the
@@ -40,11 +75,49 @@ public final class ThreadState {
 	private final String name;
 	
 	/**
+	 * Get the name of the Thread this ThreadState represents.
+	 * @return
+	 */
+	public String getName() {
+		final Thread thread = threadRef.get();
+		return thread == null ? "[No longer live. Originally named " + name + "]" : thread.getName();
+	}
+	
+	public String toString() {
+		return "Thread " + id + " (\"" + getName() + "\")";
+	}
+	
+	// -- Thread call stack/state -----------------------------------------------------
+	
+	/**
 	 * Cached copy of this thread's current State. Initially invalid.
 	 */
 	public State state = State.root(this);
 	
+	/**
+	 * Current call stack (module inlining).  Invariant: outside enter and exit,
+	 * stack == state.stack.
+	 */
 	public Stack stack = state.stack;
+	
+	/**
+	 * Update call stack/state to reflect entering the method with id mid.
+	 * @param mid
+	 */
+	protected void enter(final int mid) {
+		state = state.call(mid);
+		stack = state.stack;
+	}
+	
+	/**
+	 * Update call stack/state to reflect exiting the method with id mid.
+	 */
+	protected void exit() {
+		state = state.ret();
+		stack = state.stack;
+	}
+	
+	// -- Array state caching --------------------------------------------------------
 		
 	/**
 	 * Cached copy of the last accessed array.
@@ -63,6 +136,8 @@ public final class ThreadState {
 	 * in array index state mode.
 	 */
 	protected State[] cachedArrayIndexStates;
+	
+	// -- Lock state caching ---------------------------------------------------------
 	
 	/**
 	 * Initial capacity of the lock state stack.
@@ -83,40 +158,6 @@ public final class ThreadState {
 	 * Current size of the lock state stack.
 	 */
 	private int lockStateStackSize = 0;
-	
-	/**
-	 * Create a new ThreadState.
-	 * @param thread
-	 * @param stateTableSize
-	 */
-	public ThreadState(final Thread thread) {
-		threadRef = new WeakReference<Thread>(thread);
-		name = thread.getName();
-		id = newID();
-	}
-
-	/**
-	 * Get the name of the Thread this ThreadState represents.
-	 * @return
-	 */
-	public String getName() {
-		final Thread thread = threadRef.get();
-		return thread == null ? name : thread.getName();
-	}
-	
-	public String toString() {
-		return "Thread " + id + " (\"" + getName() + "\")";
-	}
-	
-	protected synchronized void enter(final int mid) {
-		state = state.call(mid);
-		stack = state.stack;
-	}
-	
-	protected void exit() {
-		state = state.ret();
-		stack = state.stack;
-	}
 	
 	/**
 	 * Expand the given array to size n.

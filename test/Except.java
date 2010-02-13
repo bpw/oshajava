@@ -23,7 +23,7 @@ public class Except {
 			} else {
 //				throw new oshaj.runtime.IllegalSharingException(Thread.currentThread(), "", Thread.currentThread(), "");
 			}
-		} catch (oshajava.runtime.IllegalCommunicationException e) {
+		} catch (oshajava.runtime.exceptions.IllegalCommunicationException e) {
 			System.out.println("ice");
 			throw e;
 		} catch (RuntimeException t) {
@@ -34,7 +34,7 @@ public class Except {
 	void e() {
 		try {
 			z = 9;
-		} catch (oshajava.runtime.IllegalCommunicationException e) {
+		} catch (oshajava.runtime.exceptions.IllegalCommunicationException e) {
 			
 		}
 	}

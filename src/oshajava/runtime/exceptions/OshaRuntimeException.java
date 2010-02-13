@@ -1,4 +1,6 @@
-package oshajava.runtime;
+package oshajava.runtime.exceptions;
+
+import oshajava.runtime.RuntimeMonitor;
 
 public abstract class OshaRuntimeException extends RuntimeException {
 

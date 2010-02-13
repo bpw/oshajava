@@ -3,6 +3,9 @@ package oshajava.sourceinfo;
 import java.io.Serializable;
 import java.util.HashMap;
 
+import oshajava.util.count.MaxRecorder;
+import oshajava.util.intset.BitVectorIntSet;
+
 /**
  * Module specification format for saving to disk and using at runtime.
  * @author bpw
@@ -11,6 +14,9 @@ import java.util.HashMap;
 public class ModuleSpec implements Serializable {
 	
 	private static final long serialVersionUID = 1L;
+	
+	public static final MaxRecorder maxMethods = new MaxRecorder();
+	public static final boolean COUNT_METHODS = true;
 
 	/**
 	 * Kinds of communication.
@@ -74,6 +80,8 @@ public class ModuleSpec implements Serializable {
 		this.interfaceGraph = interfaceGraph;
 		this.inlinedMethods = inlinedMethods;
 		this.methodSigToId = methodSigToId;
+		
+		if (COUNT_METHODS) maxMethods.add(methodIdToSig.length);
 	}
 	
 	/**

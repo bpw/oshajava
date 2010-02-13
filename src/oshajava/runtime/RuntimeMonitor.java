@@ -3,12 +3,17 @@ package oshajava.runtime;
 import java.io.IOException;
 import java.lang.reflect.Array;
 
-import oshajava.sourceinfo.BitVectorIntSet;
+import oshajava.runtime.exceptions.IllegalCommunicationException;
+import oshajava.runtime.exceptions.IllegalSharingException;
+import oshajava.runtime.exceptions.IllegalSynchronizationException;
 import oshajava.sourceinfo.Graph;
+import oshajava.sourceinfo.ModuleSpec;
 import oshajava.sourceinfo.Spec;
 import oshajava.support.acme.util.Util;
 import oshajava.support.acme.util.identityhash.ConcurrentIdentityHashMap;
 import oshajava.util.GraphMLWriter;
+import oshajava.util.WeakConcurrentIdentityHashMap;
+import oshajava.util.intset.BitVectorIntSet;
 
 /**
  * TODO Possible optimizations:
@@ -445,7 +450,10 @@ public class RuntimeMonitor {
 	}
 
 	private static void recordEdge(int src, int dest) {
-		((BitVectorIntSet)executionGraph.getOutEdges(src)).syncedAdd(dest);
+		final BitVectorIntSet set = ((BitVectorIntSet)executionGraph.getOutEdges(src));
+		synchronized (executionGraph) {
+			set.add(dest);
+		}
 	}
 
 	// TODO watch out for assumptions in bytecode instrumentation... null check? etc.?
@@ -522,8 +530,16 @@ public class RuntimeMonitor {
 				Util.log("Failed to dump execution graph due to IOException.");
 			}
 		}
-		Util.logf("Distinct threads created: %s", ThreadState.lastID());
-		Util.logf("Distinct stacks with writes or reads: %s", Stack.lastID());
+		// Report some stats.
+		Util.logf("Distinct threads created: %d", ThreadState.lastID());
+		Util.logf("Distinct stacks created: %d", Stack.lastID());
+		if (State.COUNT_STATES) {
+			Util.logf("Distinct states created: %d", State.statesCreated.value());
+			Util.logf("Average duplication of stacks (truncated):", (double) State.statesCreated.value() / (double)Stack.lastID());
+		}
+		if (BitVectorIntSet.COUNT_SLOTS) Util.logf("Max BitVectorIntSet slots: %d", BitVectorIntSet.maxSlots.value());
+		if (ModuleSpec.COUNT_METHODS) Util.logf("Max non-inlined methods per module: %d", ModuleSpec.maxMethods.value());
+		Util.logf("Modules loaded: %d", Spec.countModules());
 	}
 	
 

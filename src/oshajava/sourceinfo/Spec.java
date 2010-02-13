@@ -59,8 +59,14 @@ public class Spec {
 		return module;
 	}
 	
+	/**
+	 * Check if communication is allowed between two stacks.
+	 * @param writer
+	 * @param reader
+	 * @return
+	 */
 	public static boolean isAllowed(final Stack writer, final Stack reader) {
-		return false; // FIXME
+		throw new RuntimeException("FIXME"); // FIXME
 	}
 
 	/**
@@ -83,5 +89,9 @@ public class Spec {
 			// "Mod.om" in the directory where the contents of package a.b.c are held.
 			ColdStorage.dump(m.getName() + Spec.MODULE_FILE_EXT, m);
 		}
+	}
+	
+	public static int countModules() {
+		return nameToModule.size();
 	}
 }

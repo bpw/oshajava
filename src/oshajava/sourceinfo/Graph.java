@@ -7,6 +7,7 @@ import java.io.Serializable;
 import java.io.Writer;
 
 import oshajava.support.acme.util.Util;
+import oshajava.util.intset.IntSet;
 
 /**
  * A graph representation targeted at method communication graphs.

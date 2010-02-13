@@ -42,7 +42,7 @@ public class ClassInstrumentor extends ClassAdapter {
 	protected static final String ANNOT_WRITER_DESC = Type.getDescriptor(oshajava.annotation.Writer.class);
 	protected static final String ANNOT_MODULE_MEMBER_DESC = Type.getDescriptor(oshajava.annotation.Member.class);
 	
-	protected static final String OSHA_EXCEPT_TYPE_NAME     = Type.getInternalName(oshajava.runtime.OshaRuntimeException.class);
+	protected static final String OSHA_EXCEPT_TYPE_NAME     = Type.getInternalName(oshajava.runtime.exceptions.OshaRuntimeException.class);
 	protected static final String SHADOW_FIELD_SUFFIX       = "__osha_state";
 	protected static final String STATE_DESC                = STATE_TYPE.getDescriptor();
 	protected static final String CURRENT_STATE_FIELD       = "state";
