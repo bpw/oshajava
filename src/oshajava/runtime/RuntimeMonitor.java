@@ -132,18 +132,19 @@ public class RuntimeMonitor {
 			if (RECORD) {
 				recordEdge(write.stack.method, read.stack.method);
 			}
-			if (checkStacks(write.stack, read.stack)) {
+			if (!checkStacks(write.stack, read.stack)) {
 				throw new IllegalSharingException(write.thread, "writer method FIXME", 
 						read.thread, "reader method FIXME");
 			}
 //		}
 	}
-	public static void readHelper(final State write, final ThreadState reader) {
-		if (write.thread != reader) read(write, reader.state);
+	public static void readHelper(final State write, final ThreadState reader, final BitVectorIntSet wCache) {
+		if (write.thread != reader && !wCache.contains(write.getStackID())) read(write, reader.state);
 	}
 
+	// TODO Skip the wCache parameter and just do the field lookup if needed?
 	// OK if array == null. Slower, but the program is about to throw a NullPointerException anyway.
-	public static void arrayRead(final Object array, final int index, final ThreadState reader) {
+	public static void arrayRead(final Object array, final int index, final ThreadState reader, final BitVectorIntSet wCache) {
 		if (array == reader.cachedArray) {
 			final State write;
 			try {
@@ -152,7 +153,7 @@ public class RuntimeMonitor {
 				throw fudgeTrace(e);
 			}
 			if (write != null) {
-				readHelper(write, reader);
+				readHelper(write, reader, wCache);
 			}
 		} else {
 			final State[] states;
@@ -164,7 +165,7 @@ public class RuntimeMonitor {
 			if (states != null) {
 				final State write = states[index];
 				if (write != null) {
-					readHelper(write, reader);
+					readHelper(write, reader, wCache);
 				}
 				reader.cachedArray = array;
 				reader.cachedArrayIndexStates = states;
@@ -200,9 +201,9 @@ public class RuntimeMonitor {
 	}
 
 	// TODO cached write array and cached read array? or is the linkage the key?
-
+	// TODO Skip the wCache parameter and just do the field lookup if needed?
 	// OK if array == null. Slower, but the program is about to throw a NullPointerException anyway.
-	public static void coarseArrayRead(final Object array, final ThreadState reader) {
+	public static void coarseArrayRead(final Object array, final ThreadState reader, final BitVectorIntSet wCache) {
 		final State write;
 		if (array == reader.cachedArray) {
 			write = reader.cachedArrayStateRef.contents;
@@ -219,14 +220,10 @@ public class RuntimeMonitor {
 			reader.cachedArrayStateRef = writeRef;
 		}
 		if (write != null) {
-			readHelper(write, reader);
+			readHelper(write, reader, wCache);
 		}
 	}
 
-	// DO NOT CALL ON PUBLIC WRITES (i.e. when currentstate is null)
-	// concurrent hash map doesn't handle nulls, plus it's faster to
-	// just skip it in the first place anyway. We do have to check null
-	// for inlined cases.
 	public static void coarseArrayWrite(final Object array, final State currentState, final ThreadState threadState) {
 		//  if no array state caching, push the null check back to bytecode.
 		if (threadState.cachedArray == array) {
@@ -314,11 +311,12 @@ public class RuntimeMonitor {
 					if (lastHolderState != holderState) {
 						lockState.lastHolder = holderState;
 						lockState.incrementDepth();
-						if (lastHolderState != null && lastHolderState.thread != holder && holderState != null) {
+						if (lastHolderState.thread != holder) {
 							if (RECORD) {
-								recordEdge(lockState.lastHolder.stack.method, holder.stack.method);
+								recordEdge(lockState.lastHolder.stack.method, holderState.stack.method);
 							}
-							if (checkStacks(lockState.lastHolder.stack, holder.stack)) {
+							// TODO pass writerCache as param
+							if (!holderState.stack.writerCache.contains(lastHolderState.getStackID()) && !checkStacks(lockState.lastHolder.stack, holderState.stack)) {
 								throw new IllegalSynchronizationException(
 										lastHolderState.thread, "FIXME", 
 										holder, "FIXME"
@@ -343,43 +341,43 @@ public class RuntimeMonitor {
 			Util.fail(t);
 		}
 	}
-	public static void acquire(final ObjectWithState lock, final ThreadState holder, final State holderState) {
-		LockState ls = lock.__osha_lock_state;
-		if (ls == null) {
-			ls = new LockState(holderState);
-			ls.setDepth(1);
-			lock.__osha_lock_state = ls;
-		} else if (ls.getDepth() < 0) {
-			Util.fail("Bad lock scoping.");
-		} else if (ls.getDepth() == 0) {
-			// First (non-reentrant) acquire by this thread.
-			// NOTE: this is atomic, because we hold lock and no other thread can call
-			// the acquire or release hooks until they hold the lock.
-			final State lastHolderState = ls.lastHolder;
-			if (lastHolderState != holderState) {
-				ls.lastHolder = holderState;
-				ls.incrementDepth();
-				if (RECORD) {
-					recordEdge(lastHolderState.stack.method, holder.stack.method);
-				}
-				if (lastHolderState != null && lastHolderState.thread != holder) {
-					if (checkStacks(lastHolderState.stack, holder.stack)) {
-						throw new IllegalSynchronizationException(
-								lastHolderState.thread, "FIXME", 
-								holder, "FIXME"
-						);
-					}
-				}
-
-			} else {
-				ls.incrementDepth();
-			}
-		} else {
-			// if we're already reentrant, just go one deeper.
-			ls.incrementDepth();
-		}
-	}
-	
+//	public static void acquire(final ObjectWithState lock, final ThreadState holder, final State holderState) {
+//		LockState ls = lock.__osha_lock_state;
+//		if (ls == null) {
+//			ls = new LockState(holderState);
+//			ls.setDepth(1);
+//			lock.__osha_lock_state = ls;
+//		} else if (ls.getDepth() < 0) {
+//			Util.fail("Bad lock scoping.");
+//		} else if (ls.getDepth() == 0) {
+//			// First (non-reentrant) acquire by this thread.
+//			// NOTE: this is atomic, because we hold lock and no other thread can call
+//			// the acquire or release hooks until they hold the lock.
+//			final State lastHolderState = ls.lastHolder;
+//			if (lastHolderState != holderState) {
+//				ls.lastHolder = holderState;
+//				ls.incrementDepth();
+//				if (RECORD) {
+//					recordEdge(lastHolderState.stack.method, holderState.stack.method);
+//				}
+//				if (lastHolderState != null && lastHolderState.thread != holder) {
+//					if (checkStacks(lastHolderState.stack, holderState.stack)) {
+//						throw new IllegalSynchronizationException(
+//								lastHolderState.thread, "FIXME", 
+//								holder, "FIXME"
+//						);
+//					}
+//				}
+//
+//			} else {
+//				ls.incrementDepth();
+//			}
+//		} else {
+//			// if we're already reentrant, just go one deeper.
+//			ls.incrementDepth();
+//		}
+//	}
+//	
 	// TODO other granularity version.
 	public static int prewait(final Object lock, final ThreadState holder) {
 		LockState lockState = holder.getLockState(lock);
@@ -393,26 +391,27 @@ public class RuntimeMonitor {
 	}
 	
 	// TODO other granularity version.
-	public static void postwait(final Object lock, final int resumeDepth, final ThreadState ts, final State s) {
+	public static void postwait(final Object lock, final int resumeDepth, final ThreadState ts, final State currentState) {
 		LockState lockState = ts.getLockState(lock);
 		if (lockState == null) {
 			lockState = lockStates.get(lock);
 			Util.assertTrue(lockState != null && lockState.getDepth() == 0, "Bad postwait");
 		}
+		lockState.setDepth(resumeDepth);
 		final State lastHolderState = lockState.lastHolder;
-		if (lastHolderState != s) {
-			lockState.lastHolder = s;
-			lockState.setDepth(resumeDepth);
+		if (lastHolderState != currentState) { // necessary because of the timeout versions of wait.
+			lockState.lastHolder = currentState;
 			if (RECORD) {
-				recordEdge(lastHolderState.stack.method, ts.stack.method);
+				recordEdge(lastHolderState.stack.method, currentState.stack.method);
 			}
-			if (lastHolderState != null && lastHolderState.thread != ts) {
-				if (checkStacks(lastHolderState.stack, ts.stack)) {
-					throw new IllegalSynchronizationException(
-							lastHolderState.thread, "FIXME", 
-							ts, "FIXME"
-					);
-				}
+			// No thread check needed here. If last lastHolderState != currentState then last thread != this thread
+			// TODO pass writerCache as param
+			if (!currentState.stack.writerCache.contains(lastHolderState.getStackID()) 
+					&& !checkStacks(lastHolderState.stack, currentState.stack)) {
+				throw new IllegalSynchronizationException(
+						lastHolderState.thread, "FIXME", 
+						ts, "FIXME"
+				);
 			}
 		}
 	}

@@ -26,6 +26,8 @@ public final class State {
 	 */
 	protected final Stack stack;
 	
+	private int stackID;
+	
 	/**
 	 * State of caller.
 	 */
@@ -40,6 +42,7 @@ public final class State {
 		this.caller = caller;
 		this.stack = stack;
 		this.thread = thread;
+		this.stackID = stack.id;
 		
 		if (COUNT_STATES) statesCreated.inc();
 	}
@@ -64,6 +67,13 @@ public final class State {
 	 */
 	public State ret() {
 		return caller;
+	}
+	
+	public int getStackID() {
+		if (stackID == Integer.MAX_VALUE) {
+			stackID = stack.id;
+		}
+		return stackID;
 	}
 	
 	/**

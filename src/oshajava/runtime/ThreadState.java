@@ -94,11 +94,11 @@ public final class ThreadState {
 	 */
 	public State state = State.root(this);
 	
-	/**
-	 * Current call stack (module inlining).  Invariant: outside enter and exit,
-	 * stack == state.stack.
-	 */
-	public Stack stack = state.stack;
+//	/**
+//	 * Current call stack (module inlining).  Invariant: outside enter and exit,
+//	 * stack == state.stack.
+//	 */
+//	public Stack stack = state.stack;
 	
 	/**
 	 * Update call stack/state to reflect entering the method with id mid.
@@ -106,7 +106,7 @@ public final class ThreadState {
 	 */
 	protected void enter(final int mid) {
 		state = state.call(mid);
-		stack = state.stack;
+//		stack = state.stack;
 	}
 	
 	/**
@@ -114,7 +114,7 @@ public final class ThreadState {
 	 */
 	protected void exit() {
 		state = state.ret();
-		stack = state.stack;
+//		stack = state.stack;
 	}
 	
 	// -- Array state caching --------------------------------------------------------

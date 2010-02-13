@@ -31,7 +31,9 @@ public class ClassInstrumentor extends ClassAdapter {
 	 * 
 	 */
 
+	protected static final Type BIT_VECTOR_INT_SET_TYPE = Type.getType(oshajava.util.intset.BitVectorIntSet.class);
 	protected static final Type STRING_TYPE          = Type.getType(java.lang.String.class);
+	protected static final Type STACK_TYPE           = Type.getType(oshajava.runtime.Stack.class);
 	protected static final Type STATE_TYPE           = Type.getType(oshajava.runtime.State.class);
 	protected static final Type THREAD_STATE_TYPE    = Type.getType(oshajava.runtime.ThreadState.class);
 	protected static final Type RUNTIME_MONITOR_TYPE = Type.getType(oshajava.runtime.RuntimeMonitor.class);
@@ -45,6 +47,9 @@ public class ClassInstrumentor extends ClassAdapter {
 	protected static final String OSHA_EXCEPT_TYPE_NAME     = Type.getInternalName(oshajava.runtime.exceptions.OshaRuntimeException.class);
 	protected static final String SHADOW_FIELD_SUFFIX       = "__osha_state";
 	protected static final String STATE_DESC                = STATE_TYPE.getDescriptor();
+	protected static final String STACK_FIELD       		= "stack";
+	protected static final String WRITER_CACHE_FIELD       	= "writerCache";
+	protected static final String ID_FIELD       			= "id";
 	protected static final String CURRENT_STATE_FIELD       = "state";
 	protected static final String THREAD_FIELD              = "thread";
 	protected static final String OBJECT_WITH_STATE_NAME    = Type.getInternalName(oshajava.runtime.ObjectWithState.class);
@@ -62,6 +67,9 @@ public class ClassInstrumentor extends ClassAdapter {
 	protected static final Type[] ARGS_OBJECT_THREAD    = { OBJECT_TYPE, THREAD_STATE_TYPE };
 	protected static final Type[] ARGS_OBJECT_STATE    = { OBJECT_TYPE, STATE_TYPE };
 	
+	protected static final Method STATE_STACK_ID  = new Method("getStackID",  Type.INT_TYPE, ARGS_NONE);
+	protected static final Method CONTAINS_METHOD  = new Method("contains",  Type.INT_TYPE, ARGS_INT);
+
 	protected static final Method HOOK_ENTER = new Method("enter", THREAD_STATE_TYPE, ARGS_INT);
 	protected static final Method HOOK_EXIT  = new Method("exit",  Type.VOID_TYPE, new Type[] { THREAD_STATE_TYPE });
 
@@ -71,9 +79,9 @@ public class ClassInstrumentor extends ClassAdapter {
 	
 //	protected static final Method HOOK_NEW_ARRAY       = new Method("newArray",      Type.VOID_TYPE, ARGS_INT_OBJECT);
 //	protected static final Method HOOK_NEW_MULTI_ARRAY = new Method("newMultiArray", Type.VOID_TYPE, ARGS_OBJECT_INT);
-	protected static final Method HOOK_ARRAY_LOAD      = new Method("arrayRead",     Type.VOID_TYPE, new Type[] {OBJECT_TYPE, Type.INT_TYPE, THREAD_STATE_TYPE});
+	protected static final Method HOOK_ARRAY_LOAD      = new Method("arrayRead",     Type.VOID_TYPE, new Type[] {OBJECT_TYPE, Type.INT_TYPE, THREAD_STATE_TYPE, BIT_VECTOR_INT_SET_TYPE});
 	protected static final Method HOOK_ARRAY_STORE     = new Method("arrayWrite",    Type.VOID_TYPE, new Type[] {OBJECT_TYPE, Type.INT_TYPE, STATE_TYPE, THREAD_STATE_TYPE});
-	protected static final Method HOOK_COARSE_ARRAY_LOAD  = new Method("coarseArrayRead",     Type.VOID_TYPE, ARGS_OBJECT_THREAD);
+	protected static final Method HOOK_COARSE_ARRAY_LOAD  = new Method("coarseArrayRead",     Type.VOID_TYPE, new Type[] {OBJECT_TYPE, THREAD_STATE_TYPE, BIT_VECTOR_INT_SET_TYPE} );
 	protected static final Method HOOK_COARSE_ARRAY_STORE = new Method("coarseArrayWrite",    Type.VOID_TYPE, new Type[] {OBJECT_TYPE, STATE_TYPE, THREAD_STATE_TYPE});
 
 	protected static final Method HOOK_ACQUIRE        = new Method("acquire", Type.VOID_TYPE, new Type[] {OBJECT_TYPE, THREAD_STATE_TYPE, STATE_TYPE});

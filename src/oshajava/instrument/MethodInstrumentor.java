@@ -79,8 +79,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 	 */
 	private int varCurrentThread;
 	private int varCurrentState;
-	private boolean threadVarInitialized = false, stateVarInitialized = false;
-	
+	private int varWriterCache;	
 	
 	/* Helper methods for inserting common bytecode sequences *******************************************/
 	
@@ -94,7 +93,6 @@ public class MethodInstrumentor extends AdviceAdapter {
 		super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_THREAD_STATE);
 		// stack ->
 		super.storeLocal(varCurrentThread, ClassInstrumentor.THREAD_STATE_TYPE);
-		threadVarInitialized = true;
 	}
 
 	/**
@@ -105,16 +103,12 @@ public class MethodInstrumentor extends AdviceAdapter {
 		// stack == thread
 		// stack -> 
 		super.storeLocal(varCurrentThread, ClassInstrumentor.THREAD_STATE_TYPE);
-		threadVarInitialized = true;
 	}
 
-	/**
-	 * Get the current State from the current ThreadState and store it in the
-	 * varCurrentState local variable.
-	 */
-	protected void initializeStateVar() {
+	protected void initializeStateAndCacheVars() {
 		if (policy != CommunicationKind.UNCHECKED) {
 			myStackSize(1);
+			// LOAD STATE -----------------
 			varCurrentState  = super.newLocal(ClassInstrumentor.STATE_TYPE);
 			// stack -> threadstate
 			pushCurrentThread();
@@ -122,7 +116,16 @@ public class MethodInstrumentor extends AdviceAdapter {
 			super.getField(ClassInstrumentor.THREAD_STATE_TYPE, ClassInstrumentor.CURRENT_STATE_FIELD, ClassInstrumentor.STATE_TYPE);
 			// stack ->
 			super.storeLocal(varCurrentState, ClassInstrumentor.STATE_TYPE);
-			stateVarInitialized = true;
+			// LOAD WRITER CACHE -----------
+			varWriterCache  = super.newLocal(ClassInstrumentor.BIT_VECTOR_INT_SET_TYPE);
+			// stack -> state
+			pushCurrentState();
+			// stack -> stack
+			super.getField(ClassInstrumentor.STATE_TYPE, ClassInstrumentor.STACK_FIELD, ClassInstrumentor.STACK_TYPE);
+			// stack -> cache
+			super.getField(ClassInstrumentor.STACK_TYPE, ClassInstrumentor.WRITER_CACHE_FIELD, ClassInstrumentor.BIT_VECTOR_INT_SET_TYPE);
+			// stack ->
+			super.storeLocal(varWriterCache, ClassInstrumentor.BIT_VECTOR_INT_SET_TYPE);
 		}
 	}
 
@@ -130,7 +133,6 @@ public class MethodInstrumentor extends AdviceAdapter {
 	 * Push the current threadstate onto the stack.
 	 */
 	protected void pushCurrentThread() {
-		Util.assertTrue(threadVarInitialized);
 		super.loadLocal(varCurrentThread, ClassInstrumentor.THREAD_STATE_TYPE);
 	}
 
@@ -139,17 +141,18 @@ public class MethodInstrumentor extends AdviceAdapter {
 	 */
 	protected void pushCurrentState() {
 		// stack == 
-		if (policy == CommunicationKind.UNCHECKED) {
-			// stack ->  null
-			mv.visitInsn(Opcodes.ACONST_NULL);
-		} else {
-			Util.assertTrue(threadVarInitialized && stateVarInitialized);
-			// stack -> state
-			super.loadLocal(varCurrentState, ClassInstrumentor.STATE_TYPE);
-		}
+		// stack -> state
+		super.loadLocal(varCurrentState, ClassInstrumentor.STATE_TYPE);
 		// stack == state
 	}
 	
+	protected void pushWriterCache() {
+		// stack == 
+		// stack -> cache
+		super.loadLocal(varWriterCache, ClassInstrumentor.BIT_VECTOR_INT_SET_TYPE);
+		// stack == ache
+	}
+
 	/**
 	 * If the top item on the stack is the threadstate of the current thread,
 	 * jump to l.
@@ -305,7 +308,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 		} else {
 			initializeThreadVar();
 		}
-		initializeStateVar();
+		initializeStateAndCacheVars();
 		// To init those ^^^ lazily, you need to know about control flow. We don't.
 		
 		if (isSynchronized) {
@@ -413,8 +416,20 @@ public class MethodInstrumentor extends AdviceAdapter {
 				// stack -> obj | state writerThread
 				loadThreadFromState();
 				// stack -> obj | state writerThread currentThread -> obj | state
-				ifSameThreadGoto(homeFree);
-				// stack -> obj | state currentState
+				ifSameThreadGoto(homeFree); // if same thread we're done, else check stacks
+				// stack -> obj | state state    <------ TODO maybe don't dup and just reload from field later if needed.
+				super.dup();
+				// stack -> obj | state state cache
+				pushWriterCache();
+				// stack -> obj | state cache state
+				super.swap();
+				// stack -> obj | state cache stackID
+				super.invokeVirtual(ClassInstrumentor.STATE_TYPE, ClassInstrumentor.STATE_STACK_ID);
+				// stack -> obj | state boolean
+				super.invokeVirtual(ClassInstrumentor.BIT_VECTOR_INT_SET_TYPE, ClassInstrumentor.CONTAINS_METHOD);
+				// stack -> obj | state
+				super.ifZCmp(NE, homeFree); // if that succeeded, we're done, else do heavier check.
+				// stack -> obj | state readerState
 				pushCurrentState();
 				// call the read hook. stack -> obj | 
 				super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_READ);
@@ -434,8 +449,20 @@ public class MethodInstrumentor extends AdviceAdapter {
 				// stack -> state writerThread
 				loadThreadFromState();
 				// stack -> state writerThread currentThread -> state
-				ifSameThreadGoto(sHomeFree);
-				//stack -> state currentState
+				ifSameThreadGoto(sHomeFree); // if same thread we're done, else check stacks
+				// stack -> state state    <------ TODO maybe don't dup and just reload from field later if needed.
+				super.dup();
+				// stack -> state state cache
+				pushWriterCache();
+				// stack -> state cache state
+				super.swap();
+				// stack -> state cache stackID
+				super.invokeVirtual(ClassInstrumentor.STATE_TYPE, ClassInstrumentor.STATE_STACK_ID);
+				// stack -> state boolean
+				super.invokeVirtual(ClassInstrumentor.BIT_VECTOR_INT_SET_TYPE, ClassInstrumentor.CONTAINS_METHOD);
+				// stack -> state
+				super.ifZCmp(NE, sHomeFree); // if that succeeded, we're done, else do heavier check.
+				// stack -> state readerState
 				pushCurrentState();
 				// call the read hook. stack -> 
 				super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_READ);
@@ -466,21 +493,25 @@ public class MethodInstrumentor extends AdviceAdapter {
 		case Opcodes.LALOAD:			
 		case Opcodes.SALOAD:
 			if (inst.opts.coarseArrayStates) {
-				myStackSize(2);
+				myStackSize(3);
 				// stack -> index array
 				super.swap();
 				// stack -> array index array
 				super.dupX1();
 				// stack -> array index array threadstate
 				pushCurrentThread();
+				// stack -> array index array threadstate cache
+				pushWriterCache();
 				// call the hook. stack -> array index
 				super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_COARSE_ARRAY_LOAD);
 			} else {
-				myStackSize(3);
+				myStackSize(4);
 				// stack -> array index array index
 				super.dup2();
 				// stack -> array index array index threadstate
 				pushCurrentThread();
+				// stack -> array index array index threadstate cache
+				pushWriterCache();
 				// stack -> array index _
 				super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_ARRAY_LOAD);
 			}
