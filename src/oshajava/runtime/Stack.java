@@ -1,6 +1,9 @@
 package oshajava.runtime;
 
+import java.util.IdentityHashMap;
+
 import oshajava.support.acme.util.identityhash.ConcurrentIdentityHashMap;
+import oshajava.support.acme.util.identityhash.IdentityHashSet;
 import oshajava.util.count.Counter;
 import oshajava.util.intset.BitVectorIntSet;
 
@@ -24,8 +27,12 @@ public class Stack {
 	 */
 	public int id = Integer.MAX_VALUE;
 	
+	private static byte ID_THRESHOLD = 8;
+	private byte writeCounter = 0;
+	
 	/**
-	 * Set of IDs of writer stacks that this stack is allowed to read from.
+	 * Set of IDs of writer stacks that this stack is allowed to read from. Used 
+	 * in fast path.
 	 * 
 	 * NOTE: this swaps the old readerset approach for the following reason:
 	 * If we load a writerCache in a method and many communications happen, we
@@ -34,23 +41,13 @@ public class Stack {
 	 */
 	protected final BitVectorIntSet writerCache = new BitVectorIntSet();
 	
+	private final IdentityHashSet<Stack> writerMemoTable = new IdentityHashSet<Stack>();
+	
 	private Stack(final int method, final Stack parent) {
 		this.method = method;
 		this.parent = parent;
 		
 		if (COUNT_STACKS) stacksCreated.inc();
-	}
-	
-	/**
-	 * Generate an ID for this stack.
-	 */
-	public int generateID() {
-		synchronized(Stack.class) {
-			if(id == Integer.MAX_VALUE) {
-				id = ++idCounter;
-			}
-		}
-		return id;
 	}
 	
 	/**
@@ -73,17 +70,62 @@ public class Stack {
 	}
 	
 	/**
-	 * Check if two stacks are equal. Due to hashconsing. Two stacks are equal if they have the
-	 * same top method and their parents are pointer-equal.
+	 * Count a write in this stack. If we've passed a threshold,
+	 * give this stack an id so reads of its future writes will go
+	 * down the fast path.
+	 * 
+	 * @return the current id
+	 */
+	private synchronized int countWrite() {
+		if (++writeCounter > ID_THRESHOLD) {
+			if(id == Integer.MAX_VALUE) {
+				synchronized(Stack.class) {
+					id = ++idCounter;
+				}
+			}
+		}
+		return id;
+	}
+	
+	/**
+	 * Check if the spec allows this stack to read from the given writer stack.
+	 * 
+	 * Slow path.
+	 * 
+	 * @param writer
+	 * @return
+	 */
+	public boolean checkWriter(Stack writer) {
+		final boolean yes;
+		synchronized (writerMemoTable) {
+			yes = writerMemoTable.contains(writer);
+		}
+		if (!yes) { //  really slow path: full stack traversal
+			// FIXME
+			final boolean success = true;
+			if (success) {
+				synchronized (writerMemoTable) {
+					writerMemoTable.add(writer);
+				}
+			} else {
+				return false;
+			}
+		} // else moderately slow path.
+		// bump the writer's write count.
+		// if it has an id, add it to our cache.
+		final int wid = writer.countWrite();
+		if (wid != Integer.MAX_VALUE) {
+			writerCache.add(wid);
+		}
+		return true;
+	}
+	
+	/**
+	 * Check if two stacks are equal. pointer equality.
 	 */
 	@Override
 	public boolean equals(Object otherObject) {
-		try {
-			final Stack other = (Stack)otherObject;
-			return method == other.method && (parent == null || parent.equals(other.parent));
-		} catch (ClassCastException e) {
-			return false;
-		}
+		return this == otherObject;
 	}
 	
 	/******************************************************************/

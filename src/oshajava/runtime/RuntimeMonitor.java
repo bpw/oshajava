@@ -124,22 +124,19 @@ public class RuntimeMonitor {
 	 * and can read a write by the same thread or a write in one of the
 	 * expectedReaders methods.
 	 * 
+	 * Slow path for reads.
+	 * 
 	 * @param state
 	 * @param readerMethod
 	 */
-	public static void read(final State write, final State read) {
-//		if (write.thread != reader) {
-			if (RECORD) {
-				recordEdge(write.stack.method, read.stack.method);
-			}
-			if (!checkStacks(write.stack, read.stack)) {
-				throw new IllegalSharingException(write.thread, "writer method FIXME", 
-						read.thread, "reader method FIXME");
-			}
-//		}
+	public static void checkReadSlowPath(final State write, final State read) {
+		if (!read.stack.checkWriter(write.stack)) {
+			throw new IllegalSharingException(write.thread, "writer method FIXME", 
+					read.thread, "reader method FIXME");
+		}
 	}
-	public static void readHelper(final State write, final ThreadState reader, final BitVectorIntSet wCache) {
-		if (write.thread != reader && !wCache.contains(write.getStackID())) read(write, reader.state);
+	private static void checkRead(final State write, final ThreadState reader, final BitVectorIntSet wCache) {
+		if (write.thread != reader && !wCache.contains(write.getStackID())) checkReadSlowPath(write, reader.state);
 	}
 
 	// TODO Skip the wCache parameter and just do the field lookup if needed?
@@ -153,7 +150,7 @@ public class RuntimeMonitor {
 				throw fudgeTrace(e);
 			}
 			if (write != null) {
-				readHelper(write, reader, wCache);
+				checkRead(write, reader, wCache);
 			}
 		} else {
 			final State[] states;
@@ -165,7 +162,7 @@ public class RuntimeMonitor {
 			if (states != null) {
 				final State write = states[index];
 				if (write != null) {
-					readHelper(write, reader, wCache);
+					checkRead(write, reader, wCache);
 				}
 				reader.cachedArray = array;
 				reader.cachedArrayIndexStates = states;
@@ -220,7 +217,7 @@ public class RuntimeMonitor {
 			reader.cachedArrayStateRef = writeRef;
 		}
 		if (write != null) {
-			readHelper(write, reader, wCache);
+			checkRead(write, reader, wCache);
 		}
 	}
 
@@ -312,11 +309,8 @@ public class RuntimeMonitor {
 						lockState.lastHolder = holderState;
 						lockState.incrementDepth();
 						if (lastHolderState.thread != holder) {
-							if (RECORD) {
-								recordEdge(lockState.lastHolder.stack.method, holderState.stack.method);
-							}
 							// TODO pass writerCache as param
-							if (!holderState.stack.writerCache.contains(lastHolderState.getStackID()) && !checkStacks(lockState.lastHolder.stack, holderState.stack)) {
+							if (!holderState.stack.writerCache.contains(lastHolderState.getStackID()) && !holderState.stack.checkWriter(lockState.lastHolder.stack)) {
 								throw new IllegalSynchronizationException(
 										lastHolderState.thread, "FIXME", 
 										holder, "FIXME"
@@ -401,13 +395,10 @@ public class RuntimeMonitor {
 		final State lastHolderState = lockState.lastHolder;
 		if (lastHolderState != currentState) { // necessary because of the timeout versions of wait.
 			lockState.lastHolder = currentState;
-			if (RECORD) {
-				recordEdge(lastHolderState.stack.method, currentState.stack.method);
-			}
 			// No thread check needed here. If last lastHolderState != currentState then last thread != this thread
 			// TODO pass writerCache as param
 			if (!currentState.stack.writerCache.contains(lastHolderState.getStackID()) 
-					&& !checkStacks(lastHolderState.stack, currentState.stack)) {
+					&& !currentState.stack.checkWriter(lastHolderState.stack)) {
 				throw new IllegalSynchronizationException(
 						lastHolderState.thread, "FIXME", 
 						ts, "FIXME"
@@ -417,72 +408,18 @@ public class RuntimeMonitor {
 	}
 
 
-	// TODO make thread local? is sharing the checks worth it in time saved or does sync cost enough that it
-	// should just be thread local?
-	private static final ConcurrentIdentityHashMap<Stack,ConcurrentIdentityHashMap<Stack,Object>> memoTable = 
-		new ConcurrentIdentityHashMap<Stack,ConcurrentIdentityHashMap<Stack,Object>>();
-	
-	private static final Object yes = new Object();
-
-	public static boolean checkStacks(final Stack writer, final Stack reader) {
-		try {
-			if (memoTable.get(writer).contains(reader)) return true;
-		} catch (NullPointerException e) {
-			memoTable.putIfAbsent(writer, new ConcurrentIdentityHashMap<Stack,Object>());
-		}
-		if (Spec.isAllowed(writer, reader)) {
-			memoTable.get(writer).putIfAbsent(reader, yes);
-			return true;
-		} else {
-			return false;
-		}
-	}
-
 	// -- Recording --------------------------------------------------------------------
-	
-	public static void recordRead(final State writer, final ThreadState reader) {
-		if (writer.thread != reader) {
-			synchronized(writer) {
-				//writer.readers.add(reader.currentMethod); //FIXME
-			}
-		}
-	}
 
+	private static void record(final Stack writer, final Stack reader) {
+		// FIXME repeat stack traversal from Spec.isAllowed to record all edges.
+		// Or just record in Spec.isAllowed.
+		// for each edge call recordEdge.
+	}
+	
 	private static void recordEdge(int src, int dest) {
 		((BitVectorIntSet)executionGraph.getOutEdges(src)).add(dest);
 	}
 
-	// TODO watch out for assumptions in bytecode instrumentation... null check? etc.?
-	//	public static void recordArrayRead(final Object array, final int index, final ThreadState reader) {
-	//		if (array == reader.cachedArray) {
-	//			final State write;
-	//			try {
-	//				write = reader.cachedArrayIndexStates[index];
-	//			} catch (NullPointerException e) {
-	//				throw fudgeTrace(e);
-	//			}
-	//			if (write != null) {
-	//				recordRead(write, reader);
-	//			}
-	//		} else {
-	//			final State[] states;
-	//			try {
-	//				states = arrayStates.get(array);
-	//			} catch (NullPointerException e) {
-	//				throw fudgeTrace(e);
-	//			}
-	//			if (states != null) {
-	//				final State write = states[index];
-	//				if (write != null) {
-	//					recordRead(write, reader);
-	//				}
-	//				reader.cachedArray = array;
-	//				reader.cachedArrayIndexStates = states;
-	//			} else {
-	//				
-	//			}
-	//		}
-	//	}
 	// -- General ----------------------------------------------------------------------
 
 

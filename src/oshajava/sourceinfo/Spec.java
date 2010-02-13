@@ -60,16 +60,6 @@ public class Spec {
 	}
 	
 	/**
-	 * Check if communication is allowed between two stacks.
-	 * @param writer
-	 * @param reader
-	 * @return
-	 */
-	public static boolean isAllowed(final Stack writer, final Stack reader) {
-		throw new RuntimeException("FIXME"); // FIXME
-	}
-
-	/**
 	 * Define a new module.
 	 * @param name
 	 * @param module
