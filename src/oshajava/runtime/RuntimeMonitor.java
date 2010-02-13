@@ -450,10 +450,7 @@ public class RuntimeMonitor {
 	}
 
 	private static void recordEdge(int src, int dest) {
-		final BitVectorIntSet set = ((BitVectorIntSet)executionGraph.getOutEdges(src));
-		synchronized (executionGraph) {
-			set.add(dest);
-		}
+		((BitVectorIntSet)executionGraph.getOutEdges(src)).add(dest);
 	}
 
 	// TODO watch out for assumptions in bytecode instrumentation... null check? etc.?
@@ -532,7 +529,8 @@ public class RuntimeMonitor {
 		}
 		// Report some stats.
 		Util.logf("Distinct threads created: %d", ThreadState.lastID());
-		Util.logf("Distinct stacks created: %d", Stack.lastID());
+		if (Stack.COUNT_STACKS) Util.logf("Distint stacks created: %d", Stack.stacksCreated.value());
+		Util.logf("Frequently communicating stacks: %d", Stack.lastID());
 		if (State.COUNT_STATES) {
 			Util.logf("Distinct states created: %d", State.statesCreated.value());
 			Util.logf("Average duplication of stacks (truncated):", (double) State.statesCreated.value() / (double)Stack.lastID());

@@ -2,6 +2,7 @@ package oshajava.util.intset;
 
 import java.io.Serializable;
 
+import oshajava.support.acme.util.Util;
 import oshajava.util.ArrayUtil;
 import oshajava.util.count.MaxRecorder;
 
@@ -28,6 +29,8 @@ public class BitVectorIntSet extends IntSet implements Serializable {
 	
 	public static final MaxRecorder maxSlots = new MaxRecorder();
 	public static final boolean COUNT_SLOTS = true;
+	
+	private static final int MAX_SLOTS = Integer.MAX_VALUE / SLOT_SIZE - 1;
 
 	/**
 	 * The bit vector.
@@ -52,12 +55,12 @@ public class BitVectorIntSet extends IntSet implements Serializable {
 	
 	/**
 	 * Add an int to the set.
-	 * TODO not thread safe! Requires external synchronization!
 	 */
-	public void add(final int member) {
+	public synchronized void add(final int member) {
 		final int slot = member / SLOT_SIZE;
 		// resize if necessary.
 		if (slot > bits.length) {
+			Util.assertTrue(slot < MAX_SLOTS);
 			bits = ArrayUtil.copy(bits, slot + 1);
 			if (COUNT_SLOTS) maxSlots.add(slot + 1);
 		}

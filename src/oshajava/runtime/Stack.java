@@ -1,9 +1,13 @@
 package oshajava.runtime;
 
 import oshajava.support.acme.util.identityhash.ConcurrentIdentityHashMap;
+import oshajava.util.count.Counter;
+import oshajava.util.intset.BitVectorIntSet;
 
 public class Stack {
 	
+	public static final Counter stacksCreated = new Counter();
+	public static final boolean COUNT_STACKS = true;
 
 	/**
 	 * The Stack for the caller of the top of this stack.
@@ -16,16 +20,37 @@ public class Stack {
 	public final int method;
 	
 	/**
-	 * The id of this call stack.
+	 * The id of this call stack. Only set for real once this tack has communicated a bit.
 	 */
-	public final int id;
+	public int id = Integer.MAX_VALUE;
 	
-	private Stack(int method, Stack parent) {
+	/**
+	 * Set of IDs of writer stacks that this stack is allowed to read from.
+	 * 
+	 * NOTE: this swaps the old readerset approach for the following reason:
+	 * If we load a writerCache in a method and many communications happen, we
+	 * have it in the (actual hardware) cache.  If we load the readerset from
+	 * a state representing a write, chances are it's not in the cache...
+	 */
+	protected final BitVectorIntSet writerCache = new BitVectorIntSet();
+	
+	private Stack(final int method, final Stack parent) {
 		this.method = method;
 		this.parent = parent;
-		synchronized (Stack.class) {
-			this.id = ++idCounter;
+		
+		if (COUNT_STACKS) stacksCreated.inc();
+	}
+	
+	/**
+	 * Generate an ID for this stack.
+	 */
+	public int generateID() {
+		synchronized(Stack.class) {
+			if(id == Integer.MAX_VALUE) {
+				id = ++idCounter;
+			}
 		}
+		return id;
 	}
 	
 	/**
