@@ -10,7 +10,6 @@ import oshajava.sourceinfo.Graph;
 import oshajava.sourceinfo.ModuleSpec;
 import oshajava.sourceinfo.Spec;
 import oshajava.support.acme.util.Util;
-import oshajava.support.acme.util.identityhash.ConcurrentIdentityHashMap;
 import oshajava.util.GraphMLWriter;
 import oshajava.util.WeakConcurrentIdentityHashMap;
 import oshajava.util.intset.BitVectorIntSet;
@@ -427,9 +426,9 @@ public class RuntimeMonitor {
 		return threadState.get();
 	}
 
-	public static ThreadState enter(final int mid) {
+	public static ThreadState enter(final int methodUID) {
 		final ThreadState ts = threadState.get();
-		ts.enter(mid);
+		ts.enter(methodUID);
 		return ts;
 	}
 

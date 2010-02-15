@@ -7,6 +7,7 @@ import java.io.Serializable;
 import java.io.Writer;
 
 import oshajava.support.acme.util.Util;
+import oshajava.util.intset.BitVectorIntSet;
 import oshajava.util.intset.IntSet;
 
 /**
@@ -28,7 +29,7 @@ public class Graph implements Serializable {
 	 * Array of IntSets. Rows represent edge sources and columns represent 
 	 * edge destinations.
 	 */
-	protected IntSet[] table;
+	protected BitVectorIntSet[] table;
 	
 	/**
 	 * Construct a graph with an initial node capacity.
@@ -36,7 +37,7 @@ public class Graph implements Serializable {
 	 * @param nodeCapacity
 	 */
 	public Graph(int nodeCapacity) {
-		table = new IntSet[nodeCapacity];
+		table = new BitVectorIntSet[nodeCapacity];
 	}
 	
 	/**
@@ -44,7 +45,7 @@ public class Graph implements Serializable {
 	 * @param i
 	 * @return
 	 */
-	public final IntSet getOutEdges(int i) {
+	public final BitVectorIntSet getOutEdges(int i) {
 		assert i < nextID && i >= 0;
 		return table[i];
 	}
@@ -80,7 +81,7 @@ public class Graph implements Serializable {
 	 * @param set
 	 * @return
 	 */
-	public int add(IntSet set) {
+	public int add(BitVectorIntSet set) {
 		assert nextID >= table.length;
 		final int id = nextID;
 		++nextID;
@@ -110,7 +111,7 @@ public class Graph implements Serializable {
 	 */
 	protected final void resize(int n) {
 		assert n > 0;
-		IntSet[] p = new IntSet[n];
+		BitVectorIntSet[] p = new BitVectorIntSet[n];
 		System.arraycopy(table, 0, p, 0, n > nextID ? nextID : n);
 		table = p;
 	}

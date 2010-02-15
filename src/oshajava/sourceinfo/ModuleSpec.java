@@ -3,6 +3,7 @@ package oshajava.sourceinfo;
 import java.io.Serializable;
 import java.util.HashMap;
 
+import oshajava.support.acme.util.Util;
 import oshajava.util.count.MaxRecorder;
 import oshajava.util.intset.BitVectorIntSet;
 
@@ -17,7 +18,7 @@ public class ModuleSpec implements Serializable {
 	
 	public static final MaxRecorder maxMethods = new MaxRecorder();
 	public static final boolean COUNT_METHODS = true;
-
+	
 	/**
 	 * Kinds of communication.
 	 * @author bpw
@@ -111,11 +112,11 @@ public class ModuleSpec implements Serializable {
 	
 	/**
 	 * Get the method signature of the method with id mid. Use for error reporting.
-	 * @param mid
+	 * @param methodUID
 	 * @return
 	 */
-	public String getMethodSignature(final int mid) {
-		return methodIdToSig[mid];
+	public String getMethodSignature(final int methodUID) {
+		return methodIdToSig[Spec.getMethodID(methodUID)];
 	}
 	
 	/**
@@ -123,10 +124,10 @@ public class ModuleSpec implements Serializable {
 	 * @param sig
 	 * @return
 	 */
-	public int getMethodId(final String sig) {
+	public int getMethodUID(final String sig) {
+		assert methodSigToId.containsKey(sig);
 		final int mid = methodSigToId.get(sig);
-		assert mid >= 0;
-		return mid;
+		return Spec.makeUID(id, mid);
 	}
 	
 	/**
@@ -136,7 +137,12 @@ public class ModuleSpec implements Serializable {
 	 * @return
 	 */
 	public boolean isAllowed(final int w, final int r) {
-		return internalGraph.containsEdge(w, r);
+		Util.assertTrue(Spec.getModuleID(w) == id && Spec.getModuleID(r) == id);
+		return internalGraph.containsEdge(Spec.getMethodID(w), Spec.getMethodID(r));
+	}
+	public boolean allAllowed(final int w, final BitVectorIntSet readers) {
+		Util.assertTrue(Spec.getModuleID(w) == id); //FIXME && Spec.getModuleID(r) == id);
+		return internalGraph.getOutEdges(Spec.getMethodID(w)).containsAll(readers);
 	}
 	
 	/**
@@ -146,7 +152,8 @@ public class ModuleSpec implements Serializable {
 	 * @return
 	 */
 	public boolean isPublic(final int w, final int r) {
-		return interfaceGraph.containsEdge(w, r);
+		Util.assertTrue(Spec.getModuleID(w) == id && Spec.getModuleID(r) == id);
+		return interfaceGraph.containsEdge(Spec.getMethodID(w), Spec.getMethodID(r));
 	}
 	
 	/**
@@ -155,7 +162,9 @@ public class ModuleSpec implements Serializable {
 	 * @param mid
 	 * @return
 	 */
-	public CommunicationKind getCommunicationKind(final int mid) {
+	public CommunicationKind getCommunicationKind(final int uid) {
+		Util.assertTrue(Spec.getModuleID(uid) == id);
+		final int mid = Spec.getMethodID(uid);
 		if (inlinedMethods.contains(mid)) {
 			return CommunicationKind.INLINE;
 		} else if (internalGraph.getOutEdges(mid).isEmpty()) {

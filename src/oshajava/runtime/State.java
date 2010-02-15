@@ -49,14 +49,14 @@ public final class State {
 	
 	/**
 	 * Get the state resulting from calling method.
-	 * @param method
+	 * @param methodUID
 	 * @return
 	 */
-	public State call(final int method) {
-		State cs = calleeToState.get(method);
+	public State call(final int methodUID) {
+		State cs = calleeToState.get(methodUID);
 		if (cs == null) {
-			cs = new State(thread, this, Stack.push(method, stack));
-			calleeToState.put(method, cs);
+			cs = new State(thread, this, Stack.push(methodUID, stack));
+			calleeToState.put(methodUID, cs);
 		}
 		return cs;
 	}

@@ -2,6 +2,9 @@ package oshajava.runtime;
 
 import java.util.IdentityHashMap;
 
+import oshajava.sourceinfo.ModuleSpec;
+import oshajava.sourceinfo.Spec;
+import oshajava.support.acme.util.Util;
 import oshajava.support.acme.util.identityhash.ConcurrentIdentityHashMap;
 import oshajava.support.acme.util.identityhash.IdentityHashSet;
 import oshajava.util.count.Counter;
@@ -20,7 +23,7 @@ public class Stack {
 	/**
 	 * The top method on this call stack.
 	 */
-	public final int method;
+	public final int methodUID;
 	
 	/**
 	 * The id of this call stack. Only set for real once this tack has communicated a bit.
@@ -43,8 +46,8 @@ public class Stack {
 	
 	private final IdentityHashSet<Stack> writerMemoTable = new IdentityHashSet<Stack>();
 	
-	private Stack(final int method, final Stack parent) {
-		this.method = method;
+	private Stack(final int methodUID, final Stack parent) {
+		this.methodUID = methodUID;
 		this.parent = parent;
 		
 		if (COUNT_STACKS) stacksCreated.inc();
@@ -60,13 +63,33 @@ public class Stack {
 	}
 	
 	/**
-	 * Get the stack formed by pushing the given callee on the given stack.
+	 * Get the canonical stack formed by pushing the given callee on the given stack.
 	 * @param m
 	 * @param stack
 	 * @return
 	 */
-	public static Stack push(final int m, final Stack stack) {
-		return get(m,stack);
+	public static Stack push(final int methodUID, final Stack parent) {
+		ConcurrentIdentityHashMap<Stack,Stack>  t = hashConsTable.get(methodUID);
+		if (t == null) {
+			t = new ConcurrentIdentityHashMap<Stack,Stack>();
+			final ConcurrentIdentityHashMap<Stack,Stack> s = hashConsTable.putIfAbsent(methodUID, t);
+			if (s != null) t = s;
+		}
+		Stack stack = t.get(parent);
+		if (stack == null) {
+			stack = new Stack(methodUID,parent);
+			final Stack s = t.putIfAbsent(parent, stack);
+			if (s == null) {
+				return stack;
+			} else {
+				synchronized(Stack.class) {
+					idCounter--;
+				}
+				return s;
+			}
+		} else {
+			return stack;
+		}
 	}
 	
 	/**
@@ -101,9 +124,7 @@ public class Stack {
 			yes = writerMemoTable.contains(writer);
 		}
 		if (!yes) { //  really slow path: full stack traversal
-			// FIXME
-			final boolean success = true;
-			if (success) {
+			if (walkStacks(writer, this)) {
 				synchronized (writerMemoTable) {
 					writerMemoTable.add(writer);
 				}
@@ -119,6 +140,92 @@ public class Stack {
 		}
 		return true;
 	}
+	
+	private static boolean walkStacks(final Stack writer, final Stack reader) {
+		if (writer == null && reader == null) {
+			// Successfully walked to the roots of each stack.
+			return true;
+		}
+		if (writer == null && reader != null || writer != null && reader == null) {
+			// Layer mismatch at root of stacks.
+			// FIXME pop/throw to find a compositional module...
+		}
+		
+		final int writerMod = Spec.getModuleID(writer.methodUID);
+		if (writerMod == Spec.getModuleID(reader.methodUID)) {
+			// Immediate pair are in same module: no compositional module check needed here.
+			// Find the reader layer.
+			final BitVectorIntSet layer = new BitVectorIntSet();
+			final Stack readerLayerTop = reader.expandLayer(layer, writerMod);
+			Util.assertTrue(!layer.isEmpty());
+			// Find the writer layer and check the layer mapping.
+			final ModuleSpec layerModule = Spec.getModule(writer.methodUID);
+			final Stack writerLayerTop;
+			try {
+				writerLayerTop = writer.checkLayer(layer, layerModule);
+			} catch (IllegalInternalEdgeException e) {
+				return false;
+			}
+			// The communication in this layer is allowed.
+			// Is the communication exposed?
+			if (layerModule.isPublic(writerLayerTop.methodUID, readerLayerTop.methodUID)) {
+				// communication is exposed here. Must check rest of stacks.
+				return walkStacks(writerLayerTop.parent, readerLayerTop.parent);
+			}
+			// communication is hidden here. All checks so far succeeded so the
+			//communication is valid.
+			return true;
+		} else {
+			// Immediate pair not in same module: do compositional module check.
+			// FIXME
+			return false;
+		}
+	}
+	
+	/**
+	 * Expands the set layer until it includes all methods from the same module
+	 * appearing consecutively on the stack.
+	 * 
+	 * @param layer
+	 * @param moduleID
+	 * @return the last stack frame that contributed to the set.
+	 */
+	private Stack expandLayer(final BitVectorIntSet layer, final int moduleID) {
+		if (parent == null) {
+			return null;
+		} else if (moduleID == Spec.getModuleID(parent.methodUID)) {
+			layer.add(Spec.getMethodID(parent.methodUID));
+			return parent.expandLayer(layer, moduleID);
+		} else {
+			return this;
+		}
+	}
+	
+	/**
+	 * Checks that each method in the chunk of consecutive methods from the same module
+	 * is allowed to communicate to all of the methods in the opposing chunk.
+	 * 
+	 * @param layer
+	 * @param module
+	 * @return the last stack frame on this stack that was in the consecutive chunk
+	 * belonging to this module.
+	 * @throws IllegalInternalEdgeException if there was an illegal internal edge
+	 */
+	private Stack checkLayer(final BitVectorIntSet layer, final ModuleSpec module) throws IllegalInternalEdgeException {
+		if (parent == null) {
+			return null;
+		} else if (module.allAllowed(methodUID, layer)) {
+			if (module.getId() != Spec.getModuleID(parent.methodUID)) {
+				return parent.checkLayer(layer, module);
+			} else {
+				return this;
+			}
+		} else {
+			throw new IllegalInternalEdgeException();
+		}
+	}
+	
+	private static class IllegalInternalEdgeException extends Exception { }
 	
 	/**
 	 * Check if two stacks are equal. pointer equality.
@@ -142,38 +249,6 @@ public class Stack {
 	private static final ConcurrentIdentityHashMap<Integer,ConcurrentIdentityHashMap<Stack,Stack>> hashConsTable = 
 		new ConcurrentIdentityHashMap<Integer,ConcurrentIdentityHashMap<Stack,Stack>>();
 
-	/**
-	 * Get the canonical Stack for a given method and parent.
-	 * @param method
-	 * @param parent
-	 * @return
-	 */
-	// TODO Cache recent ones in each thread.
-	private static Stack get(final int method, final Stack parent) {
-		// TODO? if (parent.method == method) return parent;
-		ConcurrentIdentityHashMap<Stack,Stack>  t = hashConsTable.get(method);
-		if (t == null) {
-			t = new ConcurrentIdentityHashMap<Stack,Stack>();
-			final ConcurrentIdentityHashMap<Stack,Stack> s = hashConsTable.putIfAbsent(method, t);
-			if (s != null) t = s;
-		}
-		Stack stack = t.get(parent);
-		if (stack == null) {
-			stack = new Stack(method,parent);
-			final Stack s = t.putIfAbsent(parent, stack);
-			if (s == null) {
-				return stack;
-			} else {
-				synchronized(Stack.class) {
-					idCounter--;
-				}
-				return s;
-			}
-		} else {
-			return stack;
-		}
-	}
-	
 	/**
 	 * Get the last id issued for a stack.
 	 * @return

@@ -2,10 +2,9 @@ package oshajava.sourceinfo;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.Vector;
 
-import oshajava.runtime.Stack;
 import oshajava.support.acme.util.Util;
-import oshajava.support.acme.util.identityhash.ConcurrentIdentityHashMap;
 import oshajava.util.ColdStorage;
 
 /**
@@ -14,6 +13,22 @@ import oshajava.util.ColdStorage;
  *
  */
 public class Spec {
+	
+	private static final int METHOD_BITS = 16;
+	private static final int METHOD_ID_SELECTOR = (1 << METHOD_BITS) - 1;
+	private static final int MAX_MODULE_ID = 1 << (METHOD_BITS - 1) - 1;
+	private static final int MODULE_ID_SELECTOR = MAX_MODULE_ID << METHOD_BITS;
+
+	public static int getMethodID(final int uid) {
+		return uid & METHOD_ID_SELECTOR;
+	}
+	public static int getModuleID(final int uid) {
+		return (uid & MODULE_ID_SELECTOR) >> METHOD_BITS;
+	}
+	public static int makeUID(final int moduleID, final int methodID) {
+		Util.assertTrue(moduleID <= MAX_MODULE_ID && methodID <= METHOD_ID_SELECTOR);
+		return (moduleID << METHOD_BITS) | methodID;
+	}
 	
 	/**
 	 * File extension for serialized ModuleSpec storage. OM for Osha Module. 
@@ -24,6 +39,8 @@ public class Spec {
 	 * Map module name to ModuleSpec.
 	 */
 	protected static final HashMap<String,ModuleSpec> nameToModule = new HashMap<String,ModuleSpec>();
+	
+	protected static final Vector<ModuleSpec> idToModule = new Vector<ModuleSpec>();
 	
 	/**
 	 * Load a ModuleSpec from disk given its name.
@@ -49,14 +66,20 @@ public class Spec {
 	 * @return
 	 * @throws ModuleSpecNotFoundException
 	 */
-	public static ModuleSpec getModule(String name) throws ModuleSpecNotFoundException {
+	public static synchronized ModuleSpec getModule(String name) throws ModuleSpecNotFoundException {
 		ModuleSpec module = nameToModule.get(name);
 		if (module == null) {
 			module = loadModule(name);
-			assert module != null;
+//			synchronized (idToModule) { // not needed if this method is synchronized
+				module.setId(idToModule.size());
+				idToModule.add(module);
+//			}
 			nameToModule.put(name, module);
 		}
 		return module;
+	}
+	public static ModuleSpec getModule(final int uid) {
+		return idToModule.get(Spec.getModuleID(uid));
 	}
 	
 	/**

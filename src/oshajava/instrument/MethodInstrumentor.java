@@ -28,7 +28,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 
 	protected final String fullNameAndDesc;
 	
-	private final int mid;
+	private final int methodUID;
 	
 //	private final Method readHook;
 
@@ -51,8 +51,8 @@ public class MethodInstrumentor extends AdviceAdapter {
 		isConstructor = name.equals("<init>");
 		isClinit = name.equals("<clinit>");
 		fullNameAndDesc = inst.className + "." + name + desc;
-		mid = module.getMethodId(fullNameAndDesc);
-		policy = module.getCommunicationKind(mid);
+		methodUID = module.getMethodUID(fullNameAndDesc);
+		policy = module.getCommunicationKind(methodUID);
 		
 //		readHook = ClassInstrumentor.HOOK_READ; //RuntimeMonitor.RECORD ? ClassInstrumentor.HOOK_RECORD_READ : ClassInstrumentor.HOOK_READ;
 	}
@@ -301,7 +301,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 		myStackSize(1);
 		
 		if (policy != CommunicationKind.INLINE) {
-			super.push(mid);
+			super.push(methodUID);
 			// stack -> threadstate
 			super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_ENTER);
 			initializeThreadVarFromStack();

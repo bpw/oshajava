@@ -102,10 +102,10 @@ public final class ThreadState {
 	
 	/**
 	 * Update call stack/state to reflect entering the method with id mid.
-	 * @param mid
+	 * @param methodUID
 	 */
-	protected void enter(final int mid) {
-		state = state.call(mid);
+	protected void enter(final int methodUID) {
+		state = state.call(methodUID);
 //		stack = state.stack;
 	}
 	
