@@ -130,8 +130,7 @@ public class RuntimeMonitor {
 	 */
 	public static void checkReadSlowPath(final State write, final State read) {
 		if (!read.stack.checkWriter(write.stack)) {
-			throw new IllegalSharingException(write.thread, "writer method FIXME", 
-					read.thread, "reader method FIXME");
+			throw new IllegalSharingException(write, read);
 		}
 	}
 	private static void checkRead(final State write, final ThreadState reader, final BitVectorIntSet wCache) {
@@ -310,10 +309,7 @@ public class RuntimeMonitor {
 						if (lastHolderState.thread != holder) {
 							// TODO pass writerCache as param
 							if (!holderState.stack.writerCache.contains(lastHolderState.getStackID()) && !holderState.stack.checkWriter(lockState.lastHolder.stack)) {
-								throw new IllegalSynchronizationException(
-										lastHolderState.thread, "FIXME", 
-										holder, "FIXME"
-								);
+								throw new IllegalSynchronizationException(lastHolderState, holderState);
 							}
 
 						}
@@ -372,6 +368,9 @@ public class RuntimeMonitor {
 //	}
 //	
 	// TODO other granularity version.
+	/**
+	 * Hook to call before making a call to wait.
+	 */
 	public static int prewait(final Object lock, final ThreadState holder) {
 		LockState lockState = holder.getLockState(lock);
 		if (lockState == null) {
@@ -384,6 +383,9 @@ public class RuntimeMonitor {
 	}
 	
 	// TODO other granularity version.
+	/**
+	 * Hook to call when returning from a call to wait.
+	 */
 	public static void postwait(final Object lock, final int resumeDepth, final ThreadState ts, final State currentState) {
 		LockState lockState = ts.getLockState(lock);
 		if (lockState == null) {
@@ -398,10 +400,7 @@ public class RuntimeMonitor {
 			// TODO pass writerCache as param
 			if (!currentState.stack.writerCache.contains(lastHolderState.getStackID()) 
 					&& !currentState.stack.checkWriter(lastHolderState.stack)) {
-				throw new IllegalSynchronizationException(
-						lastHolderState.thread, "FIXME", 
-						ts, "FIXME"
-				);
+				throw new IllegalSynchronizationException(lastHolderState, currentState);
 			}
 		}
 	}
@@ -422,16 +421,29 @@ public class RuntimeMonitor {
 	// -- General ----------------------------------------------------------------------
 
 
+	/**
+	 * Hook to get the current ThreadState.
+	 */
 	public static ThreadState getThreadState() {
 		return threadState.get();
 	}
 
+	/**
+	 * Hook to call on non-inlined method entry.
+	 * 
+	 * @param methodUID
+	 * @return the ThreadState for the current thread.
+	 */
 	public static ThreadState enter(final int methodUID) {
 		final ThreadState ts = threadState.get();
 		ts.enter(methodUID);
 		return ts;
 	}
 
+	/**
+	 * Hook to call on non-inlined method exit.
+	 * @param ts
+	 */
 	public static void exit(final ThreadState ts) {
 		ts.exit();
 	}
@@ -452,6 +464,11 @@ public class RuntimeMonitor {
 		//		return t;
 	}
 
+	/**
+	 * Hook to call on program exit.
+	 * 
+	 * @param mainClass
+	 */
 	public static void fini(String mainClass) {
 		if (RECORD) {
 			try {

@@ -177,6 +177,12 @@ public class Stack {
 			return true;
 		} else {
 			// Immediate pair not in same module: do compositional module check.
+			// First, see if there's a layer on both stacks that doesn't match up with any caller or callee
+			// layer on the other side.
+			// Then, try merging with callers.
+			// THen try coming back down to merge with callees if needed.
+			// The general case is going to have pretty high worst-case theoretical
+			// time
 			// FIXME
 			return false;
 		}
@@ -233,6 +239,12 @@ public class Stack {
 	@Override
 	public boolean equals(Object otherObject) {
 		return this == otherObject;
+	}
+	
+	@Override
+	public String toString() {
+		final ModuleSpec mod = Spec.getModule(methodUID);
+		return "[" + mod.getName() + "] " + mod.getMethodSignature(methodUID) + "\n" + (parent != null ? " called by " + parent.toString() : "");
 	}
 	
 	/******************************************************************/

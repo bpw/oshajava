@@ -1,6 +1,6 @@
 package oshajava.runtime.exceptions;
 
-import oshajava.runtime.ThreadState;
+import oshajava.runtime.State;
 
 public class IllegalSharingException extends IllegalCommunicationException {
 
@@ -9,9 +9,8 @@ public class IllegalSharingException extends IllegalCommunicationException {
 	 */
 	private static final long serialVersionUID = -3447182487366275642L;
 
-	public IllegalSharingException(ThreadState writerThread, String writerMethod,
-			ThreadState readerThread, String readerMethod) {
-		super(writerThread, writerMethod, readerThread, readerMethod);
+	public IllegalSharingException(final State writer, final State reader) {
+		super(writer, reader);
 	}
 
 	@Override

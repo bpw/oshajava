@@ -1,6 +1,6 @@
 package oshajava.runtime.exceptions;
 
-import oshajava.runtime.ThreadState;
+import oshajava.runtime.State;
 
 public class IllegalSynchronizationException extends
 		IllegalCommunicationException {
@@ -10,9 +10,8 @@ public class IllegalSynchronizationException extends
 	 */
 	private static final long serialVersionUID = 1736616437563200866L;
 
-	public IllegalSynchronizationException(ThreadState writerThread, String writerMethod,
-			ThreadState readerThread, String readerMethod) {
-		super(writerThread, writerMethod, readerThread, readerMethod);
+	public IllegalSynchronizationException(final State writer, final State reader) {
+		super(writer, reader);
 	}
 	
 	@Override

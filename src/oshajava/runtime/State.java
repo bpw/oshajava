@@ -76,6 +76,10 @@ public final class State {
 		return stackID;
 	}
 	
+	public String toString() {
+		return thread.toString() + ":\n" + stack.toString();
+	}
+	
 	/**
 	 * Make the root state for a thread.
 	 * @param ts

@@ -1,5 +1,6 @@
 package oshajava.runtime.exceptions;
 
+import oshajava.runtime.State;
 import oshajava.runtime.ThreadState;
 
 
@@ -11,36 +12,18 @@ public abstract class IllegalCommunicationException extends OshaRuntimeException
 	 */
 	private static final long serialVersionUID = -8360898879626150853L;
 	
-	protected final String writerMethod, readerMethod;
-	protected final ThreadState writerThread, readerThread;
+	protected final State writer, reader;
 	
-	protected IllegalCommunicationException(ThreadState writerThread, String writerMethod, 
-			ThreadState readerThread, String readerMethod) {
-		this.writerMethod = writerMethod;
-		this.readerMethod = readerMethod;
-		this.writerThread = writerThread;
-		this.readerThread = readerThread;
+	protected IllegalCommunicationException(final State writer, final State reader) {
+		this.writer = writer;
+		this.reader = reader;
 	}
 	
 	protected abstract String actionString();
 
 	@Override
 	public String getMessage() {
-//		String s = "";
-//		for (int i = 0; i < MethodRegistry.policyTable.length; i++) {
-//			String n = MethodRegistry.lookup(i);
-//			if (n != null) {
-//				s += n + " (id=" + i + "): " + MethodRegistry.policyTable[i] + "\n";
-//			}
-//		}
-		return String.format(
-				"%s in %s %s %s in %s.", // Reader Set was: %s; whole policy table:\n %s", 
-				readerThread, readerMethod,
-				actionString(),
-				writerThread, writerMethod //,
-//				MethodRegistry.getPolicy(writerMethod),
-//				s
-		);
+		return reader + "\n" + actionString() + "\n" + writer;
 	}
 
 }
