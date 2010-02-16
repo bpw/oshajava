@@ -8,13 +8,30 @@ import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.PackageElement;
 import javax.lang.model.util.Elements;
 
 import java.util.Set;
+import java.util.Map;
+import java.util.HashMap;
 
-@SupportedAnnotationTypes({ "oshajava.annotation.*" })
+import oshajava.annotation.Reader;
+import oshajava.annotation.Writer;
+import oshajava.annotation.Inline;
+import oshajava.annotation.Group;
+import oshajava.annotation.Member;
+
+import oshajava.support.acme.util.Util;
+
+@SupportedAnnotationTypes({"*"})
 public class OshaProcessor extends AbstractProcessor {
     
+    private Map<String, ModuleSpecBuilder> modules =
+        new HashMap<String, ModuleSpecBuilder>();
+    private Map<String, ModuleSpecBuilder> classToModule =
+        new HashMap<String, ModuleSpecBuilder>();
+    
+    // Annotation processing hook.
     public boolean process(
         Set<? extends TypeElement> elements,
         RoundEnvironment env
@@ -42,6 +59,7 @@ public class OshaProcessor extends AbstractProcessor {
         return true;
     }
     
+    /*
     private Type typeElementToAsmType(TypeElement te) {
         switch (te.asType().getKind()) {
         
@@ -79,18 +97,85 @@ public class OshaProcessor extends AbstractProcessor {
         
         processingEnv.getTypeUtils().
     }
+    */
     
+    /**
+     * Get the ModuleSpecBuilder object for the module named. If none exists,
+     * one is created.
+     */
+    private ModuleSpecBuilder getModule(String name) {
+        if (modules.containsKey(name)) {
+            return modules.get(name);
+        } else {
+            ModuleSpecBuilder module = new ModuleSpecBuilder(name);
+            modules.put(name, module);
+            return module;
+        }
+    }
+    
+    /**
+     * Process a class definition.
+     */
+    private void handleClass(TypeElement cls) {
+        String name = cls.getQualifiedName().toString();
+        
+        // Module membership.
+        Member memberAnn = cls.getAnnotation(Member.class);
+        ModuleSpecBuilder module;
+        if (memberAnn != null) {
+            module = getModule(memberAnn.value());
+        } else {
+            // Default membership.
+            PackageElement pkg = processingEnv.getElementUtils().getPackageOf(cls);
+            module = getModule(pkg.getQualifiedName().toString());
+        }
+        // Facilitate module lookup for this class's methods.
+        classToModule.put(name, module);
+        
+        // Group declaration.
+        Group groupAnn = cls.getAnnotation(Group.class);
+        if (groupAnn != null) {
+            module.addGroup(groupAnn.id(), groupAnn.delegate(), groupAnn.merge());
+        }
+        
+    }
+    
+    /**
+     * Process a method declaration.
+     */
     private void handleMethod(ExecutableElement m) {
         TypeElement cls = (TypeElement)m.getEnclosingElement();
         String name = cls.getQualifiedName() + "." + m.getSimpleName();
+        ModuleSpecBuilder module = classToModule.get(cls.getQualifiedName().toString());
         
-        Reader reader = m.getAnnotation(Reader.class);
+        if (module == null) {
+            Util.fail("tried to process method of class without module");
+        }
         
-        //System.out.println(processingEnv.getElementUtils().getBinaryName(cls));
-    }
-    
-    private void handleClass(TypeElement e) {
-        System.out.println(e + " " + e.asType());
+        Reader readerAnn = m.getAnnotation(Reader.class);
+        Writer writerAnn = m.getAnnotation(Writer.class);
+        Inline inlineAnn = m.getAnnotation(Inline.class);
+        
+        if ((readerAnn != null || writerAnn != null) && (inlineAnn != null)) {
+            Util.fail("method annotated as both inlined and part of a group");
+        }
+        
+        // Group membership.
+        if (readerAnn != null) {
+            for (String groupId : readerAnn.value()) {
+                module.addReader(groupId, name);
+            }
+        }
+        if (writerAnn != null) {
+            for (String groupId : writerAnn.value()) {
+                module.addWriter(groupId, name);
+            }
+        }
+        
+        // Inlining (default).
+        if (readerAnn == null && writerAnn == null) {
+            module.inlineMethod(name);
+        }
     }
     
 }
