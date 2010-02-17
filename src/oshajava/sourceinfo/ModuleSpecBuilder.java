@@ -6,6 +6,8 @@ import java.util.Set;
 import java.util.HashSet;
 import java.util.HashMap;
 
+import oshajava.util.intset.BitVectorIntSet;
+
 public class ModuleSpecBuilder {
 	
 	private String name;
@@ -13,7 +15,7 @@ public class ModuleSpecBuilder {
 	private Vector<String> methodIdToSig = new Vector<String>();
 	
 	private Map<String, Group> groups = new HashMap<String, Group>();
-	private Set<Integer> inlinedMethods = new HashSet<Integer>();
+	private BitVectorIntSet inlinedMethods = new BitVectorIntSet();
 	
 	public ModuleSpecBuilder(String name) {
 		this.name = name;
@@ -74,7 +76,37 @@ public class ModuleSpecBuilder {
 	 * Returns a (static) ModuleSpec object reflecting this module.
 	 */
 	public ModuleSpec generateSpec() {
-	    return null;
+	    Graph internalGraph = new Graph(methodIdToSig.size());
+	    for (int source=0; source<methodIdToSig.size(); ++source) {
+	        
+	        BitVectorIntSet destinations = new BitVectorIntSet();
+	        for (Group g : groups.values()) {
+	            if (g.writers.contains(source)) {
+	                BitVectorIntSet outSet = internalGraph.getOutEdges(source);
+	                for (Integer destination : g.readers) {
+	                    outSet.add(destination);
+	                }
+	            }
+	        }
+	        
+	    }
+	    
+	    //TODO
+	    Graph interfaceGraph = new Graph(0);
+	    
+	    HashMap<String, Integer> methodSigToId = new HashMap<String, Integer>();
+	    for (int i=0; i<methodSigToId.size(); ++i) {
+	        methodSigToId.put(methodIdToSig.get(i), i);
+	    }
+	    
+	    return new ModuleSpec(
+	        name,
+	        methodIdToSig.toArray(new String[0]),
+	        internalGraph,
+	        interfaceGraph,
+	        inlinedMethods,
+	        methodSigToId
+	    );
 	}
 	
 	/**

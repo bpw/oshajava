@@ -56,7 +56,19 @@ public class OshaProcessor extends AbstractProcessor {
             }
         }
         
-        return true;
+        return false;
+    }
+    
+    // When this processor is discarded, we write out the collected spec.
+    // TODO This isn't being run!
+    @Override
+    protected void finalize() throws Throwable {
+        System.out.println("***osha done");
+        
+        Spec spec = generateSpec();
+        spec.dumpModules();
+        
+        super.finalize();
     }
     
     /*
@@ -176,6 +188,17 @@ public class OshaProcessor extends AbstractProcessor {
         if (readerAnn == null && writerAnn == null) {
             module.inlineMethod(name);
         }
+    }
+    
+    /**
+     * Returns a Spec object reflecting all the annotations processed.
+     */
+    private Spec generateSpec() {
+        Spec spec = new Spec();
+        for (String name : modules.keySet()) {
+            spec.defineModule(name, modules.get(name).generateSpec());
+        }
+        return spec;
     }
     
 }
