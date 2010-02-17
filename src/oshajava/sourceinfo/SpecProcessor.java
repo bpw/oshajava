@@ -24,7 +24,7 @@ import oshajava.annotation.Member;
 import oshajava.support.acme.util.Util;
 
 @SupportedAnnotationTypes({"*"})
-public class OshaProcessor extends AbstractProcessor {
+public class SpecProcessor extends AbstractProcessor {
     
     private Map<String, ModuleSpecBuilder> modules =
         new HashMap<String, ModuleSpecBuilder>();

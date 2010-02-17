@@ -25,6 +25,7 @@
 	
 	<property name="agent.class" value="${top.package}.instrument.InstrumentationAgent" />
 	<property name="main.class" value="${top.package}.runtime.OshaJavaMain" />
+	<property name="processor.class" value="${top.package}.sourceinfo.SpecProcessor" />
 	<property name="class.loader" value="${top.package}.instrument.InstrumentingClassLoader" />
 	
 	<!-- build targets -->
@@ -48,6 +49,9 @@
 		<!-- annotations jar (for compile time) -->
 		<jar destfile="${annotation.jar}">	
 			<fileset dir="${classes.dir}" includes="${top.package}/annotation/*.class" />
+			<fileset dir="${classes.dir}" includes="${top.package}/sourceinfo/*.class" />
+			<fileset dir="${classes.dir}" includes="${top.package}/util/intset/*.class" />
+			<fileset dir="${classes.dir}" includes="${top.package}/util/count/*.class" />
 		</jar>
 		<!-- agent jar (for instrument and runtime) -->
 		<!-- <manifestclasspath property="jar.classpath" jarfile="${agent.jar}">
@@ -71,7 +75,7 @@ Agent-Class: ${agent.class}
 		</echo>
 		<echo file="${compiler.bin}">#!/bin/sh
 			javac -version
-			javac -Xbootclasspath/a:${basedir}/${annotation.jar} $$@
+			javac -classpath ${basedir}/${annotation.jar} -processor ${processor.class} $$@
 		</echo>
 		<echo file="${runtime.bin}">#!/bin/sh
 			java -version
