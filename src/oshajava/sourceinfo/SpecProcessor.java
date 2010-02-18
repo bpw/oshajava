@@ -3,6 +3,7 @@ package oshajava.sourceinfo;
 import javax.annotation.processing.SupportedAnnotationTypes;
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.RoundEnvironment;
+import java.lang.annotation.Annotation;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
@@ -14,17 +15,19 @@ import javax.lang.model.util.Elements;
 import java.util.Set;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.Collection;
 
 import oshajava.annotation.Reader;
 import oshajava.annotation.Writer;
 import oshajava.annotation.Inline;
 import oshajava.annotation.Group;
 import oshajava.annotation.InterfaceGroup;
+import oshajava.annotation.Groups;
 import oshajava.annotation.Member;
 
 import oshajava.support.acme.util.Util;
 
-@SupportedAnnotationTypes({"*"})
+@SupportedAnnotationTypes("*")
 public class SpecProcessor extends AbstractProcessor {
     
     private Map<String, ModuleSpecBuilder> modules =
@@ -32,31 +35,37 @@ public class SpecProcessor extends AbstractProcessor {
     private Map<String, ModuleSpecBuilder> classToModule =
         new HashMap<String, ModuleSpecBuilder>();
     
+    // Recursively visit all classes and methods.
+    private void processAll(Collection<? extends Element>elements) {
+        for (Element e : elements) {
+            
+            ElementKind kind = e.getKind();
+            switch (e.getKind()) {
+            case METHOD:
+            case CONSTRUCTOR:
+                handleMethod((ExecutableElement)e);
+                break;
+                
+            case CLASS:
+            case INTERFACE:
+                handleClass((TypeElement)e);
+                processAll(e.getEnclosedElements());
+                break;
+            
+            case PACKAGE:    
+                processAll(e.getEnclosedElements());
+                break;
+            }
+            
+        }
+    }
+    
     // Annotation processing hook.
     public boolean process(
         Set<? extends TypeElement> elements,
         RoundEnvironment env
     ) {
-        
-        for (TypeElement te : elements) {
-            for (Element e : env.getElementsAnnotatedWith(te)) {
-                
-                ElementKind kind = e.getKind();
-                switch (e.getKind()) {
-                case METHOD:
-                case CONSTRUCTOR:
-                    handleMethod((ExecutableElement)e);
-                    break;
-                    
-                case CLASS:
-                case INTERFACE:
-                    handleClass((TypeElement)e);
-                    break;
-                }
-                
-            }
-        }
-        
+        processAll(env.getRootElements());
         return false;
     }
     
@@ -145,15 +154,18 @@ public class SpecProcessor extends AbstractProcessor {
         // Facilitate module lookup for this class's methods.
         classToModule.put(name, module);
         
-        // Communication group declaration.
-        Group groupAnn = cls.getAnnotation(Group.class);
-        if (groupAnn != null) {
-            module.addGroup(groupAnn.id(), groupAnn.delegate(), groupAnn.merge());
-        }
-        // Interface group declaration.
-        InterfaceGroup iGroupAnn = cls.getAnnotation(InterfaceGroup.class);
-        if (iGroupAnn != null) {
-            module.addInterfaceGroup(iGroupAnn.id());
+        // Single group declarations.
+        addGroup(module, cls.getAnnotation(Group.class));
+        addGroup(module, cls.getAnnotation(InterfaceGroup.class));
+        // Multiple group declarations.
+        Groups groupsAnn = cls.getAnnotation(Groups.class);
+        if (groupsAnn != null) {
+            for (Group groupAnn : groupsAnn.communication()) {
+                addGroup(module, groupAnn);
+            }
+            for (InterfaceGroup iGroupAnn : groupsAnn.intfc()) {
+                addGroup(module, iGroupAnn);
+            }
         }
         
     }
@@ -193,6 +205,24 @@ public class SpecProcessor extends AbstractProcessor {
         // Inlining (default).
         if (readerAnn == null && writerAnn == null) {
             module.inlineMethod(name);
+        }
+    }
+    
+    /**
+     * Add a communicatio or interface group to a module.
+     */
+    private void addGroup(ModuleSpecBuilder mod, Annotation ann) {
+        if (ann == null) {
+            return;
+        }
+        
+        if (ann instanceof Group) {
+            Group groupAnn = (Group)ann;
+            mod.addGroup(groupAnn.id(), groupAnn.delegate(), groupAnn.merge());
+        } else if (ann instanceof InterfaceGroup) {
+            mod.addInterfaceGroup(((InterfaceGroup)ann).id());
+        } else {
+            Util.fail("invalid group annotation type");
         }
     }
     
