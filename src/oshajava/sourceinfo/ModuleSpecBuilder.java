@@ -37,10 +37,18 @@ public class ModuleSpecBuilder {
 	}
 	
 	/**
-	 * Create a new group.
+	 * Create a new communication group.
 	 */
 	public void addGroup(String id, String[] delegates, String[] merges) {
 	    Group g = new Group(id, delegates, merges);
+	    groups.put(id, g);
+	}
+	
+	/**
+	 * Create a new communication group.
+	 */
+	public void addInterfaceGroup(String id) {
+	    Group g = new Group(id);
 	    groups.put(id, g);
 	}
 	
@@ -77,22 +85,30 @@ public class ModuleSpecBuilder {
 	 */
 	public ModuleSpec generateSpec() {
 	    Graph internalGraph = new Graph(methodIdToSig.size());
+	    Graph interfaceGraph = new Graph(methodIdToSig.size());
 	    for (int source=0; source<methodIdToSig.size(); ++source) {
 	        
 	        BitVectorIntSet destinations = new BitVectorIntSet();
 	        for (Group g : groups.values()) {
 	            if (g.writers.contains(source)) {
-	                BitVectorIntSet outSet = internalGraph.getOutEdges(source);
+	                
+	                BitVectorIntSet outSet;
+	                if (g.isInterfaceGroup) {
+	                    outSet = internalGraph.getOutEdges(source);
+	                } else {
+	                    outSet = interfaceGraph.getOutEdges(source);
+	                } 
+	                
 	                for (Integer destination : g.readers) {
 	                    outSet.add(destination);
 	                }
+	                
 	            }
 	        }
 	        
 	    }
 	    
 	    //TODO
-	    Graph interfaceGraph = new Graph(0);
 	    
 	    HashMap<String, Integer> methodSigToId = new HashMap<String, Integer>();
 	    for (int i=0; i<methodSigToId.size(); ++i) {
@@ -110,7 +126,7 @@ public class ModuleSpecBuilder {
 	}
 	
 	/**
-	 * Represents a communication group.
+	 * Represents a communication or interface group.
 	 */
 	private class Group {
 	    public String id;
@@ -118,7 +134,9 @@ public class ModuleSpecBuilder {
 	    public Set<Integer> writers = new HashSet<Integer>();
 	    public Set<String> delegates = new HashSet<String>();
 	    public Set<String> merges = new HashSet<String>();
+	    public boolean isInterfaceGroup = false;
 	    
+	    // Initialize a communication group.
 	    public Group(String id, String[] delegates, String[] merges) {
 	        this.id = id;
 	        for (String delegate : delegates) {
@@ -127,6 +145,14 @@ public class ModuleSpecBuilder {
 	        for (String merge : merges) {
 	            this.merges.add(merge);
 	        }
+	    }
+	    
+	    // Initialize an interface group.
+	    public Group(String id) {
+	        this.id = id;
+	        merges = null;
+	        delegates = null;
+	        isInterfaceGroup = true;
 	    }
 	}
 	

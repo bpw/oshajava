@@ -19,6 +19,7 @@ import oshajava.annotation.Reader;
 import oshajava.annotation.Writer;
 import oshajava.annotation.Inline;
 import oshajava.annotation.Group;
+import oshajava.annotation.InterfaceGroup;
 import oshajava.annotation.Member;
 
 import oshajava.support.acme.util.Util;
@@ -144,10 +145,15 @@ public class SpecProcessor extends AbstractProcessor {
         // Facilitate module lookup for this class's methods.
         classToModule.put(name, module);
         
-        // Group declaration.
+        // Communication group declaration.
         Group groupAnn = cls.getAnnotation(Group.class);
         if (groupAnn != null) {
             module.addGroup(groupAnn.id(), groupAnn.delegate(), groupAnn.merge());
+        }
+        // Interface group declaration.
+        InterfaceGroup iGroupAnn = cls.getAnnotation(InterfaceGroup.class);
+        if (iGroupAnn != null) {
+            module.addInterfaceGroup(iGroupAnn.id());
         }
         
     }

@@ -1,6 +1,6 @@
 import oshajava.annotation.*;
 
-@Group(id="MyGroup")
+@InterfaceGroup(id="MyGroup")
 public class NewAnnotations {
     
     @Reader("MyGroup")
