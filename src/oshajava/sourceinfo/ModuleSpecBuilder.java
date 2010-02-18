@@ -60,17 +60,27 @@ public class ModuleSpecBuilder {
 	}
 	
 	/**
-	 * Add a method to a group as a reader.
+	 * Add a method to a group as a reader. Returns false iff no such group.
 	 */
-	public void addReader(String groupId, String signature) {
-	    getGroup(groupId).readers.add(idForSig(signature));
+	public boolean addReader(String groupId, String signature) {
+	    Group group = getGroup(groupId);
+	    if (group == null) {
+	        return false;
+	    }
+	    group.readers.add(idForSig(signature));
+	    return true;
 	}
 	
 	/**
-	 * Add a method to a group as a writer.
+	 * Add a method to a group as a writer. Returns false iff no such group.
 	 */
-	public void addWriter(String groupId, String signature) {
-	    getGroup(groupId).writers.add(idForSig(signature));
+	public boolean addWriter(String groupId, String signature) {
+	    Group group = getGroup(groupId);
+	    if (group == null) {
+	        return false;
+	    }
+	    group.writers.add(idForSig(signature));
+	    return true;
 	}
 	
 	/**

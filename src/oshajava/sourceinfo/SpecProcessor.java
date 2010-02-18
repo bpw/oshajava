@@ -3,6 +3,7 @@ package oshajava.sourceinfo;
 import javax.annotation.processing.SupportedAnnotationTypes;
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.RoundEnvironment;
+import javax.annotation.processing.SupportedSourceVersion;
 import java.lang.annotation.Annotation;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.Element;
@@ -11,6 +12,8 @@ import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.PackageElement;
 import javax.lang.model.util.Elements;
+import javax.lang.model.SourceVersion;
+import javax.tools.Diagnostic;
 
 import java.util.Set;
 import java.util.Map;
@@ -25,9 +28,8 @@ import oshajava.annotation.InterfaceGroup;
 import oshajava.annotation.Groups;
 import oshajava.annotation.Member;
 
-import oshajava.support.acme.util.Util;
-
 @SupportedAnnotationTypes("*")
+@SupportedSourceVersion(SourceVersion.RELEASE_6)
 public class SpecProcessor extends AbstractProcessor {
     
     private Map<String, ModuleSpecBuilder> modules =
@@ -178,27 +180,29 @@ public class SpecProcessor extends AbstractProcessor {
         String name = cls.getQualifiedName() + "." + m.getSimpleName();
         ModuleSpecBuilder module = classToModule.get(cls.getQualifiedName().toString());
         
-        if (module == null) {
-            Util.fail("tried to process method of class without module");
-        }
+        assert module != null;
         
         Reader readerAnn = m.getAnnotation(Reader.class);
         Writer writerAnn = m.getAnnotation(Writer.class);
         Inline inlineAnn = m.getAnnotation(Inline.class);
         
         if ((readerAnn != null || writerAnn != null) && (inlineAnn != null)) {
-            Util.fail("method annotated as both inlined and part of a group");
+            error("method " + name + " annotated as both inlined and part of a group");
         }
         
         // Group membership.
         if (readerAnn != null) {
             for (String groupId : readerAnn.value()) {
-                module.addReader(groupId, name);
+                if (!module.addReader(groupId, name)) {
+                    error("no such group " + groupId + " for method " + name);
+                }
             }
         }
         if (writerAnn != null) {
             for (String groupId : writerAnn.value()) {
-                module.addWriter(groupId, name);
+                if (!module.addWriter(groupId, name)) {
+                    error("no such group " + groupId + " for method " + name);
+                }
             }
         }
         
@@ -222,7 +226,7 @@ public class SpecProcessor extends AbstractProcessor {
         } else if (ann instanceof InterfaceGroup) {
             mod.addInterfaceGroup(((InterfaceGroup)ann).id());
         } else {
-            Util.fail("invalid group annotation type");
+            assert false;
         }
     }
     
@@ -235,6 +239,13 @@ public class SpecProcessor extends AbstractProcessor {
             spec.defineModule(name, modules.get(name).generateSpec());
         }
         return spec;
+    }
+    
+    /**
+     * Print an error and stop compiling.
+     */
+    private void error(String message) {
+        processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, message);
     }
     
 }
