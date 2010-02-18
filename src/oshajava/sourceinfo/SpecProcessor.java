@@ -15,10 +15,16 @@ import javax.lang.model.util.Elements;
 import javax.lang.model.SourceVersion;
 import javax.tools.Diagnostic;
 
+import com.sun.source.util.TaskListener;
+import com.sun.tools.javac.util.Context;
+import com.sun.tools.javac.processing.JavacProcessingEnvironment;
+import com.sun.source.util.TaskEvent;
+
 import java.util.Set;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.Collection;
+import java.io.IOException;
 
 import oshajava.annotation.Reader;
 import oshajava.annotation.Writer;
@@ -30,12 +36,29 @@ import oshajava.annotation.Member;
 
 @SupportedAnnotationTypes("*")
 @SupportedSourceVersion(SourceVersion.RELEASE_6)
-public class SpecProcessor extends AbstractProcessor {
+public class SpecProcessor extends AbstractProcessor implements TaskListener {
     
     private Map<String, ModuleSpecBuilder> modules =
         new HashMap<String, ModuleSpecBuilder>();
     private Map<String, ModuleSpecBuilder> classToModule =
         new HashMap<String, ModuleSpecBuilder>();
+    
+    // TaskListener interface: callbacks for compiler events.
+    public void finished(TaskEvent e) {
+        if (e.getKind() == TaskEvent.Kind.GENERATE) {
+            // Compilation done.
+            processingEnv.getMessager().printMessage(Diagnostic.Kind.OTHER, "Writing oshajava specification.");
+            Spec spec = generateSpec();
+            try {
+                spec.dumpModules();
+            } catch (IOException t) {
+                error("Problem writing spec!");
+            }
+        }
+    }
+    public void started(TaskEvent e) {
+        // Ignore.
+    }
     
     // Recursively visit all classes and methods.
     private void processAll(Collection<? extends Element>elements) {
@@ -67,20 +90,13 @@ public class SpecProcessor extends AbstractProcessor {
         Set<? extends TypeElement> elements,
         RoundEnvironment env
     ) {
+        // Register as a compilation event listener.
+        Context ctx = ((JavacProcessingEnvironment)processingEnv).getContext();
+        ctx.put(TaskListener.class, this);
+        
+        // Process eveything.
         processAll(env.getRootElements());
         return false;
-    }
-    
-    // When this processor is discarded, we write out the collected spec.
-    // TODO This isn't being run!
-    @Override
-    protected void finalize() throws Throwable {
-        System.out.println("***osha done");
-        
-        Spec spec = generateSpec();
-        spec.dumpModules();
-        
-        super.finalize();
     }
     
     /*

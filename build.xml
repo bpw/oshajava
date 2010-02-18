@@ -21,7 +21,7 @@
 	<property name="paths.script" value="setup.sh" />
 	
 	<property name="agent.jar"      value="${build.dir}/${ant.project.name}.jar" />
-	<property name="annotation.jar" value="${build.dir}/${ant.project.name}-annotation.jar" />
+	<property name="annotation.jar" value="${agent.jar}" />
 	
 	<property name="agent.class" value="${top.package}.instrument.InstrumentationAgent" />
 	<property name="main.class" value="${top.package}.runtime.OshaJavaMain" />
@@ -46,13 +46,6 @@
 	</target>
 		
 	<target name="jar" depends="compile">
-		<!-- annotations jar (for compile time) -->
-		<jar destfile="${annotation.jar}">	
-			<fileset dir="${classes.dir}" includes="${top.package}/annotation/*.class" />
-			<fileset dir="${classes.dir}" includes="${top.package}/sourceinfo/*.class" />
-			<fileset dir="${classes.dir}" includes="${top.package}/util/intset/*.class" />
-			<fileset dir="${classes.dir}" includes="${top.package}/util/count/*.class" />
-		</jar>
 		<!-- agent jar (for instrument and runtime) -->
 		<!-- <manifestclasspath property="jar.classpath" jarfile="${agent.jar}">
 			<classpath refid="libs.classpath" />
