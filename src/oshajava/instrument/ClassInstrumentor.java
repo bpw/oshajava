@@ -119,7 +119,7 @@ public class ClassInstrumentor extends ClassAdapter {
 	 * @param name
 	 * @return
 	 */
-	private static boolean hasShadowField(Class cls, String name) {
+	private static boolean hasShadowField(Class<?> cls, String name) {
 		try {
 			cls.getField(name + SHADOW_FIELD_SUFFIX);
 		} catch (SecurityException e) {
@@ -139,7 +139,7 @@ public class ClassInstrumentor extends ClassAdapter {
 	 * @param usedIds
 	 * @param fields
 	 */
-	private static void getAllFieldsHelper(Class cls, Set<String> usedIds, List<Field> fields) {
+	private static void getAllFieldsHelper(Class<?> cls, Set<String> usedIds, List<Field> fields) {
 		if (cls == null) {
 			
 			// Base case: top of class heirarchy has no fields.
@@ -167,7 +167,7 @@ public class ClassInstrumentor extends ClassAdapter {
 	 * @param cls
 	 * @return
 	 */
-	private static List<Field> getAllFields(Class cls) {
+	private static List<Field> getAllFields(Class<?> cls) {
 		Set<String> usedIds = new HashSet<String>();
 		List<Field> fields = new LinkedList<Field>();
 		getAllFieldsHelper(cls, usedIds, fields);
@@ -199,7 +199,7 @@ public class ClassInstrumentor extends ClassAdapter {
 	 * @param name
 	 * @return a Class object
 	 */
-	private static Class classForName(String name) {
+	private static Class<?> classForName(String name) {
 		try {
 			return Class.forName(name, true, null);
 		} catch (ClassNotFoundException ex) {
@@ -233,7 +233,7 @@ public class ClassInstrumentor extends ClassAdapter {
 		if (!InstrumentationAgent.shouldInstrument(superName)) {
 		
 			// Get this class' superclass to find inherited fields that need to be shadowed.
-			Class superclass = classForName(Type.getObjectType(superName).getClassName());
+			Class<?> superclass = classForName(Type.getObjectType(superName).getClassName());
 			if (superclass == null) {
 				Util.fail("superclass not found: " + Type.getObjectType(superName).getClassName());
 			}

@@ -31,11 +31,6 @@ public class Spec {
 	}
 	
 	/**
-	 * File extension for serialized ModuleSpec storage. OM for Osha Module. 
-	 */
-	protected static final String MODULE_FILE_EXT = ".om";
-
-	/**
 	 * Map module name to ModuleSpec.
 	 */
 	protected static final HashMap<String,ModuleSpec> nameToModule = new HashMap<String,ModuleSpec>();
@@ -50,7 +45,7 @@ public class Spec {
 	 */
 	protected static ModuleSpec loadModule(String name) throws ModuleSpecNotFoundException {
 		try {
-			return (ModuleSpec)ColdStorage.load(ClassLoader.getSystemResourceAsStream(name));
+			return (ModuleSpec)ColdStorage.load(ClassLoader.getSystemResourceAsStream(name + ModuleSpec.EXT));
 		} catch (IOException e) {
 			throw new ModuleSpecNotFoundException(name);
 		} catch (ClassNotFoundException e) {
@@ -82,27 +77,32 @@ public class Spec {
 		return idToModule.get(Spec.getModuleID(uid));
 	}
 	
-	/**
-	 * Define a new module.
-	 * @param name
-	 * @param module
-	 */
-	public static void defineModule(String name, ModuleSpec module) {
-		Util.assertTrue(!nameToModule.containsKey(name));
-		nameToModule.put(name, module);
-	}
-
-	/**
-	 * Serialize all ModuleSpecs and dump to disk in their own files by name.
-	 * @throws IOException
-	 */
-	public static void dumpModules() throws IOException {
-		for (ModuleSpec m : nameToModule.values()) {
-			// FIXME get the path right. Module "a.b.c.Mod" should be dumped as a file
-			// "Mod.om" in the directory where the contents of package a.b.c are held.
-			ColdStorage.dump(m.getName() + Spec.MODULE_FILE_EXT, m);
-		}
-	}
+//	/**
+//	 * Define a new module.
+//	 * @param name
+//	 * @param module
+//	 */
+//	public static void defineModule(String name, ModuleSpec module) {
+//		Util.assertTrue(!Spec.isDefined(name), "Cannot redefine module '%s'.", name);
+//		Util.log(name);
+//		nameToModule.put(name, module);
+//	}
+//	
+//	public static boolean isDefined(String name) {
+//		return nameToModule.containsKey(name);
+//	}
+//
+//	/**
+//	 * Serialize all ModuleSpecs and dump to disk in their own files by name.
+//	 * @throws IOException
+//	 */
+//	public static void dumpModules() throws IOException {
+//		for (ModuleSpec m : nameToModule.values()) {
+//			// FIXME get the path right. Module "a.b.c.Mod" should be dumped as a file
+//			// "Mod.om" in the directory where the contents of package a.b.c are held.
+//			ColdStorage.dump(m.getName() + Spec.MODULE_FILE_EXT, m);
+//		}
+//	}
 	
 	public static int countModules() {
 		return nameToModule.size();

@@ -23,20 +23,20 @@ public class Except {
 			} else {
 //				throw new oshaj.runtime.IllegalSharingException(Thread.currentThread(), "", Thread.currentThread(), "");
 			}
-		} catch (oshajava.runtime.exceptions.IllegalCommunicationException e) {
-			System.out.println("ice");
-			throw e;
+//		} catch (oshajava.runtime.exceptions.IllegalCommunicationException e) {
+//			System.out.println("ice");
+//			throw e;
 		} catch (RuntimeException t) {
 			throw t;
 		}
 	}
 	
 	void e() {
-		try {
+//		try {
 			z = 9;
-		} catch (oshajava.runtime.exceptions.IllegalCommunicationException e) {
-			
-		}
+//		} catch (oshajava.runtime.exceptions.IllegalCommunicationException e) {
+//			
+//		}
 	}
 	
 	public static void main(String[] args){

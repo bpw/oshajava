@@ -16,6 +16,11 @@ public class ModuleSpec implements Serializable {
 	
 	private static final long serialVersionUID = 1L;
 	
+	/**
+	 * File extension for serialized ModuleSpec storage.
+	 */
+	protected static final String EXT = ".omg"; // for Osha Module Graph
+
 	public static final MaxRecorder maxMethods = new MaxRecorder();
 	public static final boolean COUNT_METHODS = true;
 	

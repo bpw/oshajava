@@ -41,9 +41,15 @@ public class BitVectorIntSet extends IntSet implements Serializable {
 	 * Create a new set with initialCapacity.
 	 * @param initialCapacity
 	 */
-	public BitVectorIntSet(final int initialCapacity) {		
-		bits = new int[initialCapacity >= SLOT_SIZE ? initialCapacity/SLOT_SIZE : 1];
-		if (COUNT_SLOTS) maxSlots.add(initialCapacity >= SLOT_SIZE ? initialCapacity/SLOT_SIZE : 1);
+	public BitVectorIntSet(final int initialCapacity) {
+		if (initialCapacity <= SLOT_SIZE) {
+			bits = new int[1];
+		} else if (initialCapacity % SLOT_SIZE == 0){
+			bits = new int[initialCapacity/SLOT_SIZE];
+		} else {
+			bits = new int[initialCapacity/SLOT_SIZE + 1];
+		}
+		if (COUNT_SLOTS) maxSlots.add(bits.length);
 	}
 	
 	/**
@@ -59,12 +65,12 @@ public class BitVectorIntSet extends IntSet implements Serializable {
 	public synchronized void add(final int member) {
 		final int slot = member / SLOT_SIZE;
 		// resize if necessary.
-		if (slot > bits.length) {
+		if (slot >= bits.length) {
 			Util.assertTrue(slot < MAX_SLOTS);
 			bits = ArrayUtil.copy(bits, slot + 1);
 			if (COUNT_SLOTS) maxSlots.add(slot + 1);
 		}
-		bits[slot] |= 1 << (member % SLOT_SIZE);
+		bits[slot] |= (1 << (member % SLOT_SIZE));
 	}
 	
 	/**

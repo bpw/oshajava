@@ -1,38 +1,40 @@
 package oshajava.sourceinfo;
 
-import javax.annotation.processing.SupportedAnnotationTypes;
+import java.io.IOException;
+import java.lang.annotation.Annotation;
+import java.net.URI;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.RoundEnvironment;
+import javax.annotation.processing.SupportedAnnotationTypes;
 import javax.annotation.processing.SupportedSourceVersion;
-import java.lang.annotation.Annotation;
-import javax.lang.model.element.TypeElement;
-import javax.lang.model.element.Element;
-import javax.lang.model.element.ElementKind;
-import javax.lang.model.element.ExecutableElement;
-import javax.lang.model.element.TypeElement;
-import javax.lang.model.element.PackageElement;
-import javax.lang.model.util.Elements;
 import javax.lang.model.SourceVersion;
+import javax.lang.model.element.Element;
+import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.PackageElement;
+import javax.lang.model.element.TypeElement;
 import javax.tools.Diagnostic;
+import javax.tools.StandardLocation;
 
-import com.sun.source.util.TaskListener;
-import com.sun.tools.javac.util.Context;
-import com.sun.tools.javac.processing.JavacProcessingEnvironment;
-import com.sun.source.util.TaskEvent;
-
-import java.util.Set;
-import java.util.Map;
-import java.util.HashMap;
-import java.util.Collection;
-import java.io.IOException;
-
+import oshajava.annotation.Group;
+import oshajava.annotation.Groups;
+import oshajava.annotation.Inline;
+import oshajava.annotation.InterfaceGroup;
+import oshajava.annotation.Member;
 import oshajava.annotation.Reader;
 import oshajava.annotation.Writer;
-import oshajava.annotation.Inline;
-import oshajava.annotation.Group;
-import oshajava.annotation.InterfaceGroup;
-import oshajava.annotation.Groups;
-import oshajava.annotation.Member;
+import oshajava.support.acme.util.Util;
+import oshajava.util.ColdStorage;
+
+import com.sun.source.util.TaskEvent;
+import com.sun.source.util.TaskListener;
+import com.sun.tools.javac.processing.JavacProcessingEnvironment;
+import com.sun.tools.javac.util.Context;
 
 @SupportedAnnotationTypes("*")
 @SupportedSourceVersion(SourceVersion.RELEASE_6)
@@ -42,29 +44,35 @@ public class SpecProcessor extends AbstractProcessor implements TaskListener {
         new HashMap<String, ModuleSpecBuilder>();
     private Map<String, ModuleSpecBuilder> classToModule =
         new HashMap<String, ModuleSpecBuilder>();
-    
+
+    private final Set<ModuleSpecBuilder> changed = new HashSet<ModuleSpecBuilder>();
     // TaskListener interface: callbacks for compiler events.
     public void finished(TaskEvent e) {
         if (e.getKind() == TaskEvent.Kind.GENERATE) {
             // Compilation done.
-            processingEnv.getMessager().printMessage(Diagnostic.Kind.OTHER, "Writing oshajava specification.");
-            Spec spec = generateSpec();
-            try {
-                spec.dumpModules();
-            } catch (IOException t) {
-                error("Problem writing spec!");
+//            processingEnv.getMessager().printMessage(Diagnostic.Kind.OTHER, "Writing oshajava specification.");
+            for (ModuleSpecBuilder mod : changed) {
+            	try {
+           			note("Writing " + mod.getName());
+					mod.write();
+				} catch (IOException e1) {
+					processingEnv.getMessager().printMessage(Diagnostic.Kind.OTHER, "Failed to write " + mod.getName() + ModuleSpecBuilder.EXT + ".");
+					e1.printStackTrace();
+				}
             }
+        	changed.clear();
         }
     }
     public void started(TaskEvent e) {
         // Ignore.
     }
     
+    
     // Recursively visit all classes and methods.
     private void processAll(Collection<? extends Element>elements) {
         for (Element e : elements) {
             
-            ElementKind kind = e.getKind();
+//            ElementKind kind = e.getKind();
             switch (e.getKind()) {
             case METHOD:
             case CONSTRUCTOR:
@@ -143,16 +151,42 @@ public class SpecProcessor extends AbstractProcessor implements TaskListener {
      * Get the ModuleSpecBuilder object for the module named. If none exists,
      * one is created.
      */
-    private ModuleSpecBuilder getModule(String name) {
-        if (modules.containsKey(name)) {
-            return modules.get(name);
-        } else {
-            ModuleSpecBuilder module = new ModuleSpecBuilder(name);
-            modules.put(name, module);
-            return module;
-        }
+    private ModuleSpecBuilder getModule(String qualifiedName) {
+    	if (modules.containsKey(qualifiedName)) {
+    		return modules.get(qualifiedName);
+    	} else {
+    		ModuleSpecBuilder module;
+    		final int lastDot = qualifiedName.lastIndexOf('.');
+    		// package name of module
+    		final String pkg = lastDot == -1 ? "" : qualifiedName.substring(0, lastDot);
+    		// relative name of module
+    		final String simpleName = lastDot == -1 ? qualifiedName : qualifiedName.substring(lastDot + 1);
+    		try {
+    			// get the file it should be dumped in.
+//    			Util.logf("pkg: %s relname: %s", pkg, simpleName);
+    			final URI uri = processingEnv.getFiler().getResource(StandardLocation.locationFor("CLASS_OUTPUT"), 
+    					pkg, simpleName + ModuleSpecBuilder.EXT).toUri();
+       			module = (ModuleSpecBuilder)ColdStorage.load(uri);
+       			note("Read " + qualifiedName);
+       			Util.assertTrue(uri.equals(module.getURI()));
+    		} catch (IOException e) {
+    			// File did not exist. Create new module and its file.
+    			try {
+					module = new ModuleSpecBuilder(qualifiedName,
+							processingEnv.getFiler().createResource(StandardLocation.locationFor("CLASS_OUTPUT"), 
+									pkg, simpleName + ModuleSpecBuilder.EXT).toUri());
+					changed.add(module);
+				} catch (IOException e1) {
+					throw new RuntimeException(e1);
+				}
+    		} catch (ClassNotFoundException e) {
+				throw new RuntimeException(e);
+			}
+        	modules.put(qualifiedName, module);
+        	return module;
+    	}
     }
-    
+
     /**
      * Process a class definition.
      */
@@ -167,7 +201,8 @@ public class SpecProcessor extends AbstractProcessor implements TaskListener {
         } else {
             // Default membership.
             PackageElement pkg = processingEnv.getElementUtils().getPackageOf(cls);
-            module = getModule(pkg.getQualifiedName().toString());
+            String pkgName = pkg.getQualifiedName().toString();
+            module = getModule(pkgName + (pkgName.isEmpty() ? "" : ".") + "Default");
         }
         // Facilitate module lookup for this class's methods.
         classToModule.put(name, module);
@@ -211,6 +246,8 @@ public class SpecProcessor extends AbstractProcessor implements TaskListener {
             for (String groupId : readerAnn.value()) {
                 if (!module.addReader(groupId, name)) {
                     error("no such group " + groupId + " for method " + name);
+                } else {
+                    changed.add(module);
                 }
             }
         }
@@ -218,6 +255,8 @@ public class SpecProcessor extends AbstractProcessor implements TaskListener {
             for (String groupId : writerAnn.value()) {
                 if (!module.addWriter(groupId, name)) {
                     error("no such group " + groupId + " for method " + name);
+                } else {
+                    changed.add(module);
                 }
             }
         }
@@ -225,11 +264,12 @@ public class SpecProcessor extends AbstractProcessor implements TaskListener {
         // Inlining (default).
         if (readerAnn == null && writerAnn == null) {
             module.inlineMethod(name);
+            changed.add(module);
         }
     }
     
     /**
-     * Add a communicatio or interface group to a module.
+     * Add a communication or interface group to a module.
      */
     private void addGroup(ModuleSpecBuilder mod, Annotation ann) {
         if (ann == null) {
@@ -239,22 +279,13 @@ public class SpecProcessor extends AbstractProcessor implements TaskListener {
         if (ann instanceof Group) {
             Group groupAnn = (Group)ann;
             mod.addGroup(groupAnn.id(), groupAnn.delegate(), groupAnn.merge());
+            changed.add(mod);
         } else if (ann instanceof InterfaceGroup) {
             mod.addInterfaceGroup(((InterfaceGroup)ann).id());
+            changed.add(mod);
         } else {
             assert false;
         }
-    }
-    
-    /**
-     * Returns a Spec object reflecting all the annotations processed.
-     */
-    private Spec generateSpec() {
-        Spec spec = new Spec();
-        for (String name : modules.keySet()) {
-            spec.defineModule(name, modules.get(name).generateSpec());
-        }
-        return spec;
     }
     
     /**
@@ -262,6 +293,9 @@ public class SpecProcessor extends AbstractProcessor implements TaskListener {
      */
     private void error(String message) {
         processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, message);
+    }
+    private void note(String message) {
+        processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE, message);
     }
     
 }

@@ -1,24 +1,44 @@
 package oshajava.sourceinfo;
 
-import java.util.Vector;
+import java.io.IOException;
+import java.io.Serializable;
+import java.net.URI;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.HashSet;
-import java.util.HashMap;
+import java.util.Vector;
 
+import oshajava.util.ColdStorage;
 import oshajava.util.intset.BitVectorIntSet;
 
-public class ModuleSpecBuilder {
+public class ModuleSpecBuilder implements Serializable {
 	
-	private String name;
+	public static final String EXT = ".omb"; // for Osha Module Builder
+	
+	private final URI uri;
+	private final String qualifiedName;
 	
 	private Vector<String> methodIdToSig = new Vector<String>();
 	
 	private Map<String, Group> groups = new HashMap<String, Group>();
 	private BitVectorIntSet inlinedMethods = new BitVectorIntSet();
 	
-	public ModuleSpecBuilder(String name) {
-		this.name = name;
+	public ModuleSpecBuilder(String qualifiedName, URI uri) {
+		this.qualifiedName = qualifiedName;
+		this.uri = uri;
+	}
+	
+	public void write() throws IOException {
+		ColdStorage.store(uri, this);
+	}
+	
+	public String getName() {
+		return qualifiedName;
+	}
+	
+	public URI getURI() {
+		return uri;
 	}
 	
 	/**
@@ -98,7 +118,7 @@ public class ModuleSpecBuilder {
 	    Graph interfaceGraph = new Graph(methodIdToSig.size());
 	    for (int source=0; source<methodIdToSig.size(); ++source) {
 	        
-	        BitVectorIntSet destinations = new BitVectorIntSet();
+//	        BitVectorIntSet destinations = new BitVectorIntSet();
 	        for (Group g : groups.values()) {
 	            if (g.writers.contains(source)) {
 	                
@@ -126,7 +146,7 @@ public class ModuleSpecBuilder {
 	    }
 	    
 	    return new ModuleSpec(
-	        name,
+	        qualifiedName,
 	        methodIdToSig.toArray(new String[0]),
 	        internalGraph,
 	        interfaceGraph,

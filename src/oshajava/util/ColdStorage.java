@@ -9,6 +9,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.io.Serializable;
+import java.net.URI;
 
 /**
  * Utilities for serializing and deserializing objects from files and streams.
@@ -19,13 +20,28 @@ public class ColdStorage {
 	
 	/**
 	 * Dump one object to one file.
-	 * @param file
+	 * @param path
 	 * @param o
 	 * @throws IOException
 	 */
-	public static void dump(String file, Serializable o) throws IOException {
-		final FileOutputStream out = new FileOutputStream(new File(file));
-		dump(out, o);
+	public static void store(String path, Serializable o) throws IOException {
+		ObjectFile f = new ObjectFile(path);
+		final FileOutputStream out = new FileOutputStream(f);
+		store(out, o);
+		out.close();
+	}
+	
+	/**
+	 * Dump one object to a file by URI.
+	 * @param uri
+	 * @param o
+	 * @throws IOException
+	 */
+	public static void store(URI uri, Serializable o) throws IOException {
+		ObjectFile f = new ObjectFile(uri);
+		f.createNewFile();
+		final FileOutputStream out = new FileOutputStream(f);
+		store(out, o);
 		out.close();
 	}
 	
@@ -35,10 +51,9 @@ public class ColdStorage {
 	 * @param o
 	 * @throws IOException
 	 */
-	public static void dump(OutputStream stream, Serializable o) throws IOException {
+	public static void store(OutputStream stream, Serializable o) throws IOException {
 		final ObjectOutputStream out = new ObjectOutputStream(stream);
 		out.writeObject(o);
-		out.close();
 	}
 	
 	/**
@@ -56,6 +71,20 @@ public class ColdStorage {
 	}
 	
 	/**
+	 * Load one object from one file by URI.
+	 * @param file
+	 * @return
+	 * @throws IOException
+	 * @throws ClassNotFoundException
+	 */
+	public static Object load(URI file) throws IOException, ClassNotFoundException {
+		final FileInputStream in = new FileInputStream(new File(file));
+		final Object o = load(in);
+		in.close();
+		return o;
+	}
+	
+	/**
 	 * Load an object from a stream.
 	 * @param stream
 	 * @return
@@ -64,9 +93,26 @@ public class ColdStorage {
 	 */
 	public static Object load(InputStream stream) throws IOException, ClassNotFoundException {
 		final ObjectInputStream in = new ObjectInputStream(stream);
-		final Object o = in.readObject();
-		in.close();
-		return o;
+		return in.readObject();
+	}
+	
+	static class ObjectFile extends File {
+
+		public ObjectFile(String path) throws IOException {
+			super(path);
+			create();
+		}
+		
+		public ObjectFile(URI uri) throws IOException {
+			super(uri);
+			create();
+		}
+		
+		public void create() throws IOException {
+			File parent = new File(getParent());
+			parent.mkdirs();
+			createNewFile();
+		}
 	}
 	
 }
