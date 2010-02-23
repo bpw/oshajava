@@ -1,4 +1,5 @@
 import oshajava.annotation.*;
+import java.util.Set;
 
 @Groups(communication = {
     @Group(id="SomeGroup"),
@@ -15,8 +16,9 @@ public class NewAnnotations {
     }
     
     @Reader("MyGroup")
-    public void someMethod() {
+    public Integer someMethod(Set<String> a) {
         System.out.println("hi there");
+        return null;
     }
     
 }

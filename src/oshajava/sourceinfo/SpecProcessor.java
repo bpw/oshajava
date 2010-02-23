@@ -11,6 +11,10 @@ import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.PackageElement;
+import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.TypeMirror;
+import javax.lang.model.type.ArrayType;
+import javax.lang.model.type.DeclaredType;
 import javax.lang.model.util.Elements;
 import javax.lang.model.SourceVersion;
 import javax.tools.Diagnostic;
@@ -99,45 +103,84 @@ public class SpecProcessor extends AbstractProcessor implements TaskListener {
         return false;
     }
     
-    /*
-    private Type typeElementToAsmType(TypeElement te) {
-        switch (te.asType().getKind()) {
-        
+    /**
+     * Construct the JVM type descriptor for a TypeMirror.
+     */
+    private String typeDescriptor(TypeMirror tm) {
+        // Reference:
+        // http://java.sun.com/docs/books/jvms/second_edition/html/ClassFile.doc.html#1169
+        // http://www.ibm.com/developerworks/java/library/j-cwt02076.html
+        switch (tm.getKind()) {
         case BOOLEAN:
-            return Type.BOOLEAN_TYPE; break;
+            return "Z";
         case BYTE:
-            return Type.BYTE_TYPE; break;
+            return "B";
         case CHAR:
-            return Type.CHAR_TYPE; break;
+            return "C";
         case DOUBLE:
-            return Type.DOUBLE_TYPE; break;
+            return "D";
         case FLOAT:
-            return Type.FLOAT_TYPE; break;
+            return "F";
         case INT:
-            return Type.INT_TYPE; break;
+            return "I";
         case LONG:
-            return Type.LONG_TYPE; break;
+            return "J";
         case VOID:
-            return Type.VOID_TYPE; break;
+            return "V";
         
         case ARRAY:
+            return "[" + typeDescriptor(((ArrayType)tm).getComponentType());
 
         case DECLARED:
-            String name = te.getQualifiedName().toString();
+            DeclaredType decl = (DeclaredType)tm;
+            
+            String name = decl.toString();
+            int lt = name.indexOf('<');
+            if (lt != -1) {
+                // This is a parameterized type. Remove the <...> part.
+                name = name.substring(0, lt);
+            }
+            
+            name = name.replace('.', '/');
+            
+            if (!decl.getTypeArguments().isEmpty()) {
+                // Add back type parameters.
+                name += "<";
+                for (TypeMirror arg : decl.getTypeArguments()) {
+                    name += typeDescriptor(arg);
+                }
+                name += ">";
+            }
+            
+            return "L" + name + ";";
+            
+            // TODO do inner classes need special handling?
         
         case TYPEVAR:
+            return "T" + tm.toString() + ";";
+            
         case EXECUTABLE:        
         case NULL:
         case WILDCARD:
         case OTHER:
         case PACKAGE:
         case ERROR:
-            Util.fail("unsupported type kind");
+        default:
+            return null;
         }
-        
-        processingEnv.getTypeUtils().
     }
-    */
+    
+    /**
+     * Construct the JVM method descriptor for an ExecutableElement.
+     */
+    private String methodDescriptor(ExecutableElement m) {
+        String out = "(";
+        for (VariableElement ve : m.getParameters()) {
+            out += typeDescriptor(ve.asType());
+        }
+        out += ")" + typeDescriptor(m.getReturnType());
+        return out;
+    }
     
     /**
      * Get the ModuleSpecBuilder object for the module named. If none exists,
@@ -198,8 +241,11 @@ public class SpecProcessor extends AbstractProcessor implements TaskListener {
      */
     private void handleMethod(ExecutableElement m) {
         TypeElement cls = (TypeElement)m.getEnclosingElement();
-        String name = cls.getQualifiedName() + "." + m.getSimpleName();
         ModuleSpecBuilder module = classToModule.get(cls.getQualifiedName().toString());
+        
+        // Signature is like:
+        // package.package.Class.method()V
+        String sig = cls.getQualifiedName() + "." + m.getSimpleName() + methodDescriptor(m);
         
         assert module != null;
         
@@ -208,28 +254,28 @@ public class SpecProcessor extends AbstractProcessor implements TaskListener {
         Inline inlineAnn = m.getAnnotation(Inline.class);
         
         if ((readerAnn != null || writerAnn != null) && (inlineAnn != null)) {
-            error("method " + name + " annotated as both inlined and part of a group");
+            error("method " + sig + " annotated as both inlined and part of a group");
         }
         
         // Group membership.
         if (readerAnn != null) {
             for (String groupId : readerAnn.value()) {
-                if (!module.addReader(groupId, name)) {
-                    error("no such group " + groupId + " for method " + name);
+                if (!module.addReader(groupId, sig)) {
+                    error("no such group " + groupId + " for method " + sig);
                 }
             }
         }
         if (writerAnn != null) {
             for (String groupId : writerAnn.value()) {
-                if (!module.addWriter(groupId, name)) {
-                    error("no such group " + groupId + " for method " + name);
+                if (!module.addWriter(groupId, sig)) {
+                    error("no such group " + groupId + " for method " + sig);
                 }
             }
         }
         
         // Inlining (default).
         if (readerAnn == null && writerAnn == null) {
-            module.inlineMethod(name);
+            module.inlineMethod(sig);
         }
     }
     
@@ -258,6 +304,7 @@ public class SpecProcessor extends AbstractProcessor implements TaskListener {
         Spec spec = new Spec();
         for (String name : modules.keySet()) {
             spec.defineModule(name, modules.get(name).generateSpec());
+            //modules.get(name).generateSpec().describe();
         }
         return spec;
     }
