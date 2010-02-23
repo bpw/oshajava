@@ -182,4 +182,36 @@ public class ModuleSpec implements Serializable {
 		 * return CommunicationKind.UNCHECKED;
 		 */
 	}
+	
+	private void printGraph(Graph g) {
+	    for (int i=0; i<methodIdToSig.length; ++i) {
+            BitVectorIntSet dests = g.getOutEdges(i);
+            if (!dests.isEmpty()) {
+                System.out.print("    " + methodIdToSig[i] + " -> ");
+                for (int j=0; j<methodIdToSig.length; ++j) {
+                    if (dests.contains(j)) {
+                        System.out.print(methodIdToSig[j] + " ");
+                    }
+                }
+                System.out.println("");
+            }
+        }
+	}
+	
+	/**
+	 * Prints a description of the module's policy.
+	 */
+	public void describe() {
+        System.out.println("Name: " + name);
+        System.out.println("Inlined methods:");
+        for (int i=0; i<methodIdToSig.length; ++i) {
+            if (inlinedMethods.contains(i)) {
+                System.out.println("    " + methodIdToSig[i]);
+            }
+        }
+        System.out.println("Internal graph:");
+        printGraph(internalGraph);
+        System.out.println("Interface graph:");
+        printGraph(interfaceGraph);
+	}
 }

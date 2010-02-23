@@ -84,7 +84,7 @@ public class BitVectorIntSet extends IntSet implements Serializable {
 	 */
 	public boolean contains(final int member) {
 		final int slot = member / SLOT_SIZE;
-		if (slot > bits.length) {
+		if (slot >= bits.length) {
 			return false;
 		}
 		return (bits[slot] & (1 << (member % SLOT_SIZE))) != 0;
@@ -121,7 +121,7 @@ public class BitVectorIntSet extends IntSet implements Serializable {
 	
 	public String toString() {
 		String s = "";
-		for (int i = 0; i <= bits.length * SLOT_SIZE; i++) {
+		for (int i = 0; i < bits.length * SLOT_SIZE; i++) {
 			if (contains(i)) {
 				if (s.length() != 0) {
 					s += ", ";
@@ -137,8 +137,8 @@ public class BitVectorIntSet extends IntSet implements Serializable {
 	 */
 	public boolean isEmpty() {
 		for (int i : bits) {
-			if (i > 0) return true;
+			if (i > 0) return false;
 		}
-		return false;
+		return true;
 	}
 }
