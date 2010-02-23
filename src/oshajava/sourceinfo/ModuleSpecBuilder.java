@@ -94,31 +94,34 @@ public class ModuleSpecBuilder {
 	 * Returns a (static) ModuleSpec object reflecting this module.
 	 */
 	public ModuleSpec generateSpec() {
+	    // Generate the graphs.
 	    Graph internalGraph = new Graph(methodIdToSig.size());
 	    Graph interfaceGraph = new Graph(methodIdToSig.size());
+	    // For every method:
 	    for (int source=0; source<methodIdToSig.size(); ++source) {
-	        
-	        BitVectorIntSet destinations = new BitVectorIntSet();
+	        // We'll contruct sets of edges out of this method.
+            BitVectorIntSet internalOutSet = new BitVectorIntSet();
+            BitVectorIntSet interfaceOutSet = new BitVectorIntSet();
+            internalGraph.add(internalOutSet);
+            interfaceGraph.add(interfaceOutSet);
+            
+	        // For every group:
 	        for (Group g : groups.values()) {
+	            // If the method is a writer for that group:
 	            if (g.writers.contains(source)) {
 	                
-	                BitVectorIntSet outSet;
-	                if (g.isInterfaceGroup) {
-	                    outSet = internalGraph.getOutEdges(source);
-	                } else {
-	                    outSet = interfaceGraph.getOutEdges(source);
-	                } 
-	                
+	                // Get the portion of the appropriate graph.
 	                for (Integer destination : g.readers) {
-	                    outSet.add(destination);
+    	                if (g.isInterfaceGroup) {
+    	                    interfaceOutSet.add(destination);
+    	                } else {
+    	                    internalOutSet.add(destination);
+    	                }    
 	                }
 	                
 	            }
 	        }
-	        
 	    }
-	    
-	    //TODO
 	    
 	    HashMap<String, Integer> methodSigToId = new HashMap<String, Integer>();
 	    for (int i=0; i<methodSigToId.size(); ++i) {
