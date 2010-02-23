@@ -183,8 +183,24 @@ public class ClassInstrumentor extends ClassAdapter {
 	 */
 	private void addShadowField(int access, String name, String desc) {
 		if (shouldInstrumentField(name, desc)) {
+		    
+		    int newAccess;
+		    if ((classAccess & Opcodes.ACC_INTERFACE) != 0) {
+		        
+		        // All fields in interfaces must be final, so our new shadow field
+		        // must obey this. This might seem silly because we'll never be
+		        // writing to final fields, but we can't tell when we see an access
+		        // whether the field is in an interface (and thus whether we should
+		        // instrument the access). Adding these unused shadow fields
+		        // regardless alleviates this concern.
+		        newAccess = access & ~Opcodes.ACC_VOLATILE;
+		        
+		    } else {
+		        newAccess = access & ~(Opcodes.ACC_FINAL | Opcodes.ACC_VOLATILE);
+		    }
+		    
 			final FieldVisitor fv = super.visitField(
-					access & ~(Opcodes.ACC_FINAL | Opcodes.ACC_VOLATILE),
+					newAccess,
 					name + SHADOW_FIELD_SUFFIX, STATE_DESC, null, null
 			);
 			if (fv != null) {
@@ -290,7 +306,11 @@ public class ClassInstrumentor extends ClassAdapter {
 	@Override
 	public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
 		Util.assertTrue(module != null, "No module specified for %s.", className);
-		if ((access & Opcodes.ACC_NATIVE) == 0) {
+		if ((access & Opcodes.ACC_NATIVE) == 0 && !name.equals("<clinit>")) {
+		    // (Not instrumenting class initializers avoids balooning the size
+		    //  of large literal table constructions. It also makes sense, I
+		    //  think, because no "communication" should occur (semantically)
+		    //  from class loading.)
 		    MethodVisitor chain = super.visitMethod(access, name, desc, signature, exceptions);
 		    chain = new HandlerSorterAdapter(chain, access, name, desc, signature, exceptions);
 		    chain = new MethodInstrumentor(chain, access, name, desc, this, module);
@@ -317,8 +337,7 @@ public class ClassInstrumentor extends ClassAdapter {
 	}
 	
 	protected boolean shouldInstrumentField(String name, String desc) {
-		return (classAccess & Opcodes.ACC_INTERFACE) == 0 && // don't create shadows for interface fields
-		        (outerClassDesc == null 
+		return (outerClassDesc == null 
 				|| ! (name.startsWith("this$") && desc.equals(outerClassDesc)));
 	}
 	
