@@ -18,7 +18,11 @@ public class RemoveJava6Adapter extends ClassAdapter implements ClassVisitor {
 		if (version == Opcodes.V1_6 || version == Opcodes.V1_7) {
 			super.visit(Opcodes.V1_5, access, name, signature, superName, interfaces);
 		} else {
-			super.visit(version, access, name, signature, superName, interfaces);
+		    //TODO: This is a simple hack to allow LDC instructions to load classes.
+		    // (This allows static synchronized methods to work without more
+		    // work on the instrumentation end.) It could cause incompatibilities --
+		    // we can change it back later.
+			super.visit(Opcodes.V1_5, access, name, signature, superName, interfaces);
 		}
 	}
 	

@@ -694,7 +694,6 @@ public class MethodInstrumentor extends AdviceAdapter {
 		        Util.fail("wait() call with unknown descriptor");
 		    }
 		    
-		    // Save the lock for the acquire hook and invoke the release hook.
 		    // stack -> lock lock
 		    super.dup();
 		    // stack -> lock lock lock
