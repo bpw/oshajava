@@ -46,7 +46,6 @@ public class Graph implements Serializable {
 	 * @return
 	 */
 	public final BitVectorIntSet getOutEdges(int i) {
-		assert i < nextID && i >= 0;
 		return table[i];
 	}
 	
@@ -81,7 +80,7 @@ public class Graph implements Serializable {
 	 * @param set
 	 * @return
 	 */
-	public int add(BitVectorIntSet set) {
+	public int addNode(BitVectorIntSet set) {
 		assert nextID >= table.length;
 		final int id = nextID;
 		++nextID;
@@ -89,6 +88,18 @@ public class Graph implements Serializable {
 		return id;
 	}
 	
+	public void addEdge(int i, int j) {
+		getOutEdges(i).add(j);
+	}
+	
+	public void fill() {
+		for (int i = 0; i < table.length; i++) {
+			if (table[i] == null) {
+				table[i] = new BitVectorIntSet();
+			}
+		}
+	}
+		
 	/**
 	 * Get the capacity of the table.
 	 * @return

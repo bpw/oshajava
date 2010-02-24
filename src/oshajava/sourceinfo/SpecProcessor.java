@@ -202,7 +202,7 @@ public class SpecProcessor extends AbstractProcessor implements TaskListener {
             // Default membership.
             PackageElement pkg = processingEnv.getElementUtils().getPackageOf(cls);
             String pkgName = pkg.getQualifiedName().toString();
-            module = getModule(pkgName + (pkgName.isEmpty() ? "" : ".") + "Default");
+            module = getModule(pkgName + (pkgName.isEmpty() ? "" : ".") + ModuleSpec.DEFAULT_NAME);
         }
         // Facilitate module lookup for this class's methods.
         classToModule.put(name, module);

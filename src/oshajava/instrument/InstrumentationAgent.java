@@ -56,7 +56,7 @@ import oshajava.support.org.objectweb.asm.util.CheckClassAdapter;
 public class InstrumentationAgent implements ClassFileTransformer {
 
 	protected static final String DEBUG_KEY = "instrument";
-	
+
 	protected static final String[] EXCLUDE_PREFIXES = { 
 		"oshajava/", 
 		"java/lang/", 
@@ -78,7 +78,7 @@ public class InstrumentationAgent implements ClassFileTransformer {
 		"java/util/LinkedHashMap",
 		"java/util/Vector"
 	};
-	
+
 	static class Options {	
 		public boolean debug = true;
 		public boolean verifyInput = true;
@@ -100,33 +100,37 @@ public class InstrumentationAgent implements ClassFileTransformer {
 	}
 
 	public final Options opts;
-	
+
 	public InstrumentationAgent(Options opts) {
 		this.opts = opts;
-//		methodTable = opts.methodTableFile == null ? new MethodTable() : (MethodTable)ColdStorage.load(opts.methodTableFile);
+		//		methodTable = opts.methodTableFile == null ? new MethodTable() : (MethodTable)ColdStorage.load(opts.methodTableFile);
 	}
 
-	public byte[] instrument(String className, byte[] bytecode) throws ModuleSpecNotFoundException {
-		final ClassReader in = new ClassReader(bytecode);
-		final ClassWriter out = new ClassWriter(in, opts.frames() ? ClassWriter.COMPUTE_FRAMES : 0);
-		ClassVisitor chain = out;
-		// Build a chain according to the options.
-		if (opts.verifyOutput()) {
-			chain = new CheckClassAdapter(chain);
+	public byte[] instrument(String className, byte[] bytecode, ClassLoader loader) throws ModuleSpecNotFoundException {
+		try {
+			final ClassReader in = new ClassReader(bytecode);
+			final ClassWriter out = new ClassWriter(in, opts.frames() ? ClassWriter.COMPUTE_FRAMES : 0);
+			ClassVisitor chain = out;
+			// Build a chain according to the options.
+			if (opts.verifyOutput()) {
+				chain = new CheckClassAdapter(chain);
+			}
+			chain = new ClassInstrumentor(chain, loader, opts);
+			if (!opts.java6) {
+				chain = new RemoveJava6Adapter(chain);
+			}
+			if (opts.remapJDK) {
+				chain = new RemappingClassAdapter(chain, new SimpleRemapper(uninstrumentedLoadedClasses));
+			}
+			if (opts.verifyInput) {
+				chain = new CheckClassAdapter(chain);
+			}
+			Util.logf("Instrumenting %s", className);
+			in.accept(chain, ClassReader.SKIP_FRAMES);
+			return out.toByteArray();
+		} catch (ModuleSpecNotFoundException.Wrapper e) {
+			throw e.unwrap();
 		}
-		chain = new ClassInstrumentor(chain, opts);
-		if (!opts.java6) {
-			chain = new RemoveJava6Adapter(chain);
-		}
-		if (opts.remapJDK) {
-			chain = new RemappingClassAdapter(chain, new SimpleRemapper(uninstrumentedLoadedClasses));
-		}
-		if (opts.verifyInput) {
-			chain = new CheckClassAdapter(chain);
-		}
-		Util.logf("Instrumenting %s", className);
-		in.accept(chain, ClassReader.SKIP_FRAMES);
-		return out.toByteArray();
 	}
 
 	/*********************************************************************************************/
@@ -178,8 +182,8 @@ public class InstrumentationAgent implements ClassFileTransformer {
 			ProtectionDomain pd, byte[] bytecode) throws IllegalClassFormatException {
 		try {
 			if (!shouldTransform(className)) return null;
-			final byte[] instrumentedBytecode = instrument(className, bytecode);
-//			RuntimeMonitor.loadNewMethods();
+			final byte[] instrumentedBytecode = instrument(className, bytecode, loader);
+			//			RuntimeMonitor.loadNewMethods();
 			if (opts.bytecodeDump != null && instrumentedBytecode != bytecode) {
 				File f = new File(opts.bytecodeDump + File.separator + className + ".class");
 				f.getParentFile().mkdirs();
@@ -190,14 +194,16 @@ public class InstrumentationAgent implements ClassFileTransformer {
 			}
 			return instrumentedBytecode;
 		} catch (ModuleSpecNotFoundException e) {
-			throw e;
+			Util.log(className);
+			e.printStackTrace();
+			throw (IllegalClassFormatException)e;
 		} catch (Throwable e) {
 			Util.log("Problem running oshajava instrumentor");
 			Util.fail(e);
 			return null;
 		}
 	}
-	
+
 	private boolean shouldTransform(String className) {
 		if (opts.instrument) {
 			if (!instrumentationOn) {
@@ -206,7 +212,7 @@ public class InstrumentationAgent implements ClassFileTransformer {
 					Util.logf("Loading main class (%s) and starting instrumentation.", mainClassInternalName);
 					return true;
 				}
-//				Util.logf("Ignoring %s (Instrumentation not started yet.)", className);
+				//				Util.logf("Ignoring %s (Instrumentation not started yet.)", className);
 			} else if (appThreadGroupRoot.parentOf(Thread.currentThread().getThreadGroup())
 					&& shouldInstrument(className)
 					&& !hasUninstrumentedOuterClass(className)) {
@@ -219,14 +225,14 @@ public class InstrumentationAgent implements ClassFileTransformer {
 		}
 		return false;
 	}
-	
+
 	protected static boolean shouldInstrument(String className) {
 		for (String prefix : EXCLUDE_PREFIXES) {
 			if (className.startsWith(prefix)) return false;
 		}
 		return true;
 	}
-	
+
 	private static boolean hasUninstrumentedOuterClass(String className) {
 		final int i = className.lastIndexOf('$');
 		if (i == -1) {
@@ -236,7 +242,7 @@ public class InstrumentationAgent implements ClassFileTransformer {
 			return uninstrumentedLoadedClasses.containsKey(cn) || hasUninstrumentedOuterClass(cn);
 		}
 	}
-	
-//	protected byte[] transform
+
+	//	protected byte[] transform
 
 }

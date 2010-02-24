@@ -1,6 +1,7 @@
 package oshajava.sourceinfo;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Vector;
 
@@ -43,9 +44,11 @@ public class Spec {
 	 * @return
 	 * @throws ModuleSpecNotFoundException if there was a problem finding or loading the spec.
 	 */
-	protected static ModuleSpec loadModule(String name) throws ModuleSpecNotFoundException {
+	protected static ModuleSpec loadModule(String name, ClassLoader loader) throws ModuleSpecNotFoundException {
 		try {
-			return (ModuleSpec)ColdStorage.load(ClassLoader.getSystemResourceAsStream(name + ModuleSpec.EXT));
+			final InputStream res = loader.getResourceAsStream(name + ModuleSpec.EXT);
+			if (res == null) throw new ModuleSpecNotFoundException(name + ModuleSpec.EXT + " - ");
+			return (ModuleSpec)ColdStorage.load(res);
 		} catch (IOException e) {
 			throw new ModuleSpecNotFoundException(name);
 		} catch (ClassNotFoundException e) {
@@ -61,10 +64,11 @@ public class Spec {
 	 * @return
 	 * @throws ModuleSpecNotFoundException
 	 */
-	public static synchronized ModuleSpec getModule(String name) throws ModuleSpecNotFoundException {
+	public static synchronized ModuleSpec getModule(String name, ClassLoader loader) throws ModuleSpecNotFoundException {
 		ModuleSpec module = nameToModule.get(name);
 		if (module == null) {
-			module = loadModule(name);
+			module = loadModule(name, loader);
+			if (!module.checkIntegrity()) throw new ModuleSpecNotFoundException("integrity asdfgasjdg;ljk");
 //			synchronized (idToModule) { // not needed if this method is synchronized
 				module.setId(idToModule.size());
 				idToModule.add(module);

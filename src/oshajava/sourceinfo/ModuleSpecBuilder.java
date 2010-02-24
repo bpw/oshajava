@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.Vector;
 
+import oshajava.support.acme.util.Util;
 import oshajava.util.ColdStorage;
 import oshajava.util.intset.BitVectorIntSet;
 
@@ -16,13 +17,13 @@ public class ModuleSpecBuilder implements Serializable {
 	
 	public static final String EXT = ".omb"; // for Osha Module Builder
 	
-	private final URI uri;
-	private final String qualifiedName;
+	protected final URI uri;
+	protected final String qualifiedName;
 	
-	private Vector<String> methodIdToSig = new Vector<String>();
+	protected Vector<String> methodIdToSig = new Vector<String>();
 	
-	private Map<String, Group> groups = new HashMap<String, Group>();
-	private BitVectorIntSet inlinedMethods = new BitVectorIntSet();
+	protected Map<String, Group> groups = new HashMap<String, Group>();
+	protected BitVectorIntSet inlinedMethods = new BitVectorIntSet();
 	
 	public ModuleSpecBuilder(String qualifiedName, URI uri) {
 		this.qualifiedName = qualifiedName;
@@ -114,37 +115,27 @@ public class ModuleSpecBuilder implements Serializable {
 	 * Returns a (static) ModuleSpec object reflecting this module.
 	 */
 	public ModuleSpec generateSpec() {
-	    Graph internalGraph = new Graph(methodIdToSig.size());
-	    Graph interfaceGraph = new Graph(methodIdToSig.size());
-	    for (int source=0; source<methodIdToSig.size(); ++source) {
-	        
-//	        BitVectorIntSet destinations = new BitVectorIntSet();
-	        for (Group g : groups.values()) {
-	            if (g.writers.contains(source)) {
-	                
-	                BitVectorIntSet outSet;
-	                if (g.isInterfaceGroup) {
-	                    outSet = internalGraph.getOutEdges(source);
-	                } else {
-	                    outSet = interfaceGraph.getOutEdges(source);
-	                } 
-	                
-	                for (Integer destination : g.readers) {
-	                    outSet.add(destination);
-	                }
-	                
-	            }
-	        }
-	        
-	    }
-	    
-	    //TODO
-	    
-	    HashMap<String, Integer> methodSigToId = new HashMap<String, Integer>();
-	    for (int i=0; i<methodSigToId.size(); ++i) {
+		Graph internalGraph = new Graph(methodIdToSig.size());
+		internalGraph.fill();
+		Graph interfaceGraph = new Graph(methodIdToSig.size());
+		interfaceGraph.fill();
+
+		// Put in edges.
+		for (Group g : groups.values()) {
+			final Graph graph = g.isInterfaceGroup ? interfaceGraph : internalGraph;
+			for (int i : g.writers) {
+				for (int j : g.readers) {
+					graph.addEdge(i, j);
+				}
+			}
+		}
+
+		// map sigs to ids.
+		final HashMap<String, Integer> methodSigToId = new HashMap<String, Integer>();
+		for (int i = 0; i < methodIdToSig.size(); ++i) {
 	        methodSigToId.put(methodIdToSig.get(i), i);
 	    }
-	    
+//	    Util.log(methodSigToId);
 	    return new ModuleSpec(
 	        qualifiedName,
 	        methodIdToSig.toArray(new String[0]),

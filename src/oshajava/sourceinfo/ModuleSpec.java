@@ -16,6 +16,8 @@ public class ModuleSpec implements Serializable {
 	
 	private static final long serialVersionUID = 1L;
 	
+	public static final String DEFAULT_NAME = "Default";
+	
 	/**
 	 * File extension for serialized ModuleSpec storage.
 	 */
@@ -39,34 +41,34 @@ public class ModuleSpec implements Serializable {
 	/**
 	 * The name of this module.
 	 */
-	private final String name;
+	protected final String name;
 	
 	/**
 	 * Map from method signature to id.
 	 */
-	private final HashMap<String,Integer> methodSigToId;
+	protected final HashMap<String,Integer> methodSigToId;
 	
 	/**
 	 * Inlined methods.
 	 */
-	private final BitVectorIntSet inlinedMethods;
+	protected final BitVectorIntSet inlinedMethods;
 	// TODO optimization: private final BitVectorIntSet nonCommMethods;
 	
 	/**
 	 * Map from method id to signature.
 	 */
-	private final String[] methodIdToSig;
+	protected final String[] methodIdToSig;
 	
 	/**
 	 * The communication allowed amongst methods within the module.
 	 */
-	private final Graph internalGraph;
+	protected final Graph internalGraph;
 	
 	/**
 	 * The module's communication interface.
 	 * Graph representing the edges for which communication escapes this module.
 	 */
-	private final Graph interfaceGraph;
+	protected final Graph interfaceGraph;
 	
 	/**
 	 * Create a new ModuleSpec.
@@ -80,6 +82,7 @@ public class ModuleSpec implements Serializable {
 	public ModuleSpec(final String name, final String[] methodIdToSig, final Graph internalGraph, 
 			final Graph interfaceGraph, final BitVectorIntSet inlinedMethods,
 			final HashMap<String,Integer> methodSigToId) {
+//		checkIntegrity();
 		this.name = name;
 		this.methodIdToSig = methodIdToSig;
 		this.internalGraph = internalGraph;
@@ -130,6 +133,7 @@ public class ModuleSpec implements Serializable {
 	 * @return
 	 */
 	public int getMethodUID(final String sig) {
+		Util.log(name + " methodSigToId[sig] = " + methodSigToId + "[\"" + sig + "]\"");
 		assert methodSigToId.containsKey(sig);
 		final int mid = methodSigToId.get(sig);
 		return Spec.makeUID(id, mid);
@@ -186,5 +190,10 @@ public class ModuleSpec implements Serializable {
 		/* else if (uncheckedMethods.contains(mid)) {
 		 * return CommunicationKind.UNCHECKED;
 		 */
+	}
+	
+	public boolean checkIntegrity() {
+		return name != null && methodIdToSig != null && internalGraph != null 
+				&& interfaceGraph != null && inlinedMethods != null && methodSigToId != null;
 	}
 }

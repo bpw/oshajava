@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Set;
 
 import oshajava.sourceinfo.ModuleSpec;
+import oshajava.sourceinfo.ModuleSpecNotFoundException;
 import oshajava.sourceinfo.Spec;
 import oshajava.support.acme.util.Util;
 import oshajava.support.org.objectweb.asm.AnnotationVisitor;
@@ -106,10 +107,21 @@ public class ClassInstrumentor extends ClassAdapter {
 	protected String superName;
 	protected ModuleSpec module;
 	protected Set<String> shadowedInheritedFields;
+	protected String packageName;
+	protected final ClassLoader loader;
 
-	public ClassInstrumentor(ClassVisitor cv, InstrumentationAgent.Options opts) {
+	public ClassInstrumentor(ClassVisitor cv, ClassLoader loader, InstrumentationAgent.Options opts) {
 		super(cv);
 		this.opts = opts;
+		this.loader = loader;
+	}
+	
+	private ModuleSpec getModule() throws ModuleSpecNotFoundException {
+		if (module == null) {
+			module = Spec.getModule(packageName + ModuleSpec.DEFAULT_NAME, loader);
+		}
+		Util.assertTrue(module != null, "No module specified for %s.", className);
+		return module;
 	}
 	
 	/**
@@ -215,6 +227,8 @@ public class ClassInstrumentor extends ClassAdapter {
 	public void visit(int version, int access, String name, String signature,
 			String superName, String[] interfaces) {
 		className = name;
+		final int lastSep = name.lastIndexOf('/');
+		packageName = lastSep == -1 ? "" : name.substring(0, lastSep + 1);
 		classDesc = getDescriptor(name);
 		classType = Type.getObjectType(name);
 		classAccess = access;
@@ -257,7 +271,11 @@ public class ClassInstrumentor extends ClassAdapter {
 		if (ANNOT_MODULE_MEMBER_DESC.equals(desc)) {
 			return new AnnotationVisitor() {
 				public void visit(String name, Object value) { // throws ModuleSpecNotFoundException
-					ClassInstrumentor.this.module = Spec.getModule((String)name);
+					try {
+						ClassInstrumentor.this.module = Spec.getModule((String)name, loader);
+					} catch (ModuleSpecNotFoundException e) {
+						throw e.wrap();
+					}
 				}
 				public AnnotationVisitor visitAnnotation(String name, String desc) { return null; }
 				public AnnotationVisitor visitArray(String name) { return null; }
@@ -289,11 +307,14 @@ public class ClassInstrumentor extends ClassAdapter {
 
 	@Override
 	public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
-		Util.assertTrue(module != null, "No module specified for %s.", className);
 		if ((access & Opcodes.ACC_NATIVE) == 0) {
 		    MethodVisitor chain = super.visitMethod(access, name, desc, signature, exceptions);
 		    chain = new HandlerSorterAdapter(chain, access, name, desc, signature, exceptions);
-		    chain = new MethodInstrumentor(chain, access, name, desc, this, module);
+		    try {
+				chain = new MethodInstrumentor(chain, access, name, desc, this, getModule());
+			} catch (ModuleSpecNotFoundException e) {
+				throw e.wrap();
+			}
 		    chain = new JSRInlinerAdapter(chain, access, name, desc, signature, exceptions);
 		    return chain;
 		} else {
