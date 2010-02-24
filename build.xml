@@ -135,7 +135,7 @@ if ARGV.first == "-cp" or ARGV.first == "-classpath"
 end
 classpath ||= "."
 classpath.split(":").each do |d|
-	system "find #{d} -name '*.oshamodulebuilder' | xargs java -cp ${basedir}/${agent.jar} oshajava.sourceinfo.ModuleSpecCompressor"
+	system "find #{d} -name '*.omb' | xargs java -cp ${basedir}/${agent.jar} oshajava.sourceinfo.ModuleSpecCompressor"
 end
 		</echo>	
 		<echo file="${module.rm.bin}">#!/usr/bin/env ruby
