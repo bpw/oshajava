@@ -118,6 +118,8 @@ public class ClassInstrumentor extends ClassAdapter {
 	private final ArrayList<String> instanceShadowFields = new ArrayList<String>();
 	private final ArrayList<String> staticShadowFields = new ArrayList<String>();
 
+	protected static Set<String> classesWithInstanceShadowInit = new HashSet<String>();
+
 	public ClassInstrumentor(ClassVisitor cv, ClassLoader loader, InstrumentationAgent.Options opts) {
 		super(cv);
 		this.opts = opts;
@@ -378,13 +380,15 @@ public class ClassInstrumentor extends ClassAdapter {
 				|| ! (name.startsWith("this$") && desc.equals(outerClassDesc)));
 	}
 	
-
+	public boolean hasInstanceShadowInit() {
+	    return !instanceShadowFields.isEmpty();
+	}
 	
 	@Override
 	public void visitEnd() {
 		// FIXME Generate a method that initializes all shadow fields belonging to this class.
 		// instance.
-		if (!instanceShadowFields.isEmpty()) {
+		if (hasInstanceShadowInit()) {
 //	    	Util.log("gen " + INSTANCE_SHADOW_INIT_METHOD.getName());
 			GeneratorAdapter instance = new GeneratorAdapter(Opcodes.ACC_PRIVATE, INSTANCE_SHADOW_INIT_METHOD, 
 					super.visitMethod(Opcodes.ACC_PROTECTED, INSTANCE_SHADOW_INIT_METHOD.getName(), INSTANCE_SHADOW_INIT_METHOD.getDescriptor(), null, null));
@@ -393,8 +397,10 @@ public class ClassInstrumentor extends ClassAdapter {
 			int varCurrentState = instance.newLocal(STATE_TYPE);
 			instance.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_CURRENT_STATE);
 			instance.storeLocal(varCurrentState);
-			// call super.initer()
-			if (InstrumentationAgent.shouldInstrument(superName)) {
+			
+			// call super.initer() if available
+		    if (classesWithInstanceShadowInit.contains(superName)) {
+		        Util.log("***" + classesWithInstanceShadowInit);
 				instance.loadThis();
 				instance.visitMethodInsn(Opcodes.INVOKESPECIAL, superName, INSTANCE_SHADOW_INIT_METHOD.getName(), INSTANCE_SHADOW_INIT_METHOD.getDescriptor());
 			}
@@ -407,6 +413,8 @@ public class ClassInstrumentor extends ClassAdapter {
 			instance.returnValue();
 			instance.visitMaxs(2, 1);
 			instance.visitEnd();
+			
+			classesWithInstanceShadowInit.add(className);
 		}
 		
 		// static.
