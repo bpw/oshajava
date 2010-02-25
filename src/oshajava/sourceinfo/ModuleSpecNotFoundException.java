@@ -7,6 +7,7 @@ import java.lang.instrument.IllegalClassFormatException;
  * @author bpw
  *
  */
+@SuppressWarnings("serial")
 public class ModuleSpecNotFoundException extends IllegalClassFormatException {
 	public ModuleSpecNotFoundException(String name) {
 		super(name);

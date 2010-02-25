@@ -19,14 +19,14 @@ public final class State {
 	/**
 	 * Thread id of the last thread to write to the field.
 	 */
-	protected final ThreadState thread;
+	public final ThreadState thread;
 	
 	/**
 	 * Stack when the field was written.
 	 */
-	protected final Stack stack;
+	public final Stack stack;
 	
-	private int stackID;
+	private int stackID = -1;
 	
 	/**
 	 * State of caller.
@@ -42,7 +42,7 @@ public final class State {
 		this.caller = caller;
 		this.stack = stack;
 		this.thread = thread;
-		this.stackID = stack.id;
+		if (stack != null) this.stackID = stack.id;
 		
 		if (COUNT_STATES) statesCreated.inc();
 	}
@@ -86,6 +86,6 @@ public final class State {
 	 * @return
 	 */
 	public static State root(final ThreadState ts) {
-		return new State(ts, null, null);
+		return new State(ts, null, Stack.root);
 	}
 }

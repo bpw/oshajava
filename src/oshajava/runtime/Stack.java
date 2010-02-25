@@ -1,7 +1,5 @@
 package oshajava.runtime;
 
-import java.util.IdentityHashMap;
-
 import oshajava.sourceinfo.ModuleSpec;
 import oshajava.sourceinfo.Spec;
 import oshajava.support.acme.util.Util;
@@ -14,6 +12,8 @@ public class Stack {
 	
 	public static final Counter stacksCreated = new Counter();
 	public static final boolean COUNT_STACKS = true;
+	
+	protected static final Stack root = new Stack(-1, null);
 
 	/**
 	 * The Stack for the caller of the top of this stack.
@@ -42,7 +42,7 @@ public class Stack {
 	 * have it in the (actual hardware) cache.  If we load the readerset from
 	 * a state representing a write, chances are it's not in the cache...
 	 */
-	protected final BitVectorIntSet writerCache = new BitVectorIntSet();
+	public final BitVectorIntSet writerCache = new BitVectorIntSet();
 	
 	private final IdentityHashSet<Stack> writerMemoTable = new IdentityHashSet<Stack>();
 	
@@ -142,11 +142,11 @@ public class Stack {
 	}
 	
 	private static boolean walkStacks(final Stack writer, final Stack reader) {
-		if (writer == null && reader == null) {
+		if (writer == root && reader == root) {
 			// Successfully walked to the roots of each stack.
 			return true;
 		}
-		if (writer == null && reader != null || writer != null && reader == null) {
+		if (writer == root && reader != root || writer != root && reader == root) {
 			// Layer mismatch at root of stacks.
 			// FIXME pop/throw to find a compositional module...
 		}
@@ -231,6 +231,7 @@ public class Stack {
 		}
 	}
 	
+	@SuppressWarnings("serial")
 	private static class IllegalInternalEdgeException extends Exception { }
 	
 	/**

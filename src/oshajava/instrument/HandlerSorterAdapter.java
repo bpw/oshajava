@@ -10,7 +10,7 @@ package oshajava.instrument;
 
 import java.util.Collections;
 import java.util.Comparator;
-import oshajava.support.org.objectweb.asm.Label;
+
 import oshajava.support.org.objectweb.asm.MethodVisitor;
 import oshajava.support.org.objectweb.asm.tree.MethodNode;
 import oshajava.support.org.objectweb.asm.tree.TryCatchBlockNode;

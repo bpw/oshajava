@@ -276,8 +276,8 @@ public class SpecProcessor extends AbstractProcessor implements TaskListener {
         ModuleSpecBuilder module = classToModule.get(cls.getQualifiedName().toString());
         
         // Signature is like:
-        // package.package.Class.method()V
-        String sig = cls.getQualifiedName() + "." + m.getSimpleName() + methodDescriptor(m);
+        // package/package/Class.method()V
+        String sig = cls.getQualifiedName().toString().replace('.','/') + "." + m.getSimpleName() + methodDescriptor(m);
         
         assert module != null;
         

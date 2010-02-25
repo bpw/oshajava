@@ -24,7 +24,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 	protected final boolean isClinit;
 	protected final boolean isStatic;
 	
-	private final ModuleSpec module;
+//	private final ModuleSpec module;
 
 	protected final String fullNameAndDesc;
 	
@@ -42,7 +42,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 	
 	public MethodInstrumentor(MethodVisitor next, int access, String name, String desc, ClassInstrumentor inst, ModuleSpec module) {
 		super(next, access, name, desc);
-		this.module = module;
+//		this.module = module;
 		this.inst = inst;
 		isStatic = (access & Opcodes.ACC_STATIC) != 0;
 		isMain = (access & Opcodes.ACC_PUBLIC ) != 0 && isStatic
@@ -332,6 +332,17 @@ public class MethodInstrumentor extends AdviceAdapter {
 		if (policy != CommunicationKind.INLINE || isSynchronized) {
 			mv.visitTryCatchBlock(beginTry, endTryBeginHandler, endTryBeginHandler, null);
 			super.mark(beginTry);
+		}
+	}
+	
+	private boolean calledOtherConstructor = false;
+	@Override
+	public void onMethodEnter() {
+		if (isConstructor && !calledOtherConstructor) {
+			// if no call to this() then init all shadow fields.
+			myStackSize(1);
+			super.loadThis();
+			super.invokeVirtual(inst.classType, ClassInstrumentor.INSTANCE_SHADOW_INIT_METHOD);
 		}
 	}
 
@@ -726,12 +737,11 @@ public class MethodInstrumentor extends AdviceAdapter {
 		} else {
 		    super.visitMethodInsn(opcode, owner, name, desc);
         }
-		/*if (isConstructor && opcode == Opcodes.INVOKESPECIAL 
-		&& owner.equals(inst.superName) && name.equals("<init>")
-		&& super is not and will not be instrumented) {
-			FIXME call the shadow field initer.
+		if (isConstructor && opcode == Opcodes.INVOKESPECIAL && name.equals("<init>") 
+				&& (owner.equals(inst.superName) || owner.equals(inst.className)) 
+				&& !InstrumentationAgent.shouldInstrument(inst.superName)) {
+			calledOtherConstructor = true;
 		}
-		*/
 	}
 
 }

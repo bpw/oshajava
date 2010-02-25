@@ -90,15 +90,9 @@ public final class ThreadState {
 	// -- Thread call stack/state -----------------------------------------------------
 	
 	/**
-	 * Cached copy of this thread's current State. Initially invalid.
+	 * Cached copy of this thread's current State.
 	 */
 	public State state = State.root(this);
-	
-//	/**
-//	 * Current call stack (module inlining).  Invariant: outside enter and exit,
-//	 * stack == state.stack.
-//	 */
-//	public Stack stack = state.stack;
 	
 	/**
 	 * Update call stack/state to reflect entering the method with id mid.
@@ -106,7 +100,6 @@ public final class ThreadState {
 	 */
 	protected void enter(final int methodUID) {
 		state = state.call(methodUID);
-//		stack = state.stack;
 	}
 	
 	/**
@@ -114,7 +107,6 @@ public final class ThreadState {
 	 */
 	protected void exit() {
 		state = state.ret();
-//		stack = state.stack;
 	}
 	
 	// -- Array state caching --------------------------------------------------------

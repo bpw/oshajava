@@ -408,15 +408,15 @@ public class RuntimeMonitor {
 
 	// -- Recording --------------------------------------------------------------------
 
-	private static void record(final Stack writer, final Stack reader) {
-		// FIXME repeat stack traversal from Spec.isAllowed to record all edges.
-		// Or just record in Spec.isAllowed.
-		// for each edge call recordEdge.
-	}
-	
-	private static void recordEdge(int src, int dest) {
-		((BitVectorIntSet)executionGraph.getOutEdges(src)).add(dest);
-	}
+//	private static void record(final Stack writer, final Stack reader) {
+//		// FIXME repeat stack traversal from Spec.isAllowed to record all edges.
+//		// Or just record in Spec.isAllowed.
+//		// for each edge call recordEdge.
+//	}
+//	
+//	private static void recordEdge(int src, int dest) {
+//		((BitVectorIntSet)executionGraph.getOutEdges(src)).add(dest);
+//	}
 
 	// -- General ----------------------------------------------------------------------
 
@@ -426,6 +426,10 @@ public class RuntimeMonitor {
 	 */
 	public static ThreadState getThreadState() {
 		return threadState.get();
+	}
+
+	public static State getCurrentState() {
+		return threadState.get().state;
 	}
 
 	/**
@@ -480,12 +484,12 @@ public class RuntimeMonitor {
 			}
 		}
 		// Report some stats.
-		Util.logf("Distinct threads created: %d", ThreadState.lastID());
-		if (Stack.COUNT_STACKS) Util.logf("Distint stacks created: %d", Stack.stacksCreated.value());
-		Util.logf("Frequently communicating stacks: %d", Stack.lastID());
+		Util.logf("Distinct threads created: %d", ThreadState.lastID() + 1);
+		if (Stack.COUNT_STACKS) Util.logf("Distinct stacks created: %d", Stack.stacksCreated.value());
+		Util.logf("Frequently communicating stacks: %d", Stack.lastID() + 1);
 		if (State.COUNT_STATES) {
 			Util.logf("Distinct states created: %d", State.statesCreated.value());
-			Util.logf("Average duplication of stacks (truncated):", (double) State.statesCreated.value() / (double)Stack.lastID());
+			Util.logf("Average duplication of stacks (truncated): %f", (float) State.statesCreated.value() / ((float)Stack.lastID() + 1));
 		}
 		if (BitVectorIntSet.COUNT_SLOTS) Util.logf("Max BitVectorIntSet slots: %d", BitVectorIntSet.maxSlots.value());
 		if (ModuleSpec.COUNT_METHODS) Util.logf("Max non-inlined methods per module: %d", ModuleSpec.maxMethods.value());

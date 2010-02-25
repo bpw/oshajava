@@ -1,12 +1,7 @@
 package oshajava.sourceinfo;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.PrintWriter;
 import java.io.Serializable;
-import java.io.Writer;
 
-import oshajava.support.acme.util.Util;
 import oshajava.util.intset.BitVectorIntSet;
 import oshajava.util.intset.IntSet;
 

@@ -1,6 +1,7 @@
 package oshajava.instrument;
 
 import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -17,6 +18,7 @@ import oshajava.support.org.objectweb.asm.FieldVisitor;
 import oshajava.support.org.objectweb.asm.MethodVisitor;
 import oshajava.support.org.objectweb.asm.Opcodes;
 import oshajava.support.org.objectweb.asm.Type;
+import oshajava.support.org.objectweb.asm.commons.GeneratorAdapter;
 import oshajava.support.org.objectweb.asm.commons.JSRInlinerAdapter;
 import oshajava.support.org.objectweb.asm.commons.Method;
 
@@ -54,6 +56,7 @@ public class ClassInstrumentor extends ClassAdapter {
 	protected static final String CURRENT_STATE_FIELD       = "state";
 	protected static final String THREAD_FIELD              = "thread";
 	protected static final String OBJECT_WITH_STATE_NAME    = Type.getInternalName(oshajava.runtime.ObjectWithState.class);
+	protected static final String SHADOW_INIT_METHOD_PREFIX = "__osha_shadow_field_initer";
 
 	protected static final Type[] ARGS_NONE      = new Type[0];
 	protected static final Type[] ARGS_INT       = { Type.INT_TYPE };
@@ -69,12 +72,13 @@ public class ClassInstrumentor extends ClassAdapter {
 	protected static final Type[] ARGS_OBJECT_STATE    = { OBJECT_TYPE, STATE_TYPE };
 	
 	protected static final Method STATE_STACK_ID  = new Method("getStackID",  Type.INT_TYPE, ARGS_NONE);
-	protected static final Method CONTAINS_METHOD  = new Method("contains",  Type.INT_TYPE, ARGS_INT);
+	protected static final Method CONTAINS_METHOD  = new Method("contains", Type.BOOLEAN_TYPE,  new Type[] { Type.INT_TYPE });
 
 	protected static final Method HOOK_ENTER = new Method("enter", THREAD_STATE_TYPE, ARGS_INT);
 	protected static final Method HOOK_EXIT  = new Method("exit",  Type.VOID_TYPE, new Type[] { THREAD_STATE_TYPE });
 
 	protected static final Method HOOK_THREAD_STATE = new Method("getThreadState", THREAD_STATE_TYPE, ARGS_NONE);
+	protected static final Method HOOK_CURRENT_STATE = new Method("getCurrentState", STATE_TYPE, ARGS_NONE);
 
 	protected static final Method HOOK_READ  = new Method("checkReadSlowPath",  Type.VOID_TYPE, new Type[] { STATE_TYPE, STATE_TYPE });
 	
@@ -90,6 +94,8 @@ public class ClassInstrumentor extends ClassAdapter {
 	protected static final Method HOOK_PREWAIT        = new Method("prewait", Type.INT_TYPE, ARGS_OBJECT_THREAD);
 	protected static final Method HOOK_POSTWAIT       = new Method("postwait", Type.VOID_TYPE, new Type[] {OBJECT_TYPE, Type.INT_TYPE, THREAD_STATE_TYPE, STATE_TYPE});
 
+	protected static final Method INSTANCE_SHADOW_INIT_METHOD = new Method(SHADOW_INIT_METHOD_PREFIX, Type.VOID_TYPE, ARGS_NONE);
+	protected static final Method STATIC_SHADOW_INIT_METHOD = new Method(SHADOW_INIT_METHOD_PREFIX + "_clinit", Type.VOID_TYPE, ARGS_NONE);
 	/****************************************************************************/
 
 	public static String getDescriptor(String name) {
@@ -109,6 +115,8 @@ public class ClassInstrumentor extends ClassAdapter {
 	protected Set<String> shadowedInheritedFields;
 	protected String packageName;
 	protected final ClassLoader loader;
+	private final ArrayList<String> instanceShadowFields = new ArrayList<String>();
+	private final ArrayList<String> staticShadowFields = new ArrayList<String>();
 
 	public ClassInstrumentor(ClassVisitor cv, ClassLoader loader, InstrumentationAgent.Options opts) {
 		super(cv);
@@ -218,6 +226,7 @@ public class ClassInstrumentor extends ClassAdapter {
 			if (fv != null) {
 				fv.visitEnd();
 			}
+			((access & Opcodes.ACC_STATIC)  == 0 ? instanceShadowFields : staticShadowFields).add(name + SHADOW_FIELD_SUFFIX);
 		}
 	}
 	
@@ -321,22 +330,29 @@ public class ClassInstrumentor extends ClassAdapter {
 		return super.visitField(access, name, desc, signature, value);
 	}
 
+	private boolean visitedClinit = false;
 	@Override
 	public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
-		if ((access & Opcodes.ACC_NATIVE) == 0 && !name.equals("<clinit>")) {
-		    // (Not instrumenting class initializers avoids balooning the size
-		    //  of large literal table constructions. It also makes sense, I
-		    //  think, because no "communication" should occur (semantically)
-		    //  from class loading.)
+		if ((access & Opcodes.ACC_NATIVE) == 0) {
 		    MethodVisitor chain = super.visitMethod(access, name, desc, signature, exceptions);
-		    chain = new HandlerSorterAdapter(chain, access, name, desc, signature, exceptions);
-		    try {
-				chain = new MethodInstrumentor(chain, access, name, desc, this, getModule());
-			} catch (ModuleSpecNotFoundException e) {
-				throw e.wrap();
-			}
-		    chain = new JSRInlinerAdapter(chain, access, name, desc, signature, exceptions);
-		    return chain;
+		    if (!name.equals("<clinit>")) {
+		    	visitedClinit = true;
+		    	// (Not instrumenting class initializers avoids balooning the size
+		    	//  of large literal table constructions. It also makes sense, I
+		    	//  think, because no "communication" should occur (semantically)
+		    	//  from class loading.) FIXME
+			    chain = new HandlerSorterAdapter(chain, access, name, desc, signature, exceptions);
+//			    Util.log(name);
+		    	try {
+		    		chain = new MethodInstrumentor(chain, access, name, desc, this, getModule());
+		    	} catch (ModuleSpecNotFoundException e) {
+		    		throw e.wrap();
+		    	}
+			    chain = new JSRInlinerAdapter(chain, access, name, desc, signature, exceptions);
+			    return chain;
+		    } else {
+		    	return new StaticShadowInitInserter(chain, access, name, desc, classType);
+		    }
 		} else {
 			return super.visitMethod(access, name, desc, signature, exceptions);
 		}
@@ -362,9 +378,71 @@ public class ClassInstrumentor extends ClassAdapter {
 				|| ! (name.startsWith("this$") && desc.equals(outerClassDesc)));
 	}
 	
+
+	
 	@Override
 	public void visitEnd() {
 		// FIXME Generate a method that initializes all shadow fields belonging to this class.
+		// instance.
+		if (!instanceShadowFields.isEmpty()) {
+//	    	Util.log("gen " + INSTANCE_SHADOW_INIT_METHOD.getName());
+			GeneratorAdapter instance = new GeneratorAdapter(Opcodes.ACC_PRIVATE, INSTANCE_SHADOW_INIT_METHOD, 
+					super.visitMethod(Opcodes.ACC_PROTECTED, INSTANCE_SHADOW_INIT_METHOD.getName(), INSTANCE_SHADOW_INIT_METHOD.getDescriptor(), null, null));
+			instance.visitCode();
+			
+			int varCurrentState = instance.newLocal(STATE_TYPE);
+			instance.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_CURRENT_STATE);
+			instance.storeLocal(varCurrentState);
+			// call super.initer()
+			if (InstrumentationAgent.shouldInstrument(superName)) {
+				instance.loadThis();
+				instance.visitMethodInsn(Opcodes.INVOKESPECIAL, superName, INSTANCE_SHADOW_INIT_METHOD.getName(), INSTANCE_SHADOW_INIT_METHOD.getDescriptor());
+			}
+			
+			for (String shadow : instanceShadowFields) {
+				instance.loadThis();
+				instance.loadLocal(varCurrentState);
+				instance.visitFieldInsn(Opcodes.PUTFIELD, className, shadow, STATE_DESC);
+			}
+			instance.returnValue();
+			instance.visitMaxs(2, 1);
+			instance.visitEnd();
+		}
+		
+		// static.
+		if (!staticShadowFields.isEmpty()) {
+//	    	Util.log("gen " + STATIC_SHADOW_INIT_METHOD.getName());
+			GeneratorAdapter stat = new GeneratorAdapter(Opcodes.ACC_PRIVATE | Opcodes.ACC_STATIC, STATIC_SHADOW_INIT_METHOD, 
+					super.visitMethod(Opcodes.ACC_PRIVATE | Opcodes.ACC_STATIC, STATIC_SHADOW_INIT_METHOD.getName(), STATIC_SHADOW_INIT_METHOD.getDescriptor(), null, null));
+			stat.visitCode();
+			int varCurrentState = stat.newLocal(STATE_TYPE);
+			stat.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_CURRENT_STATE);
+			stat.storeLocal(varCurrentState);
+			for (String shadow : staticShadowFields) {
+				stat.loadLocal(varCurrentState);
+				stat.visitFieldInsn(Opcodes.PUTSTATIC, className, shadow, STATE_DESC);
+			}
+			stat.returnValue();
+			stat.visitMaxs(1, 1);
+			stat.visitEnd();
+		}
+		
+		if (!visitedClinit) {
+			final int acc = Opcodes.ACC_STATIC;
+			final String name = "<clinit>";
+			final String desc = "()V";
+			GeneratorAdapter clinit = new GeneratorAdapter(
+					new StaticShadowInitInserter(
+							super.visitMethod(acc, name, desc, null, null),
+							acc, name, desc, classType),
+					acc, name, desc
+			);
+			
+			clinit.visitCode();
+			clinit.visitMaxs(0, 0);
+			clinit.visitEnd();
+		}
+
 	}
 	
 }

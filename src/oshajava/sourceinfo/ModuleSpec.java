@@ -124,6 +124,10 @@ public class ModuleSpec implements Serializable {
 	 * @return
 	 */
 	public String getMethodSignature(final int methodUID) {
+		Util.assertTrue(Spec.getModuleID(methodUID) == id, 
+				"method id " + methodUID + " (module=" + Spec.getModuleID(methodUID) 
+				+ ", method=" + Spec.getMethodID(methodUID) + 
+				") is not a member of module " + name + " (id " + id + ")");
 		return methodIdToSig[Spec.getMethodID(methodUID)];
 	}
 	
@@ -133,8 +137,7 @@ public class ModuleSpec implements Serializable {
 	 * @return
 	 */
 	public int getMethodUID(final String sig) {
-		Util.log(name + " methodSigToId[sig] = " + methodSigToId + "[\"" + sig + "]\"");
-		assert methodSigToId.containsKey(sig);
+		Util.assertTrue(methodSigToId.containsKey(sig), "in module " + name + ", " + sig + " not found in " + methodSigToId);
 		final int mid = methodSigToId.get(sig);
 		return Spec.makeUID(id, mid);
 	}
@@ -172,7 +175,7 @@ public class ModuleSpec implements Serializable {
 	 * @return
 	 */
 	public CommunicationKind getCommunicationKind(final int uid) {
-		Util.assertTrue(Spec.getModuleID(uid) == id);
+		Util.assertTrue(Spec.getModuleID(uid) == id, "method id " + uid + " (module=" + Spec.getModuleID(uid) + ", method=" + Spec.getMethodID(uid) + ") is not a member of module " + name + " (id " + id + ")");
 		final int mid = Spec.getMethodID(uid);
 		if (inlinedMethods.contains(mid)) {
 			return CommunicationKind.INLINE;

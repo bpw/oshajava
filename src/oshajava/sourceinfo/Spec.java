@@ -17,14 +17,14 @@ public class Spec {
 	
 	private static final int METHOD_BITS = 16;
 	private static final int METHOD_ID_SELECTOR = (1 << METHOD_BITS) - 1;
-	private static final int MAX_MODULE_ID = 1 << (METHOD_BITS - 1) - 1;
-	private static final int MODULE_ID_SELECTOR = MAX_MODULE_ID << METHOD_BITS;
+	private static final int MAX_MODULE_ID = 1 << (METHOD_BITS) - 1;
+//	private static final int MODULE_ID_SELECTOR = MAX_MODULE_ID << METHOD_BITS;
 
 	public static int getMethodID(final int uid) {
 		return uid & METHOD_ID_SELECTOR;
 	}
 	public static int getModuleID(final int uid) {
-		return (uid & MODULE_ID_SELECTOR) >> METHOD_BITS;
+		return uid >> METHOD_BITS;
 	}
 	public static int makeUID(final int moduleID, final int methodID) {
 		Util.assertTrue(moduleID <= MAX_MODULE_ID && methodID <= METHOD_ID_SELECTOR);
