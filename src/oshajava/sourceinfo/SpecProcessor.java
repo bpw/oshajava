@@ -1,6 +1,7 @@
 package oshajava.sourceinfo;
 
 import java.io.IOException;
+import java.io.File;
 import java.lang.annotation.Annotation;
 import java.net.URI;
 import java.util.Collection;
@@ -208,17 +209,19 @@ public class SpecProcessor extends AbstractProcessor implements TaskListener {
     		try {
     			// get the file it should be dumped in.
 //    			Util.logf("pkg: %s relname: %s", pkg, simpleName);
-    			final URI uri = processingEnv.getFiler().getResource(StandardLocation.locationFor("CLASS_OUTPUT"), 
+    			URI uri = processingEnv.getFiler().getResource(StandardLocation.locationFor("CLASS_OUTPUT"), 
     					pkg, simpleName + ModuleSpecBuilder.EXT).toUri();
+    			uri = new File(uri.getPath()).getAbsoluteFile().toURI(); // ensure the URI is absolute
        			module = (ModuleSpecBuilder)ColdStorage.load(uri);
        			note("Read " + qualifiedName);
        			Util.assertTrue(uri.equals(module.getURI()));
     		} catch (IOException e) {
     			// File did not exist. Create new module and its file.
     			try {
-					module = new ModuleSpecBuilder(qualifiedName,
-							processingEnv.getFiler().createResource(StandardLocation.locationFor("CLASS_OUTPUT"), 
-									pkg, simpleName + ModuleSpecBuilder.EXT).toUri());
+    			    URI uri = processingEnv.getFiler().createResource(StandardLocation.locationFor("CLASS_OUTPUT"), 
+							pkg, simpleName + ModuleSpecBuilder.EXT).toUri();
+					uri = new File(uri.getPath()).getAbsoluteFile().toURI();
+					module = new ModuleSpecBuilder(qualifiedName, uri);
 					changed.add(module);
 				} catch (IOException e1) {
 					throw new RuntimeException(e1);
