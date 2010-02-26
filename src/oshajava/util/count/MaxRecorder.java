@@ -1,22 +1,22 @@
 package oshajava.util.count;
 
 public class MaxRecorder {
-	private long max;
+	private int max;
 	
-	public MaxRecorder(final long max) {
+	public MaxRecorder(final int max) {
 		this.max = max;
 	}
 	public MaxRecorder() {
-		this(Long.MIN_VALUE);
+		this(Integer.MIN_VALUE);
 	}
 	
-	public synchronized void add(final long x) {
+	public synchronized void add(final int x) {
 		if (x > max) {
 			max = x;
 		}
 	}
 	
-	public synchronized long value() {
+	public synchronized int value() {
 		return max;
 	}
 }

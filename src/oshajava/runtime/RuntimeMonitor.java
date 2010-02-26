@@ -12,6 +12,7 @@ import oshajava.sourceinfo.Spec;
 import oshajava.support.acme.util.Util;
 import oshajava.util.GraphMLWriter;
 import oshajava.util.WeakConcurrentIdentityHashMap;
+import oshajava.util.count.Counter;
 import oshajava.util.intset.BitVectorIntSet;
 
 /**
@@ -73,6 +74,11 @@ public class RuntimeMonitor {
 	protected static final Graph executionGraph = new Graph(1024);
 
 	public static final boolean RECORD = false;
+	
+	/**
+	 * Record profiling information.
+	 */
+	public static final boolean PROFILE = true;
 
 	private static final ThreadLocal<ThreadState> threadState = new ThreadLocal<ThreadState>() {
 		@Override
@@ -94,6 +100,10 @@ public class RuntimeMonitor {
 		T contents;
 	}
 
+	public static final boolean COUNT_ARRAY_CACHE = RuntimeMonitor.PROFILE && true;
+	private static final Counter arrayCacheHits = new Counter();
+	private static final Counter arrayCacheMisses = new Counter();
+		
 	/*******************************************************************/
 
 	//	public static void newArray(int length, Object array) {
@@ -140,17 +150,12 @@ public class RuntimeMonitor {
 	// TODO Skip the wCache parameter and just do the field lookup if needed?
 	// OK if array == null. Slower, but the program is about to throw a NullPointerException anyway.
 	public static void arrayRead(final Object array, final int index, final ThreadState reader, final BitVectorIntSet wCache) {
-		if (array == reader.cachedArray) {
-			final State write;
-			try {
-				write = reader.cachedArrayIndexStates[index];
-			} catch (NullPointerException e) {
-				throw fudgeTrace(e);
-			}
-			if (write != null) {
-				checkRead(write, reader, wCache);
-			}
+		final State[] cachedStates = reader.getCachedArrayStateArray(array);
+		if (cachedStates != null) {
+			if (COUNT_ARRAY_CACHE) arrayCacheHits.inc();
+			checkRead(cachedStates[index], reader, wCache);
 		} else {
+			if (COUNT_ARRAY_CACHE) arrayCacheMisses.inc();
 			final State[] states;
 			try {
 				states = arrayStates.get(array);
@@ -162,16 +167,18 @@ public class RuntimeMonitor {
 				if (write != null) {
 					checkRead(write, reader, wCache);
 				}
-				reader.cachedArray = array;
-				reader.cachedArrayIndexStates = states;
+				reader.cacheArrayStateArray(array, states);
 			}
 		}
 	}
 
 	public static void arrayWrite(final Object array, final int index, final State currentState, final ThreadState writer) {
-		if (array == writer.cachedArray) {
-			writer.cachedArrayIndexStates[index] = currentState;
+		final State[] cachedStates = writer.getCachedArrayStateArray(array);
+		if (cachedStates != null) {
+			if (COUNT_ARRAY_CACHE) arrayCacheHits.inc();
+			cachedStates[index] = currentState;
 		} else {
+			if (COUNT_ARRAY_CACHE) arrayCacheMisses.inc();
 			State[] states = arrayStates.get(array);
 			if (states == null) {
 				// if array == null, we don't want to do anything more.
@@ -190,8 +197,7 @@ public class RuntimeMonitor {
 				}
 			}
 			states[index] = currentState;
-			writer.cachedArray = array;
-			writer.cachedArrayIndexStates = states;
+			writer.cacheArrayStateArray(array, states);
 		}
 	}
 
@@ -199,43 +205,46 @@ public class RuntimeMonitor {
 	// TODO Skip the wCache parameter and just do the field lookup if needed?
 	// OK if array == null. Slower, but the program is about to throw a NullPointerException anyway.
 	public static void coarseArrayRead(final Object array, final ThreadState reader, final BitVectorIntSet wCache) {
-		final State write;
-		if (array == reader.cachedArray) {
-			write = reader.cachedArrayStateRef.contents;
+		final State cachedState = reader.getCachedArrayState(array);
+		if (cachedState != null) {
+			if (COUNT_ARRAY_CACHE) arrayCacheHits.inc();
+			checkRead(cachedState, reader, wCache);
 		} else {
-			final Ref<State> writeRef;
+			if (COUNT_ARRAY_CACHE) arrayCacheMisses.inc();
+			final Ref<State> stateRef;
 			try {
-				writeRef = coarseArrayStates.get(array);
+				stateRef = coarseArrayStates.get(array);
 			} catch (NullPointerException e) {
 				throw fudgeTrace(e);
 			}
-			if (writeRef == null) return;
-			write = writeRef.contents;
-			reader.cachedArray = array;
-			reader.cachedArrayStateRef = writeRef;
-		}
-		if (write != null) {
-			checkRead(write, reader, wCache);
+			if (stateRef == null) {
+				return;
+			}
+			checkRead(stateRef.contents, reader, wCache);
+			reader.cacheArrayStateRef(array, stateRef);
 		}
 	}
 
 	public static void coarseArrayWrite(final Object array, final State currentState, final ThreadState threadState) {
 		//  if no array state caching, push the null check back to bytecode.
-		if (threadState.cachedArray == array) {
-			threadState.cachedArrayStateRef.contents = currentState;
+		final Ref<State> cachedRef = threadState.getCachedArrayStateRef(array);
+		if (cachedRef != null) {
+			if (COUNT_ARRAY_CACHE) arrayCacheHits.inc();
+			cachedRef.contents = currentState;
 		} else {
+			if (COUNT_ARRAY_CACHE) arrayCacheMisses.inc();
 			Ref<State> ref = coarseArrayStates.get(array);
 			if (ref == null) {
 				ref = new Ref<State>();
 				ref.contents = currentState;
+				// FIXME other threads could see this Ref with null contents unless CHM locks for insert.
 				final Ref<State> oldRef = coarseArrayStates.putIfAbsent(array, ref);
 				if (oldRef != null) {
 					ref = oldRef;
 					ref.contents = currentState;
 				}
 			}
-			threadState.cachedArray = array;
-			threadState.cachedArrayStateRef = ref;
+			threadState.cacheArrayStateRef(array, ref);
 		}
 	}
 
@@ -484,16 +493,32 @@ public class RuntimeMonitor {
 			}
 		}
 		// Report some stats.
-		Util.logf("Distinct threads created: %d", ThreadState.lastID() + 1);
-		if (Stack.COUNT_STACKS) Util.logf("Distinct stacks created: %d", Stack.stacksCreated.value());
-		Util.logf("Frequently communicating stacks: %d", Stack.lastID() + 1);
-		if (State.COUNT_STATES) {
-			Util.logf("Distinct states created: %d", State.statesCreated.value());
-			Util.logf("Average duplication of stacks (truncated): %f", (float) State.statesCreated.value() / ((float)Stack.lastID() + 1));
+		if (PROFILE) {
+			Util.log("---- Profile info ------------------------------------");
+			Util.log("Set RuntimeMonitor.PROFILE to false to disable profiling (and speed the tool up!)");
+			Util.logf("Distinct threads created: %d", ThreadState.lastID() + 1);
+			if (Stack.COUNT_STACKS) Util.logf("Distinct stacks created: %d", Stack.stacksCreated.value());
+			Util.logf("Frequently communicating stacks: %d", Stack.lastID() + 1);
+			if (State.COUNT_STATES) {
+				Util.logf("Distinct states created: %d", State.statesCreated.value());
+				Util.logf("Average duplication of stacks (truncated): %f", (float) State.statesCreated.value() / ((float)Stack.lastID() + 1));
+			}
+			if (BitVectorIntSet.COUNT_SLOTS) Util.logf("Max BitVectorIntSet slots: %d", BitVectorIntSet.maxSlots.value());
+			if (ModuleSpec.COUNT_METHODS) Util.logf("Max non-inlined methods per module: %d", ModuleSpec.maxMethods.value());
+			Util.logf("Modules loaded: %d", Spec.countModules());
+			if (COUNT_ARRAY_CACHE) {
+				Util.logf("Array cache hits: %d", arrayCacheHits.value());
+				Util.logf("Array cache misses: %d", arrayCacheMisses.value());
+				int totalHitWalk = 0;
+				for (int i = 0; i < ThreadState.CACHED_ARRAYS; i++) {
+					Util.logf("Array cache hits of length %d: %d", i+1, ThreadState.hitLengths[i].value());
+					totalHitWalk += ThreadState.hitLengths[i].value() * (i+1);
+				}
+				Util.logf("Array cache hit rate: %f, average walk to hit: %f", 
+						(float)arrayCacheHits.value() / (float)(arrayCacheHits.value() + arrayCacheMisses.value()),
+						(float)totalHitWalk / (float)arrayCacheHits.value());
+			}
 		}
-		if (BitVectorIntSet.COUNT_SLOTS) Util.logf("Max BitVectorIntSet slots: %d", BitVectorIntSet.maxSlots.value());
-		if (ModuleSpec.COUNT_METHODS) Util.logf("Max non-inlined methods per module: %d", ModuleSpec.maxMethods.value());
-		Util.logf("Modules loaded: %d", Spec.countModules());
 	}
 	
 

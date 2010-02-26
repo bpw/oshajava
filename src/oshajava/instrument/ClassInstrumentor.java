@@ -330,13 +330,15 @@ public class ClassInstrumentor extends ClassAdapter {
 		return super.visitField(access, name, desc, signature, value);
 	}
 
-	private boolean visitedClinit = false;
+	private boolean visitedClinit = false, visitedInit = false;
 	@Override
 	public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
 		if ((access & Opcodes.ACC_NATIVE) == 0) {
 		    MethodVisitor chain = super.visitMethod(access, name, desc, signature, exceptions);
 		    if (!name.equals("<clinit>")) {
-		    	visitedClinit = true;
+		    	if (name.equals("<init>")) {
+		    		visitedInit = true;
+		    	}
 		    	// (Not instrumenting class initializers avoids balooning the size
 		    	//  of large literal table constructions. It also makes sense, I
 		    	//  think, because no "communication" should occur (semantically)
@@ -351,6 +353,7 @@ public class ClassInstrumentor extends ClassAdapter {
 			    chain = new JSRInlinerAdapter(chain, access, name, desc, signature, exceptions);
 			    return chain;
 		    } else {
+		    	visitedClinit = true;
 		    	return new StaticShadowInitInserter(chain, access, name, desc, classType);
 		    }
 		} else {
@@ -379,70 +382,77 @@ public class ClassInstrumentor extends ClassAdapter {
 	}
 	
 
-	
+
 	@Override
 	public void visitEnd() {
-		// FIXME Generate a method that initializes all shadow fields belonging to this class.
-		// instance.
-		if (!instanceShadowFields.isEmpty()) {
-//	    	Util.log("gen " + INSTANCE_SHADOW_INIT_METHOD.getName());
-			GeneratorAdapter instance = new GeneratorAdapter(Opcodes.ACC_PRIVATE, INSTANCE_SHADOW_INIT_METHOD, 
-					super.visitMethod(Opcodes.ACC_PROTECTED, INSTANCE_SHADOW_INIT_METHOD.getName(), INSTANCE_SHADOW_INIT_METHOD.getDescriptor(), null, null));
+		if ((classAccess & Opcodes.ACC_INTERFACE) == 0) {
+			// FIXME Generate a method that initializes all shadow fields belonging to this class.
+			// instance.
+			GeneratorAdapter instance = new GeneratorAdapter(Opcodes.ACC_PROTECTED | Opcodes.ACC_SYNTHETIC, INSTANCE_SHADOW_INIT_METHOD, 
+					super.visitMethod(Opcodes.ACC_PROTECTED | Opcodes.ACC_SYNTHETIC, INSTANCE_SHADOW_INIT_METHOD.getName(), INSTANCE_SHADOW_INIT_METHOD.getDescriptor(), null, null));
 			instance.visitCode();
-			
-			int varCurrentState = instance.newLocal(STATE_TYPE);
-			instance.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_CURRENT_STATE);
-			instance.storeLocal(varCurrentState);
+
 			// call super.initer()
 			if (InstrumentationAgent.shouldInstrument(superName)) {
 				instance.loadThis();
 				instance.visitMethodInsn(Opcodes.INVOKESPECIAL, superName, INSTANCE_SHADOW_INIT_METHOD.getName(), INSTANCE_SHADOW_INIT_METHOD.getDescriptor());
 			}
-			
-			for (String shadow : instanceShadowFields) {
-				instance.loadThis();
-				instance.loadLocal(varCurrentState);
-				instance.visitFieldInsn(Opcodes.PUTFIELD, className, shadow, STATE_DESC);
-			}
-			instance.returnValue();
-			instance.visitMaxs(2, 1);
-			instance.visitEnd();
-		}
-		
-		// static.
-		if (!staticShadowFields.isEmpty()) {
-//	    	Util.log("gen " + STATIC_SHADOW_INIT_METHOD.getName());
-			GeneratorAdapter stat = new GeneratorAdapter(Opcodes.ACC_PRIVATE | Opcodes.ACC_STATIC, STATIC_SHADOW_INIT_METHOD, 
-					super.visitMethod(Opcodes.ACC_PRIVATE | Opcodes.ACC_STATIC, STATIC_SHADOW_INIT_METHOD.getName(), STATIC_SHADOW_INIT_METHOD.getDescriptor(), null, null));
-			stat.visitCode();
-			int varCurrentState = stat.newLocal(STATE_TYPE);
-			stat.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_CURRENT_STATE);
-			stat.storeLocal(varCurrentState);
-			for (String shadow : staticShadowFields) {
-				stat.loadLocal(varCurrentState);
-				stat.visitFieldInsn(Opcodes.PUTSTATIC, className, shadow, STATE_DESC);
-			}
-			stat.returnValue();
-			stat.visitMaxs(1, 1);
-			stat.visitEnd();
-		}
-		
-		if (!visitedClinit) {
-			final int acc = Opcodes.ACC_STATIC;
-			final String name = "<clinit>";
-			final String desc = "()V";
-			GeneratorAdapter clinit = new GeneratorAdapter(
-					new StaticShadowInitInserter(
-							super.visitMethod(acc, name, desc, null, null),
-							acc, name, desc, classType),
-					acc, name, desc
-			);
-			
-			clinit.visitCode();
-			clinit.visitMaxs(0, 0);
-			clinit.visitEnd();
-		}
+			if (!instanceShadowFields.isEmpty()) {
+				int varCurrentState = instance.newLocal(STATE_TYPE);
+				instance.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_CURRENT_STATE);
+				instance.storeLocal(varCurrentState);
 
+				for (String shadow : instanceShadowFields) {
+					instance.loadThis();
+					instance.loadLocal(varCurrentState);
+					instance.visitFieldInsn(Opcodes.PUTFIELD, className, shadow, STATE_DESC);
+				}
+				instance.visitInsn(Opcodes.RETURN);
+				instance.visitMaxs(2, 1);
+			} else {
+				instance.visitInsn(Opcodes.RETURN);
+				instance.visitMaxs(1, 0);
+			}
+			instance.visitEnd();
+
+			if (visitedClinit || !staticShadowFields.isEmpty()) {
+				// static.
+				GeneratorAdapter stat = new GeneratorAdapter(Opcodes.ACC_PRIVATE | Opcodes.ACC_STATIC | Opcodes.ACC_SYNTHETIC, STATIC_SHADOW_INIT_METHOD, 
+						super.visitMethod(Opcodes.ACC_PRIVATE | Opcodes.ACC_STATIC | Opcodes.ACC_SYNTHETIC, STATIC_SHADOW_INIT_METHOD.getName(), STATIC_SHADOW_INIT_METHOD.getDescriptor(), null, null));
+				stat.visitCode();
+				if (!staticShadowFields.isEmpty()) {
+					int varCurrentState = stat.newLocal(STATE_TYPE);
+					stat.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_CURRENT_STATE);
+					stat.storeLocal(varCurrentState);
+					for (String shadow : staticShadowFields) {
+						stat.loadLocal(varCurrentState);
+						stat.visitFieldInsn(Opcodes.PUTSTATIC, className, shadow, STATE_DESC);
+					}
+					stat.visitInsn(Opcodes.RETURN);
+					stat.visitMaxs(1, 1);
+				} else {
+					stat.visitInsn(Opcodes.RETURN);
+					stat.visitMaxs(0, 0);
+				}
+				stat.visitEnd();
+			}
+			if (!visitedClinit && !staticShadowFields.isEmpty()) {
+				final int acc = Opcodes.ACC_STATIC;
+				final String name = "<clinit>";
+				final String desc = "()V";
+				GeneratorAdapter clinit = new GeneratorAdapter(
+						new StaticShadowInitInserter(
+								super.visitMethod(acc, name, desc, null, null),
+								acc, name, desc, classType),
+								acc, name, desc
+				);
+
+				clinit.visitCode();
+				clinit.visitInsn(Opcodes.RETURN);
+				clinit.visitMaxs(0, 0);
+				clinit.visitEnd();
+			}
+		}
 	}
-	
+
 }
