@@ -400,7 +400,6 @@ public class ClassInstrumentor extends ClassAdapter {
 			
 			// call super.initer() if available
 		    if (classesWithInstanceShadowInit.contains(superName)) {
-		        Util.log("***" + classesWithInstanceShadowInit);
 				instance.loadThis();
 				instance.visitMethodInsn(Opcodes.INVOKESPECIAL, superName, INSTANCE_SHADOW_INIT_METHOD.getName(), INSTANCE_SHADOW_INIT_METHOD.getDescriptor());
 			}
