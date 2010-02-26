@@ -148,7 +148,7 @@ public class ModuleSpecBuilder implements Serializable {
 	/**
 	 * Represents a communication or interface group.
 	 */
-	private class Group {
+	private class Group implements Serializable {
 	    public String id;
 	    public Set<Integer> readers = new HashSet<Integer>();
 	    public Set<Integer> writers = new HashSet<Integer>();
