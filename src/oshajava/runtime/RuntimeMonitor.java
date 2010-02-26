@@ -507,16 +507,19 @@ public class RuntimeMonitor {
 			if (ModuleSpec.COUNT_METHODS) Util.logf("Max non-inlined methods per module: %d", ModuleSpec.maxMethods.value());
 			Util.logf("Modules loaded: %d", Spec.countModules());
 			if (COUNT_ARRAY_CACHE) {
-				Util.logf("Array cache hits: %d", arrayCacheHits.value());
-				Util.logf("Array cache misses: %d", arrayCacheMisses.value());
-				int totalHitWalk = 0;
-				for (int i = 0; i < ThreadState.CACHED_ARRAYS; i++) {
-					Util.logf("Array cache hits of length %d: %d", i+1, ThreadState.hitLengths[i].value());
-					totalHitWalk += ThreadState.hitLengths[i].value() * (i+1);
-				}
-				Util.logf("Array cache hit rate: %f, average walk to hit: %f", 
-						(float)arrayCacheHits.value() / (float)(arrayCacheHits.value() + arrayCacheMisses.value()),
-						(float)totalHitWalk / (float)arrayCacheHits.value());
+				Util.logf("Array accesses: %d", arrayCacheHits.value() + arrayCacheMisses.value());
+				Util.logf("    cache hits: %d", arrayCacheHits.value());
+				Util.logf("  cache misses: %d", arrayCacheMisses.value());
+				Util.logf("      hit rate: %f", 
+						(float)arrayCacheHits.value() / (float)(arrayCacheHits.value() + arrayCacheMisses.value()));
+//				int totalHitWalk = 0;
+//				for (int i = 0; i < ThreadState.CACHED_ARRAYS; i++) {
+//					Util.logf("Array cache hits of length %d: %d", i+1, ThreadState.hitLengths[i].value());
+//					totalHitWalk += ThreadState.hitLengths[i].value() * (i+1);
+//				}
+//				Util.logf("Array cache hit rate: %f, average walk to hit: %f", 
+//						(float)arrayCacheHits.value() / (float)(arrayCacheHits.value() + arrayCacheMisses.value()),
+//						(float)totalHitWalk / (float)arrayCacheHits.value());
 			}
 		}
 	}

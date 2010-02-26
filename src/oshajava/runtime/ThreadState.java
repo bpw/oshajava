@@ -113,6 +113,11 @@ public final class ThreadState {
 	// -- Array state caching --------------------------------------------------------
 	
 	/**
+	 * Direct-mapped cache -----------------------------------------------------------
+	 * Most in upper 90%s with 16. SOR at 88, Series at 50, Sparse at 72
+	 * 
+	 * LEGACY
+	 * Fully associative cache -------------------------------------------------------
 	 * For reference. Hit rates and avg successful walk lengths for given cache sizes.
 	 * 						History size
 	 * Benchmark			1		2		3		4		5		6		7		8
@@ -140,45 +145,50 @@ public final class ThreadState {
 	 * to minimize
 	 *     ((1 - HitRate(N)) * (N + 10)) + (HitRate(N) * AvgHitTime(N)) 
 	 */
-	protected static final int CACHED_ARRAYS = 3;
+//	protected static final int CACHED_ARRAYS = 3;
 	
 	protected static final boolean REPOSITION_CURSOR_ON_HIT = true;
 	
-	/**
-	 * Profiling: how many cache slots checked before typical hit.
-	 */
-	protected static final Counter[] hitLengths = new Counter[CACHED_ARRAYS];
-	static {
-		if (RuntimeMonitor.COUNT_ARRAY_CACHE) {
-			for (int i = 0; i < CACHED_ARRAYS; i++) {
-				hitLengths[i] = new Counter();
-			}
-		}
-	}
+	// TODO Do some GC of the cache or use array of WeakRefs to the actual array objects.
+	protected static final int ARRAY_CACHE_SIZE = 16;
+	// TODO victim buffer or 2-way associative?
+//	protected static final int VICTIM_BUFFER_SIZE = 2;
+	
+//	/**
+//	 * Profiling: how many cache slots checked before typical hit.
+//	 */
+//	protected static final Counter[] hitLengths = new Counter[CACHED_ARRAYS];
+//	static {
+//		if (RuntimeMonitor.COUNT_ARRAY_CACHE) {
+//			for (int i = 0; i < CACHED_ARRAYS; i++) {
+//				hitLengths[i] = new Counter();
+//			}
+//		}
+//	}
 
 	/**
 	 * Cached copy of the last accessed array.
 	 * TODO weak reference or just some GC of my own. e.g. delete after n method calls.	
 	 */
-	private final Object[] cachedArrays = new Object[CACHED_ARRAYS];
+	private final Object[] arrayCache = new Object[ARRAY_CACHE_SIZE];
 	
 	/**
 	 * Cached reference to the coarse array state of the last accessed array. Only used
 	 * in coarse array state mode.
 	 */
 	@SuppressWarnings("unchecked")
-	private final RuntimeMonitor.Ref<State>[] cachedArrayStateRefs = new RuntimeMonitor.Ref[CACHED_ARRAYS];
+	private final RuntimeMonitor.Ref<State>[] arrayStateRefCache = new RuntimeMonitor.Ref[ARRAY_CACHE_SIZE];
 	
-	/**
-	 * Always points to last cached array.
-	 */
-	private int cachedArrayCursor = 0;
-	
+//	/**
+//	 * Always points to last cached array.
+//	 */
+//	private int cachedArrayCursor = 0;
+//	
 	/**
 	 * Cached copy of the the array index states for the last accessed array. Only used
 	 * in array index state mode.
 	 */
-	private State[][] cachedArrayIndexStates = new State[CACHED_ARRAYS][];
+	private State[][] arrayIndexStateCache = new State[ARRAY_CACHE_SIZE][];
 	
 	/**
 	 * Get a cached array state array. (For array index states.)
@@ -186,17 +196,25 @@ public final class ThreadState {
 	 * @return
 	 */
 	protected State[] getCachedArrayStateArray(final Object array) {
-		int hitLength = 0;
-		for (int i = cachedArrayCursor; i - cachedArrayCursor < CACHED_ARRAYS; i++) {
-			if (cachedArrays[i % CACHED_ARRAYS] == array) {
-				if (RuntimeMonitor.COUNT_ARRAY_CACHE) hitLengths[hitLength].inc();
-				if (REPOSITION_CURSOR_ON_HIT) cachedArrayCursor = i % CACHED_ARRAYS;
-				return cachedArrayIndexStates[i % CACHED_ARRAYS];
-			}
-			if (RuntimeMonitor.COUNT_ARRAY_CACHE) hitLength++;
-		}
-		return null;
+		final int slot = System.identityHashCode(array) % ARRAY_CACHE_SIZE;
+		if (arrayCache[slot] == array) {
+			return arrayIndexStateCache[slot];
+		} else {
+			return null;
+		}	
 	}
+//	protected State[] getVictimBufferIndexStates(final Object array) {
+//		int hitLength = 0;
+//		for (int i = cachedArrayCursor; i - cachedArrayCursor < CACHED_ARRAYS; i++) {
+//			if (arrayCache[i % CACHED_ARRAYS] == array) {
+//				if (RuntimeMonitor.COUNT_ARRAY_CACHE) hitLengths[hitLength].inc();
+//				if (REPOSITION_CURSOR_ON_HIT) cachedArrayCursor = i % CACHED_ARRAYS;
+//				return arrayIndexStateCache[i % CACHED_ARRAYS];
+//			}
+//			if (RuntimeMonitor.COUNT_ARRAY_CACHE) hitLength++;
+//		}
+//		return null;
+//	}
 	
 	/**
 	 * Only call if the array wasn't in the cache already.
@@ -204,9 +222,9 @@ public final class ThreadState {
 	 * @param stateRef
 	 */
 	protected void cacheArrayStateArray(final Object array, final State[] states) {
-		cachedArrays[cachedArrayCursor] = array;
-		cachedArrayIndexStates[cachedArrayCursor] = states;
-		cachedArrayCursor = (cachedArrayCursor + 1) % CACHED_ARRAYS;
+		final int slot = System.identityHashCode(array) % ARRAY_CACHE_SIZE;
+		arrayCache[slot] = array;
+		arrayIndexStateCache[slot] = states;
 	}
 	
 	/**
@@ -215,18 +233,28 @@ public final class ThreadState {
 	 * @return
 	 */
 	protected RuntimeMonitor.Ref<State> getCachedArrayStateRef(final Object array) {
-		int hitLength = 0;
-		for (int i = cachedArrayCursor; i - cachedArrayCursor < CACHED_ARRAYS; i++) {
-			if (cachedArrays[i % CACHED_ARRAYS] == array) {
-				if (RuntimeMonitor.COUNT_ARRAY_CACHE) hitLengths[hitLength].inc();
-				if (REPOSITION_CURSOR_ON_HIT) cachedArrayCursor = i % CACHED_ARRAYS;
-				return cachedArrayStateRefs[i % CACHED_ARRAYS];
-			}
-			if (RuntimeMonitor.COUNT_ARRAY_CACHE) hitLength++;
+		final int slot = System.identityHashCode(array) % ARRAY_CACHE_SIZE;
+		if (arrayCache[slot] == array) {
+			return arrayStateRefCache[slot];
+		} else {
+			return null;
 		}
-		return null;
 	}
 	
+//	protected RuntimeMonitor.Ref<State> getVictimBufferStateRef(final Object array) {
+//		int hitLength = 0;
+//		for (int i = cachedArrayCursor; i - cachedArrayCursor < CACHED_ARRAYS; i++) {
+//			if (arrayCache[i % CACHED_ARRAYS] == array) {
+//				if (RuntimeMonitor.COUNT_ARRAY_CACHE) hitLengths[hitLength].inc();
+//				if (REPOSITION_CURSOR_ON_HIT) cachedArrayCursor = i % CACHED_ARRAYS;
+//				return arrayStateRefCache[i % CACHED_ARRAYS];
+//			}
+//			if (RuntimeMonitor.COUNT_ARRAY_CACHE) hitLength++;
+//		}
+//		return null;
+//
+//	}
+
 	/**
 	 * Get a cached array state. (For reads.)
 	 * @param array
@@ -243,9 +271,9 @@ public final class ThreadState {
 	 * @param stateRef
 	 */
 	protected void cacheArrayStateRef(final Object array, final RuntimeMonitor.Ref<State> stateRef) {
-		cachedArrays[cachedArrayCursor] = array;
-		cachedArrayStateRefs[cachedArrayCursor] = stateRef;
-		cachedArrayCursor = (cachedArrayCursor + 1) % CACHED_ARRAYS;
+		final int slot = System.identityHashCode(array) % ARRAY_CACHE_SIZE;
+		arrayCache[slot] = array;
+		arrayStateRefCache[slot] = stateRef;
 	}
 	
 	// -- Lock state caching ---------------------------------------------------------
