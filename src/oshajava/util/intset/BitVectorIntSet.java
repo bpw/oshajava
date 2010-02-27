@@ -2,6 +2,7 @@ package oshajava.util.intset;
 
 import java.io.Serializable;
 
+import oshajava.runtime.RuntimeMonitor;
 import oshajava.support.acme.util.Util;
 import oshajava.util.ArrayUtil;
 import oshajava.util.count.MaxRecorder;
@@ -28,7 +29,7 @@ public class BitVectorIntSet extends IntSet implements Serializable {
 	protected static final int SLOT_SIZE = 32;
 	
 	public static final MaxRecorder maxSlots = new MaxRecorder();
-	public static final boolean COUNT_SLOTS = true;
+	public static final boolean COUNT_SLOTS = RuntimeMonitor.PROFILE && true;
 	
 	private static final int MAX_SLOTS = Integer.MAX_VALUE / SLOT_SIZE - 1;
 

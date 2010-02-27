@@ -3,6 +3,7 @@ package oshajava.sourceinfo;
 import java.io.Serializable;
 import java.util.HashMap;
 
+import oshajava.runtime.RuntimeMonitor;
 import oshajava.support.acme.util.Util;
 import oshajava.util.count.MaxRecorder;
 import oshajava.util.intset.BitVectorIntSet;
@@ -24,7 +25,7 @@ public class ModuleSpec implements Serializable {
 	protected static final String EXT = ".omg"; // for Osha Module Graph
 
 	public static final MaxRecorder maxMethods = new MaxRecorder();
-	public static final boolean COUNT_METHODS = true;
+	public static final boolean COUNT_METHODS = RuntimeMonitor.PROFILE && true;
 	
 	/**
 	 * Kinds of communication.
@@ -90,7 +91,6 @@ public class ModuleSpec implements Serializable {
 		this.inlinedMethods = inlinedMethods;
 		this.methodSigToId = methodSigToId;
 		
-		if (COUNT_METHODS) maxMethods.add(methodIdToSig.length);
 	}
 	
 	/**
@@ -100,6 +100,7 @@ public class ModuleSpec implements Serializable {
 	 */
 	public void setId(int id) {
 		this.id = id;
+		if (COUNT_METHODS) maxMethods.add(methodIdToSig.length);
 	}
 	
 	/**

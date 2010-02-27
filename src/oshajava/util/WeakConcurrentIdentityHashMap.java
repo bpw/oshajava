@@ -39,6 +39,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 package oshajava.util;
 
 import java.lang.ref.WeakReference;
+import java.util.Collection;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.locks.ReentrantLock;
 
 
@@ -103,7 +107,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * @param <V> the type of mapped values 
  */
 @SuppressWarnings("unchecked")
-public class WeakConcurrentIdentityHashMap<K, V> {
+public class WeakConcurrentIdentityHashMap<K, V> implements ConcurrentMap<K,V> {
 
 	/*
 	 * The basic strategy is to subdivide the table among Segments,
@@ -737,4 +741,69 @@ public class WeakConcurrentIdentityHashMap<K, V> {
 //			throw new NullPointerException();
 //		return segmentFor(hash).put(key, hash, value, true);
 //	}
+
+	@Override
+	public void clear() {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
+	public boolean containsKey(Object key) {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
+	public boolean containsValue(Object value) {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
+	public Set<java.util.Map.Entry<K, V>> entrySet() {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
+	public boolean isEmpty() {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
+	public Set<K> keySet() {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
+	public void putAll(Map<? extends K, ? extends V> m) {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
+	public V remove(Object key) {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
+	public int size() {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
+	public Collection<V> values() {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
+	public boolean remove(Object key, Object value) {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
+	public V replace(K key, V value) {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
+	public boolean replace(K key, V oldValue, V newValue) {
+		throw new UnsupportedOperationException();
+	}
 }

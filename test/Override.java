@@ -3,11 +3,11 @@ public class Override {
 	public Override() {
 		foo();
 	}
-	void foo() {};
+	protected void foo() {};
 }
 
 class Over extends Override {
-	void foo() {
+	protected void foo() {
 		super.foo();
 	}
 }

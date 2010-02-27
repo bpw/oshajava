@@ -68,7 +68,6 @@ public class Spec {
 		ModuleSpec module = nameToModule.get(name);
 		if (module == null) {
 			module = loadModule(name, loader);
-			if (!module.checkIntegrity()) throw new ModuleSpecNotFoundException("integrity asdfgasjdg;ljk");
 //			synchronized (idToModule) { // not needed if this method is synchronized
 				module.setId(idToModule.size());
 				idToModule.add(module);

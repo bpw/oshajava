@@ -338,7 +338,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 	private boolean calledOtherConstructor = false;
 	@Override
 	public void onMethodEnter() {
-		if (isConstructor && !calledOtherConstructor && inst.hasInstanceShadowInit()) {
+		if (isConstructor && !calledOtherConstructor) {
 			// if no call to this() then init all shadow fields.
 			myStackSize(1);
 			super.loadThis();

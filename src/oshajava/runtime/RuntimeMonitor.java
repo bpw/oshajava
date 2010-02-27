@@ -10,8 +10,10 @@ import oshajava.sourceinfo.Graph;
 import oshajava.sourceinfo.ModuleSpec;
 import oshajava.sourceinfo.Spec;
 import oshajava.support.acme.util.Util;
+import oshajava.util.DirectMappedShadowCache;
 import oshajava.util.GraphMLWriter;
 import oshajava.util.WeakConcurrentIdentityHashMap;
+import oshajava.util.count.Counter;
 import oshajava.util.intset.BitVectorIntSet;
 
 /**
@@ -73,6 +75,11 @@ public class RuntimeMonitor {
 	protected static final Graph executionGraph = new Graph(1024);
 
 	public static final boolean RECORD = false;
+	
+	/**
+	 * Record profiling information.
+	 */
+	public static final boolean PROFILE = true;
 
 	private static final ThreadLocal<ThreadState> threadState = new ThreadLocal<ThreadState>() {
 		@Override
@@ -94,6 +101,10 @@ public class RuntimeMonitor {
 		T contents;
 	}
 
+//	public static final boolean COUNT_ARRAY_CACHE = RuntimeMonitor.PROFILE && true;
+//	private static final Counter arrayCacheHits = new Counter();
+//	private static final Counter arrayCacheMisses = new Counter();
+		
 	/*******************************************************************/
 
 	//	public static void newArray(int length, Object array) {
@@ -140,109 +151,61 @@ public class RuntimeMonitor {
 	// TODO Skip the wCache parameter and just do the field lookup if needed?
 	// OK if array == null. Slower, but the program is about to throw a NullPointerException anyway.
 	public static void arrayRead(final Object array, final int index, final ThreadState reader, final BitVectorIntSet wCache) {
-		if (array == reader.cachedArray) {
-			final State write;
-			try {
-				write = reader.cachedArrayIndexStates[index];
-			} catch (NullPointerException e) {
-				throw fudgeTrace(e);
-			}
+		final State[] states;
+		try {
+			states = reader.arrayIndexStateCache.get(array);
+		} catch (NullPointerException e) {
+			throw fudgeTrace(e);
+		}
+		if (states != null) {
+			final State write = states[index];
 			if (write != null) {
 				checkRead(write, reader, wCache);
-			}
-		} else {
-			final State[] states;
-			try {
-				states = arrayStates.get(array);
-			} catch (NullPointerException e) {
-				throw fudgeTrace(e);
-			}
-			if (states != null) {
-				final State write = states[index];
-				if (write != null) {
-					checkRead(write, reader, wCache);
-				}
-				reader.cachedArray = array;
-				reader.cachedArrayIndexStates = states;
 			}
 		}
 	}
 
 	public static void arrayWrite(final Object array, final int index, final State currentState, final ThreadState writer) {
-		if (array == writer.cachedArray) {
-			writer.cachedArrayIndexStates[index] = currentState;
-		} else {
-			State[] states = arrayStates.get(array);
-			if (states == null) {
-				// if array == null, we don't want to do anything more.
-				// the user code will throw the NullPointerException.
-				// by returning here, we also prevent the null key from
-				// getting into arrayStates and causing false commmunication
-				// ("collisions...")
-				// Since this is the init case, we can afford to pay. ;-)
-				if (array == null) {
-					return;
-				}
-				states = new State[Array.getLength(array)];
-				State[] old = arrayStates.putIfAbsent(array, states);
-				if (old != null) {
-					states = old;
-				}
+		State[] states = writer.arrayIndexStateCache.get(array);
+		if (states == null) {
+			states = new State[Array.getLength(array)];
+			final State[] oldStates = writer.arrayIndexStateCache.putIfAbsent(array, states);
+			if (oldStates != null) {
+				states = oldStates;
 			}
-			states[index] = currentState;
-			writer.cachedArray = array;
-			writer.cachedArrayIndexStates = states;
 		}
+		states[index] = currentState;
 	}
 
 	// TODO cached write array and cached read array? or is the linkage the key?
 	// TODO Skip the wCache parameter and just do the field lookup if needed?
 	// OK if array == null. Slower, but the program is about to throw a NullPointerException anyway.
 	public static void coarseArrayRead(final Object array, final ThreadState reader, final BitVectorIntSet wCache) {
-		final State write;
-		if (array == reader.cachedArray) {
-			write = reader.cachedArrayStateRef.contents;
-		} else {
-			final Ref<State> writeRef;
-			try {
-				writeRef = coarseArrayStates.get(array);
-			} catch (NullPointerException e) {
-				throw fudgeTrace(e);
-			}
-			if (writeRef == null) return;
-			write = writeRef.contents;
-			reader.cachedArray = array;
-			reader.cachedArrayStateRef = writeRef;
-		}
-		if (write != null) {
-			checkRead(write, reader, wCache);
+		final Ref<State> stateRef = reader.arrayStateCache.get(array);
+		if (stateRef != null) {
+			checkRead(stateRef.contents, reader, wCache);
 		}
 	}
 
 	public static void coarseArrayWrite(final Object array, final State currentState, final ThreadState threadState) {
 		//  if no array state caching, push the null check back to bytecode.
-		if (threadState.cachedArray == array) {
-			threadState.cachedArrayStateRef.contents = currentState;
+		Ref<State> stateRef = threadState.arrayStateCache.get(array);
+		if (stateRef != null) {
+			stateRef.contents = currentState;
 		} else {
-			Ref<State> ref = coarseArrayStates.get(array);
-			if (ref == null) {
-				ref = new Ref<State>();
-				ref.contents = currentState;
-				final Ref<State> oldRef = coarseArrayStates.putIfAbsent(array, ref);
-				if (oldRef != null) {
-					ref = oldRef;
-					ref.contents = currentState;
-				}
+			stateRef = new Ref<State>();
+			stateRef.contents = currentState;
+			stateRef = threadState.arrayStateCache.putIfAbsent(array, stateRef);
+			if (stateRef != null) {
+				stateRef.contents = currentState;
 			}
-			threadState.cachedArray = array;
-			threadState.cachedArrayStateRef = ref;
 		}
 	}
 
 
 	/**
 	 * Lock release hook.  Since things are well-scoped in Java, we'll just do all the work
-	 * in acquire.  Only need to hit the reentrancy counter here.
+	 * in acquire.  The only thinw we need to do here is hit the reentrancy counter.
 	 * 
 	 * INVARIANT: The method instrumentor relies on the fact that release() does NOT throw
 	 * ANY EXCEPTIONS.  We ensure the exit and release hooks are called on method exit
@@ -253,16 +216,9 @@ public class RuntimeMonitor {
 	 */
 	public static void release(final Object lock, final ThreadState holder) {
 		try {
-			final LockState ls = lockStates.get(lock);
+			final LockState ls = holder.lockStateCache.get(lock);
+			Util.assertTrue(ls.getDepth() >= 0, "Bad lock scoping");
     	    ls.decrementDepth();
-			final int depth = ls.getDepth();
-			if (depth < 1) {
-				if (depth < 0) {
-					Util.fail("Bad lock scoping");
-				} else {
-					holder.popLock();
-				}
-			}
 		} catch (Exception t) {
 			Util.fail(t);
 		}
@@ -282,48 +238,45 @@ public class RuntimeMonitor {
 	 */
 	public static void acquire(final Object lock, final ThreadState holder, final State holderState) {
 		try {
-			LockState lockState = holder.getLockState(lock);
-			if (lockState != null) {
-				// if it's in that stack, then it's already been acquired, so just increment the depth.
-				lockState.incrementDepth();
-			} else {
-				// else look it up.
-				lockState = lockStates.get(lock);
-				if (lockState == null) {
-					lockState = new LockState(holder.state);
-					lockState.setDepth(1);
-					// push it in the holder's cache.
-					holder.pushLock(lock, lockState);
-					lockState = lockStates.putIfAbsent(lock, lockState);
-					Util.assertTrue(lockState == null);
-				} else if (lockState.getDepth() < 0) {
-					Util.fail("Bad lock scoping.");
-				} else if (lockState.getDepth() == 0) {
-					// First (non-reentrant) acquire by this thread.
-					// NOTE: this is atomic, because we hold lock and no other thread can call
-					// the acquire or release hooks until they hold the lock.
-					final State lastHolderState = lockState.lastHolder;
-					if (lastHolderState != holderState) {
-						lockState.lastHolder = holderState;
-						lockState.incrementDepth();
-						if (lastHolderState.thread != holder) {
-							// TODO pass writerCache as param
-							if (!holderState.stack.writerCache.contains(lastHolderState.getStackID()) && !holderState.stack.checkWriter(lockState.lastHolder.stack)) {
-								throw new IllegalSynchronizationException(lastHolderState, holderState);
-							}
-
-						}
-					} else {
-						lockState.incrementDepth();
-					}
-				    
-					// push it in the holder's cache.
-					holder.pushLock(lock, lockState);
-				} else {
-					// if we're already reentrant, just go one deeper.
-					lockState.incrementDepth();
-				}
+			// get the lock state
+			final LockState lockState = holder.lockStateCache.get(lock);
+			if (lockState == null) {
+				final LockState ls = new LockState(holder.state);
+				ls.setDepth(1);
+				Util.assertTrue(
+						holder.lockStateCache.putIfAbsent(lock, ls) == null);					
+				return;
 			}
+			
+			// check and update the lock state.
+			if (lockState.getDepth() < 0) {
+				Util.fail("Bad lock scoping.");
+			} else if (lockState.getDepth() == 0) {
+				// First (non-reentrant) acquire by this thread.
+				// NOTE: this is atomic, because we hold lock and no other thread can call
+				// the acquire or release hooks until they hold the lock.
+				final State lastHolderState = lockState.lastHolder;
+				// if the last holder was in the current state:
+				if (lastHolderState == holderState) {
+					// no check needed, just increment depth to 1.
+					lockState.incrementDepth();
+				} else { // if the last holder was in a different state than the current state:
+					// set the lock state's holder to us.
+					lockState.lastHolder = holderState;
+					// increment depth to 1
+					lockState.incrementDepth();
+					// if last holder was not the same thread
+					if (lastHolderState.thread != holder) {
+						// if communication is not allowed, throw an exception.
+						if (!holderState.stack.writerCache.contains(lastHolderState.getStackID()) && !holderState.stack.checkWriter(lockState.lastHolder.stack)) {
+							throw new IllegalSynchronizationException(lastHolderState, holderState);
+						}
+					}
+				}
+			} else { // depth is > 0. This is a reentrant acquire
+				lockState.incrementDepth();
+			}
+
 		} catch (IllegalCommunicationException e) {
 			throw e;
 		} catch (Throwable t) {
@@ -372,11 +325,8 @@ public class RuntimeMonitor {
 	 * Hook to call before making a call to wait.
 	 */
 	public static int prewait(final Object lock, final ThreadState holder) {
-		LockState lockState = holder.getLockState(lock);
-		if (lockState == null) {
-			lockState = lockStates.get(lock);
-			Util.assertTrue(lockState != null && lockState.getDepth() > 0, "Bad prewait");
-		}
+		final LockState lockState = holder.lockStateCache.get(lock);
+		Util.assertTrue(lockState.getDepth() > 0, "Bad prewait");
 		final int depth = lockState.getDepth();
 		lockState.setDepth(0);
 		return depth;
@@ -387,11 +337,8 @@ public class RuntimeMonitor {
 	 * Hook to call when returning from a call to wait.
 	 */
 	public static void postwait(final Object lock, final int resumeDepth, final ThreadState ts, final State currentState) {
-		LockState lockState = ts.getLockState(lock);
-		if (lockState == null) {
-			lockState = lockStates.get(lock);
-			Util.assertTrue(lockState != null && lockState.getDepth() == 0, "Bad postwait");
-		}
+		final LockState lockState = ts.lockStateCache.get(lock);
+		Util.assertTrue(lockState.getDepth() == 0, "Bad postwait");
 		lockState.setDepth(resumeDepth);
 		final State lastHolderState = lockState.lastHolder;
 		if (lastHolderState != currentState) { // necessary because of the timeout versions of wait.
@@ -484,16 +431,43 @@ public class RuntimeMonitor {
 			}
 		}
 		// Report some stats.
-		Util.logf("Distinct threads created: %d", ThreadState.lastID() + 1);
-		if (Stack.COUNT_STACKS) Util.logf("Distinct stacks created: %d", Stack.stacksCreated.value());
-		Util.logf("Frequently communicating stacks: %d", Stack.lastID() + 1);
-		if (State.COUNT_STATES) {
-			Util.logf("Distinct states created: %d", State.statesCreated.value());
-			Util.logf("Average duplication of stacks (truncated): %f", (float) State.statesCreated.value() / ((float)Stack.lastID() + 1));
+		if (PROFILE) {
+			Util.log("---- Profile info ------------------------------------");
+			Util.log("Set RuntimeMonitor.PROFILE to false to disable profiling (and speed the tool up!)");
+			Util.logf("Distinct threads created: %d", ThreadState.lastID() + 1);
+			if (Stack.COUNT_STACKS) Util.logf("Distinct stacks created: %d", Stack.stacksCreated.value());
+			Util.logf("Frequently communicating stacks: %d", Stack.lastID() + 1);
+			if (State.COUNT_STATES) {
+				Util.logf("Distinct states created: %d", State.statesCreated.value());
+				Util.logf("Average duplication of stacks (truncated): %f", (float) State.statesCreated.value() / ((float)Stack.lastID() + 1));
+			}
+			if (BitVectorIntSet.COUNT_SLOTS) Util.logf("Max BitVectorIntSet slots: %d", BitVectorIntSet.maxSlots.value());
+			if (ModuleSpec.COUNT_METHODS) Util.logf("Max non-inlined methods per module: %d", ModuleSpec.maxMethods.value());
+			Util.logf("Modules loaded: %d", Spec.countModules());
+			if (DirectMappedShadowCache.COUNT) {
+				Util.logf("Array accesses: %d", ThreadState.ARRAY_HITS.value() + ThreadState.ARRAY_MISSES.value());
+				Util.logf("    cache hits: %d", ThreadState.ARRAY_HITS.value());
+				Util.logf("  cache misses: %d", ThreadState.ARRAY_MISSES.value());
+				Util.logf("      hit rate: %f", 
+						(float)ThreadState.ARRAY_HITS.value() / (float)(ThreadState.ARRAY_HITS.value() + ThreadState.ARRAY_MISSES.value()));
+				Util.logf("    cache size: %d", ThreadState.ARRAY_CACHE_SIZE);
+				
+				Util.logf("Lock accesses: %d", ThreadState.LOCK_HITS.value() + ThreadState.LOCK_MISSES.value());
+				Util.logf("   cache hits: %d", ThreadState.LOCK_HITS.value());
+				Util.logf(" cache misses: %d", ThreadState.LOCK_MISSES.value());
+				Util.logf("     hit rate: %f", 
+						(float)ThreadState.LOCK_HITS.value() / (float)(ThreadState.LOCK_HITS.value() + ThreadState.LOCK_MISSES.value()));
+				Util.logf("    cache size: %d", ThreadState.LOCK_CACHE_SIZE);
+//				int totalHitWalk = 0;
+//				for (int i = 0; i < ThreadState.CACHED_ARRAYS; i++) {
+//					Util.logf("Array cache hits of length %d: %d", i+1, ThreadState.hitLengths[i].value());
+//					totalHitWalk += ThreadState.hitLengths[i].value() * (i+1);
+//				}
+//				Util.logf("Array cache hit rate: %f, average walk to hit: %f", 
+//						(float)arrayCacheHits.value() / (float)(arrayCacheHits.value() + arrayCacheMisses.value()),
+//						(float)totalHitWalk / (float)arrayCacheHits.value());
+			}
 		}
-		if (BitVectorIntSet.COUNT_SLOTS) Util.logf("Max BitVectorIntSet slots: %d", BitVectorIntSet.maxSlots.value());
-		if (ModuleSpec.COUNT_METHODS) Util.logf("Max non-inlined methods per module: %d", ModuleSpec.maxMethods.value());
-		Util.logf("Modules loaded: %d", Spec.countModules());
 	}
 	
 

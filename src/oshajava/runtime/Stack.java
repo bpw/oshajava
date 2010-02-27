@@ -11,7 +11,7 @@ import oshajava.util.intset.BitVectorIntSet;
 public class Stack {
 	
 	public static final Counter stacksCreated = new Counter();
-	public static final boolean COUNT_STACKS = true;
+	public static final boolean COUNT_STACKS = RuntimeMonitor.PROFILE && true;
 	
 	protected static final Stack root = new Stack(-1, null);
 
