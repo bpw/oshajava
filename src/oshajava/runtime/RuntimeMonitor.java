@@ -446,18 +446,18 @@ public class RuntimeMonitor {
 			Util.logf("Modules loaded: %d", Spec.countModules());
 			if (DirectMappedShadowCache.COUNT) {
 				Util.logf("Array accesses: %d", ThreadState.ARRAY_HITS.value() + ThreadState.ARRAY_MISSES.value());
-				Util.logf("    cache size: %d", ThreadState.ARRAY_CACHE_SIZE);
+				Util.logf("    cache hits: %d", ThreadState.ARRAY_HITS.value());
 				Util.logf("  cache misses: %d", ThreadState.ARRAY_MISSES.value());
 				Util.logf("      hit rate: %f", 
 						(float)ThreadState.ARRAY_HITS.value() / (float)(ThreadState.ARRAY_HITS.value() + ThreadState.ARRAY_MISSES.value()));
-				Util.logf("    cache hits: %d", ThreadState.ARRAY_HITS.value());
+				Util.logf("    cache size: %d", ThreadState.ARRAY_CACHE_SIZE);
 				
 				Util.logf("Lock accesses: %d", ThreadState.LOCK_HITS.value() + ThreadState.LOCK_MISSES.value());
-				Util.logf("    cache size: %d", ThreadState.LOCK_CACHE_SIZE);
+				Util.logf("   cache hits: %d", ThreadState.LOCK_HITS.value());
 				Util.logf(" cache misses: %d", ThreadState.LOCK_MISSES.value());
 				Util.logf("     hit rate: %f", 
 						(float)ThreadState.LOCK_HITS.value() / (float)(ThreadState.LOCK_HITS.value() + ThreadState.LOCK_MISSES.value()));
-				Util.logf("   cache hits: %d", ThreadState.LOCK_HITS.value());
+				Util.logf("    cache size: %d", ThreadState.LOCK_CACHE_SIZE);
 //				int totalHitWalk = 0;
 //				for (int i = 0; i < ThreadState.CACHED_ARRAYS; i++) {
 //					Util.logf("Array cache hits of length %d: %d", i+1, ThreadState.hitLengths[i].value());

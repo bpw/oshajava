@@ -386,7 +386,6 @@ public class ClassInstrumentor extends ClassAdapter {
 	@Override
 	public void visitEnd() {
 		if ((classAccess & Opcodes.ACC_INTERFACE) == 0) {
-			// FIXME Generate a method that initializes all shadow fields belonging to this class.
 			// instance.
 			GeneratorAdapter instance = new GeneratorAdapter(Opcodes.ACC_PROTECTED | Opcodes.ACC_SYNTHETIC, INSTANCE_SHADOW_INIT_METHOD, 
 					super.visitMethod(Opcodes.ACC_PROTECTED | Opcodes.ACC_SYNTHETIC, INSTANCE_SHADOW_INIT_METHOD.getName(), INSTANCE_SHADOW_INIT_METHOD.getDescriptor(), null, null));

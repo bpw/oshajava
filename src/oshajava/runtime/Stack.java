@@ -244,6 +244,9 @@ public class Stack {
 	
 	@Override
 	public String toString() {
+	    if (methodUID == -1) {
+	        return "(root)";
+	    }
 		final ModuleSpec mod = Spec.getModule(methodUID);
 		return "[" + mod.getName() + "] " + mod.getMethodSignature(methodUID) + "\n" + (parent != null ? " called by " + parent.toString() : "");
 	}
