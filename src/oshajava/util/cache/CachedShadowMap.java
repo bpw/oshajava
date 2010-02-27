@@ -1,4 +1,6 @@
-package oshajava.util;
+package oshajava.util.cache;
+
+import oshajava.util.WeakConcurrentIdentityHashMap;
 
 public class CachedShadowMap<V> {
 	

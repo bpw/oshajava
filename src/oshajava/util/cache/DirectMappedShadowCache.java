@@ -1,4 +1,4 @@
-package oshajava.util;
+package oshajava.util.cache;
 
 import java.util.concurrent.ConcurrentMap;
 
@@ -48,13 +48,9 @@ public class DirectMappedShadowCache<K,V> extends ShadowCache<K,V> {
 		this.values = (V[])new Object[size];
 		this.hits = hits;
 		this.misses = misses;
-		int bits = 0;
-		while (size > 1) {
-			if (size % 2 != 0) throw new IllegalArgumentException("The size parameter must be a power of 2. (" + size + " is not.)");
-			size >>= 1;
-			bits++;
-		}
-		this.mask = (1 << bits) - 1;
+		this.mask = size - 1;
+		if ((mask & size) != 0) throw new IllegalArgumentException("The size parameter must be a power of 2. (" + size + " is not.)");
+		
 	}
 	
 	/**

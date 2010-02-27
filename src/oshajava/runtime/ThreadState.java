@@ -4,8 +4,8 @@ import java.lang.ref.WeakReference;
 
 import oshajava.runtime.RuntimeMonitor.Ref;
 import oshajava.support.acme.util.Util;
-import oshajava.util.DirectMappedShadowCache;
-import oshajava.util.ShadowCache;
+import oshajava.util.cache.DirectMappedShadowCache;
+import oshajava.util.cache.ShadowCache;
 import oshajava.util.count.Counter;
 
 

@@ -1,4 +1,4 @@
-package oshajava.util;
+package oshajava.util.cache;
 
 import java.util.concurrent.ConcurrentMap;
 

@@ -10,9 +10,9 @@ import oshajava.sourceinfo.Graph;
 import oshajava.sourceinfo.ModuleSpec;
 import oshajava.sourceinfo.Spec;
 import oshajava.support.acme.util.Util;
-import oshajava.util.DirectMappedShadowCache;
 import oshajava.util.GraphMLWriter;
 import oshajava.util.WeakConcurrentIdentityHashMap;
+import oshajava.util.cache.DirectMappedShadowCache;
 import oshajava.util.count.Counter;
 import oshajava.util.intset.BitVectorIntSet;
 
