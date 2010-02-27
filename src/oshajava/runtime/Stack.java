@@ -197,14 +197,18 @@ public class Stack {
 	 * @return the last stack frame that contributed to the set.
 	 */
 	private Stack expandLayer(final BitVectorIntSet layer, final int moduleID) {
-		if (parent == null) {
-			return null;
-		} else if (moduleID == Spec.getModuleID(parent.methodUID)) {
-			layer.add(Spec.getMethodID(parent.methodUID));
-			return parent.expandLayer(layer, moduleID);
-		} else {
-			return this;
-		}
+	    // Should only be called on a stack with at least one method from
+	    // the module.
+	    Util.assertTrue(moduleID == Spec.getModuleID(methodUID));
+	        
+        layer.add(Spec.getMethodID(methodUID));
+        if (moduleID != Spec.getModuleID(parent.methodUID)) {
+            // Module boundary.
+            return this;
+        } else {
+            // Continue expanding.
+            return parent.expandLayer(layer, moduleID);
+        }
 	}
 	
 	/**
@@ -218,13 +222,15 @@ public class Stack {
 	 * @throws IllegalInternalEdgeException if there was an illegal internal edge
 	 */
 	private Stack checkLayer(final BitVectorIntSet layer, final ModuleSpec module) throws IllegalInternalEdgeException {
-		if (parent == null) {
-			return null;
-		} else if (module.allAllowed(methodUID, layer)) {
+	    Util.assertTrue(module.getId() == Spec.getModuleID(methodUID));
+	    
+		if (module.allAllowed(methodUID, layer)) {
 			if (module.getId() != Spec.getModuleID(parent.methodUID)) {
-				return parent.checkLayer(layer, module);
-			} else {
+			    // Module boundary.
 				return this;
+			} else {
+			    // Continue checking.
+				return parent.checkLayer(layer, module);
 			}
 		} else {
 			throw new IllegalInternalEdgeException();
