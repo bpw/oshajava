@@ -102,25 +102,22 @@ public class BitVectorIntSet extends IntSet implements Serializable {
 	 * @return
 	 */
 	public boolean containsAll(final BitVectorIntSet other) {
-		int min, max;
-		int[] longer;
+		int min;
 		final int[] otherbits = other.bits;
 		if (bits.length < otherbits.length) {
 			min = bits.length;
-			max = otherbits.length;
-			longer = otherbits;
+			// Ensure the additional bits are zero (we contain none of them).
+			for (int i = bits.length; i < otherbits.length; i++) {
+    			if (otherbits[i] != 0) return false;
+    		}
 		} else {
 			min = otherbits.length;
-			max = bits.length;
-			longer = bits;
+			// Our additional bits don't matter.
 		}
 		for (int i = 0; i < min; i++) {
 			if ((bits[i] | otherbits[i]) != bits[i]) {
 				return false;
 			}
-		}
-		for (int i = min; i < max; i++) {
-			if (longer[i] != 0) return false;
 		}
 		return true;
 	}
