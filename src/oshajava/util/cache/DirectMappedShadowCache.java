@@ -6,7 +6,8 @@ import oshajava.runtime.RuntimeMonitor;
 import oshajava.util.count.Counter;
 
 /**
- * A direct-mapped cache front-end for a Map. Keys are hashed by System.identityHashCode.
+ * A THREAD-LOCAL direct-mapped cache front-end for a shared ConcurrentMap. 
+ * Keys are hashed by System.identityHashCode.
  * @author bpw
  *
  * @param <K> Type of keys
@@ -31,6 +32,9 @@ public class DirectMappedShadowCache<K,V> extends ShadowCache<K,V> {
 	 */
 	protected final V[] values;
 	
+	/**
+	 * Optional counters to count hits and misses.
+	 */
 	protected final Counter hits, misses;
 
 	/**
@@ -61,13 +65,13 @@ public class DirectMappedShadowCache<K,V> extends ShadowCache<K,V> {
 	public V get(final K key) {
 		final int slot = System.identityHashCode(key) & mask;
 		if (keys[slot] == key) {
-			if (COUNT) hits.inc();
+			if (COUNT && hits != null) hits.inc();
 			return values[slot];
 		}
 		if (key == null) {
 			return null;
 		}
-		if (COUNT) misses.inc();
+		if (COUNT && misses != null) misses.inc();
 		final V val = store.get(key);
 		if (val != null) {
 			keys[slot] = key;
