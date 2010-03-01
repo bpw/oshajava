@@ -2,6 +2,7 @@ package oshajava.runtime;
 
 import java.lang.ref.WeakReference;
 
+import oshajava.Config;
 import oshajava.runtime.RuntimeMonitor.Ref;
 import oshajava.support.acme.util.Util;
 import oshajava.util.cache.DirectMappedShadowCache;
@@ -116,15 +117,17 @@ public final class ThreadState {
 	// -- Array state caching --------------------------------------------------------
 	
 	public static final Counter ARRAY_HITS = new Counter(), ARRAY_MISSES = new Counter();
-	public static final int ARRAY_CACHE_SIZE = 16;
 	
 	protected final ShadowCache<Object,Ref<State>> arrayStateCache = 
-		new DirectMappedShadowCache<Object,Ref<State>>(RuntimeMonitor.coarseArrayStates, ARRAY_CACHE_SIZE,
-				ARRAY_HITS, ARRAY_MISSES);
+		Config.arrayIndexStatesOption.get() ? null :
+			new DirectMappedShadowCache<Object,Ref<State>>(RuntimeMonitor.coarseArrayStates, 
+					Config.arrayCacheSizeOption.get(),	ARRAY_HITS, ARRAY_MISSES);
 	
 	protected final ShadowCache<Object,State[]> arrayIndexStateCache = 
-		new DirectMappedShadowCache<Object,State[]>(RuntimeMonitor.arrayStates, ARRAY_CACHE_SIZE,
-				ARRAY_HITS, ARRAY_MISSES);
+		Config.arrayIndexStatesOption.get() ?
+				new DirectMappedShadowCache<Object,State[]>(RuntimeMonitor.arrayStates, 
+						Config.arrayCacheSizeOption.get(), ARRAY_HITS, ARRAY_MISSES)
+				: null;
 	
 //	/**
 //	 * Direct-mapped cache -----------------------------------------------------------
@@ -293,11 +296,10 @@ public final class ThreadState {
 	// -- Lock state caching ---------------------------------------------------------
 	
 	public static final Counter LOCK_HITS = new Counter(), LOCK_MISSES = new Counter();
-	public static final int LOCK_CACHE_SIZE = 16;
 
 	protected final ShadowCache<Object,LockState> lockStateCache = 
-		new DirectMappedShadowCache<Object,LockState>(RuntimeMonitor.lockStates, LOCK_CACHE_SIZE,
-				LOCK_HITS, LOCK_MISSES);
+		new DirectMappedShadowCache<Object,LockState>(RuntimeMonitor.lockStates, 
+				Config.lockCacheSizeOption.get(), LOCK_HITS, LOCK_MISSES);
 	
 //	private static final int LOCK_CACHE_SIZE = 16;
 //	private final Object[] lockStateCacheKeys = new Object[LOCK_CACHE_SIZE];

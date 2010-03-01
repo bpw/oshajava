@@ -9,8 +9,11 @@ import java.lang.instrument.Instrumentation;
 import java.security.ProtectionDomain;
 import java.util.HashMap;
 
+import oshajava.Config;
 import oshajava.sourceinfo.ModuleSpecNotFoundException;
 import oshajava.support.acme.util.Util;
+import oshajava.support.acme.util.option.CommandLine;
+import oshajava.support.acme.util.option.CommandLineOption;
 import oshajava.support.org.objectweb.asm.ClassReader;
 import oshajava.support.org.objectweb.asm.ClassVisitor;
 import oshajava.support.org.objectweb.asm.ClassWriter;
@@ -20,7 +23,6 @@ import oshajava.support.org.objectweb.asm.util.CheckClassAdapter;
 
 /**
  * TODO options
- * + dump instrumented class files? where?
  * + on illegal communication: throw, log, both?
  * 
  * 
@@ -78,54 +80,46 @@ public class InstrumentationAgent implements ClassFileTransformer {
 		"java/awt/RenderingHints",
 	};
 
-	static class Options {	
-		public boolean debug = true;
-		public boolean verifyInput = true;
-		public String  bytecodeDump = "oshajava-instrumentation-dump";
-		public boolean java6 = false;
-		public boolean instrument = true;
-		public boolean coarseArrayStates = true;
-		public boolean coarseFieldStates = false;
-		public boolean instrumentFinalFields = false;
-		public boolean remapJDK = false;
-		public String methodTableFile = null;
-
-		public boolean verifyOutput() {
-			return debug;
-		}
-		public boolean frames() {
-			return java6;
-		}
-	}
-
-	public final Options opts;
-
-	public InstrumentationAgent(Options opts) {
-		this.opts = opts;
-		//		methodTable = opts.methodTableFile == null ? new MethodTable() : (MethodTable)ColdStorage.load(opts.methodTableFile);
-	}
+	public static final CommandLineOption<Boolean> fullJDKInstrumentationOption =
+		CommandLine.makeBoolean("instrumentFullJDK", false, "");
+	
+	public static final CommandLineOption<Boolean> bytecodeDumpOption =
+		CommandLine.makeBoolean("bytecodeDump", true, "");
+	
+	public static final CommandLineOption<String> bytecodeDumpDirOption =
+		CommandLine.makeString("bytecodeDump", 
+				Util.outputPathOption.get() + File.separator + "bytecode-dump", "");
+	
+	public static final CommandLineOption<Boolean> verifyOption =
+		CommandLine.makeBoolean("verify", true, "");
+	
+	public static final CommandLineOption<Boolean> preVerifyOption =
+		CommandLine.makeBoolean("preVerify", true, "");
+	
+	public static final CommandLineOption<Boolean> framesOption =
+		CommandLine.makeBoolean("frames", true, "");
 
 	public byte[] instrument(String className, byte[] bytecode, ClassLoader loader) throws ModuleSpecNotFoundException {
 		try {
 			final ClassReader in = new ClassReader(bytecode);
-			final ClassWriter out = new ClassWriter(in, opts.frames() ? ClassWriter.COMPUTE_FRAMES : 0);
+			final ClassWriter out = new ClassWriter(in, framesOption.get() ? ClassWriter.COMPUTE_FRAMES : 0);
 			ClassVisitor chain = out;
 			// Build a chain according to the options.
-			if (opts.verifyOutput()) {
+			if (verifyOption.get()) {
 				chain = new CheckClassAdapter(chain);
 			}
-			chain = new ClassInstrumentor(chain, loader, opts);
-			if (!opts.java6) {
+			chain = new ClassInstrumentor(chain, loader);
+			if (!framesOption.get()) {
 				chain = new RemoveJava6Adapter(chain);
 			}
-			if (opts.remapJDK) {
+			if (fullJDKInstrumentationOption.get()) {
 				chain = new RemappingClassAdapter(chain, new SimpleRemapper(uninstrumentedLoadedClasses));
 			}
-			if (opts.verifyInput) {
+			if (preVerifyOption.get()) {
 				chain = new CheckClassAdapter(chain);
 			}
 			Util.logf("Instrumenting %s", className);
-			in.accept(chain, ClassReader.SKIP_FRAMES);
+			in.accept(chain, ClassReader.SKIP_FRAMES); // FIXME frames
 			return out.toByteArray();
 		} catch (ModuleSpecNotFoundException.Wrapper e) {
 			throw e.unwrap();
@@ -139,10 +133,13 @@ public class InstrumentationAgent implements ClassFileTransformer {
 	public static void premain(String agentArgs, Instrumentation inst) {
 		try {
 			Thread.currentThread().setName("oshajava");
+			
+			Config.cl.apply(agentArgs.split("____"));
+			
 			// TODO if args say to infer/record, Runtime.getRuntime().addShutdownHook(dumper);
 			Util.log("Loading oshajava runtime");
 			// Register the instrumentor with the jvm as a class file transformer.
-			InstrumentationAgent agent = new InstrumentationAgent(new Options());
+			InstrumentationAgent agent = new InstrumentationAgent();
 
 			// TODO do we miss anything loaded later by asm, acme this way?
 			synchronized(uninstrumentedLoadedClasses) {
@@ -183,8 +180,8 @@ public class InstrumentationAgent implements ClassFileTransformer {
 			if (!shouldTransform(className)) return null;
 			final byte[] instrumentedBytecode = instrument(className, bytecode, loader);
 			//			RuntimeMonitor.loadNewMethods();
-			if (opts.bytecodeDump != null && instrumentedBytecode != bytecode) {
-				File f = new File(opts.bytecodeDump + File.separator + className + ".class");
+			if (instrumentedBytecode != bytecode && bytecodeDumpOption.get()) {
+				File f = new File(bytecodeDumpDirOption.get() + File.separator + className + ".class");
 				f.getParentFile().mkdirs();
 				BufferedOutputStream insFile = new BufferedOutputStream(new FileOutputStream(f));
 				insFile.write(instrumentedBytecode);
@@ -204,23 +201,21 @@ public class InstrumentationAgent implements ClassFileTransformer {
 	}
 
 	private boolean shouldTransform(String className) {
-		if (opts.instrument) {
-			if (!instrumentationOn) {
-				if(className.equals(mainClassInternalName)) {
-					instrumentationOn = true;
-					Util.logf("Loading main class (%s) and starting instrumentation.", mainClassInternalName);
-					return true;
-				}
-				//				Util.logf("Ignoring %s (Instrumentation not started yet.)", className);
-			} else if (appThreadGroupRoot.parentOf(Thread.currentThread().getThreadGroup())
-					&& shouldInstrument(className)
-					&& !hasUninstrumentedOuterClass(className)) {
-				// if this is a thread spawned by the app and we don't ignore this class.
-				// TODO this loses finalize methods, called by GC, probably not in an app thread.
+		if (!instrumentationOn) {
+			if(className.equals(mainClassInternalName)) {
+				instrumentationOn = true;
+				Util.logf("Loading main class (%s) and starting instrumentation.", mainClassInternalName);
 				return true;
-			} else {
-				Util.logf("Ignoring %s", className);
 			}
+			//				Util.logf("Ignoring %s (Instrumentation not started yet.)", className);
+		} else if (appThreadGroupRoot.parentOf(Thread.currentThread().getThreadGroup())
+				&& shouldInstrument(className)
+				&& !hasUninstrumentedOuterClass(className)) {
+			// if this is a thread spawned by the app and we don't ignore this class.
+			// TODO this loses finalize methods, called by GC, probably not in an app thread.
+			return true;
+		} else {
+			Util.logf("Ignoring %s", className);
 		}
 		return false;
 	}
