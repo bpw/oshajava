@@ -26,25 +26,26 @@ import oshajava.support.acme.util.option.CommandLineOption;
 public class Config {
 
 	public static final CommandLineOption<Boolean> arrayIndexStatesOption =
-		CommandLine.makeBoolean("arrayIndexStates", false, "");
+		CommandLine.makeBoolean("arrayIndexStates", false, "Track communication per array per index instead of per array.");
 	
 	public static final CommandLineOption<Boolean> objectStatesOption = 
-		CommandLine.makeBoolean("objectStates", false, "");
+		CommandLine.makeBoolean("objectStates", false, "Track communication per object instead of per field per object.");
 	
+	// FIXME probably requires updates in static processor.
 	public static final CommandLineOption<Boolean> nonCommAsDefaultOption =
-		CommandLine.makeBoolean("defaultToNonComm", false, "");
+		CommandLine.makeBoolean("defaultToNonComm", false, "Make methods non-communicating by default (instead of inlined).");
 	
 	public static final CommandLineOption<Boolean> profileOption =
-		CommandLine.makeBoolean("profile", false, "");
+		CommandLine.makeBoolean("profile", false, "Report tool profiling information.");
 	
 	public static final CommandLineOption<Integer> arrayCacheSizeOption =
-		CommandLine.makeInteger("arrayCacheSize", 16, "");
+		CommandLine.makeInteger("arrayCacheSize", 16, "Set the array state (or array state array) cache size.");
 
 	public static final CommandLineOption<Integer> lockCacheSizeOption =
-		CommandLine.makeInteger("lockCacheSize", 4, "");
+		CommandLine.makeInteger("lockCacheSize", 4, "Set the lock state cache size.");
 	
 	public static final CommandLineOption<Boolean> fudgeExceptionTracesOption =
-		CommandLine.makeBoolean("fudgeExceptionStackTraces", false, "");
+		CommandLine.makeBoolean("fudgeExceptionStackTraces", false, "Make communication exceptions look like they occur directly in user code.");
 
 	public static final CommandLine cl = new CommandLine("oshajava", "",
 			arrayIndexStatesOption,
