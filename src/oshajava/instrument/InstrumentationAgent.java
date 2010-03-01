@@ -89,6 +89,7 @@ public class InstrumentationAgent implements ClassFileTransformer {
 		public boolean instrumentFinalFields = false;
 		public boolean remapJDK = false;
 		public String methodTableFile = null;
+		public boolean saveStackTraces = true;
 
 		public boolean verifyOutput() {
 			return debug;

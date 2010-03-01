@@ -79,7 +79,7 @@ public class RuntimeMonitor {
 	/**
 	 * Record profiling information.
 	 */
-	public static final boolean PROFILE = true;
+	public static final boolean PROFILE = false;
 
 	private static final ThreadLocal<ThreadState> threadState = new ThreadLocal<ThreadState>() {
 		@Override
@@ -139,13 +139,13 @@ public class RuntimeMonitor {
 	 * @param state
 	 * @param readerMethod
 	 */
-	public static void checkReadSlowPath(final State write, final State read) {
+	public static void checkReadSlowPath(final State write, final State read, StackTraceElement[] trace) {
 		if (!read.stack.checkWriter(write.stack)) {
-			throw new IllegalSharingException(write, read);
+			throw new IllegalSharingException(write, read, trace);
 		}
 	}
 	private static void checkRead(final State write, final ThreadState reader, final BitVectorIntSet wCache) {
-		if (write.thread != reader && !wCache.contains(write.getStackID())) checkReadSlowPath(write, reader.state);
+		if (write.thread != reader && !wCache.contains(write.getStackID())) checkReadSlowPath(write, reader.state, null);
 	}
 
 	// TODO Skip the wCache parameter and just do the field lookup if needed?

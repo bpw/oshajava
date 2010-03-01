@@ -41,6 +41,7 @@ public class ClassInstrumentor extends ClassAdapter {
 	protected static final Type THREAD_STATE_TYPE    = Type.getType(oshajava.runtime.ThreadState.class);
 	protected static final Type RUNTIME_MONITOR_TYPE = Type.getType(oshajava.runtime.RuntimeMonitor.class);
 	protected static final Type OBJECT_TYPE          = Type.getType(java.lang.Object.class);
+	protected static final Type THREAD_TYPE          = Type.getType(java.lang.Thread.class);
 
 	protected static final String ANNOT_INLINE_DESC         = Type.getDescriptor(oshajava.annotation.Inline.class);
 	protected static final String ANNOT_READER_DESC = Type.getDescriptor(oshajava.annotation.Reader.class);
@@ -71,6 +72,12 @@ public class ClassInstrumentor extends ClassAdapter {
 	protected static final Type[] ARGS_OBJECT_THREAD    = { OBJECT_TYPE, THREAD_STATE_TYPE };
 	protected static final Type[] ARGS_OBJECT_STATE    = { OBJECT_TYPE, STATE_TYPE };
 	
+	protected static final String STACKTRACE_FIELD_SUFFIX   = "__osha_stacktrace";
+	protected static final String STACKTRACE_DESC           = "[Ljava/lang/StackTraceElement;";
+	protected static final Type   STACKTRACE_TYPE           = Type.getType(STACKTRACE_DESC);
+	protected static final Method CURRENTTHREAD_METHOD      = new Method("currentThread", THREAD_TYPE, ARGS_NONE);
+	protected static final Method GETSTACKTRACE_METHOD      = new Method("getStackTrace", STACKTRACE_TYPE, ARGS_NONE);
+	
 	protected static final Method STATE_STACK_ID  = new Method("getStackID",  Type.INT_TYPE, ARGS_NONE);
 	protected static final Method CONTAINS_METHOD  = new Method("contains", Type.BOOLEAN_TYPE,  new Type[] { Type.INT_TYPE });
 
@@ -80,7 +87,7 @@ public class ClassInstrumentor extends ClassAdapter {
 	protected static final Method HOOK_THREAD_STATE = new Method("getThreadState", THREAD_STATE_TYPE, ARGS_NONE);
 	protected static final Method HOOK_CURRENT_STATE = new Method("getCurrentState", STATE_TYPE, ARGS_NONE);
 
-	protected static final Method HOOK_READ  = new Method("checkReadSlowPath",  Type.VOID_TYPE, new Type[] { STATE_TYPE, STATE_TYPE });
+	protected static final Method HOOK_READ  = new Method("checkReadSlowPath",  Type.VOID_TYPE, new Type[] { STATE_TYPE, STATE_TYPE, STACKTRACE_TYPE });
 	
 //	protected static final Method HOOK_NEW_ARRAY       = new Method("newArray",      Type.VOID_TYPE, ARGS_INT_OBJECT);
 //	protected static final Method HOOK_NEW_MULTI_ARRAY = new Method("newMultiArray", Type.VOID_TYPE, ARGS_OBJECT_INT);
@@ -227,6 +234,17 @@ public class ClassInstrumentor extends ClassAdapter {
 				fv.visitEnd();
 			}
 			((access & Opcodes.ACC_STATIC)  == 0 ? instanceShadowFields : staticShadowFields).add(name + SHADOW_FIELD_SUFFIX);
+			
+			// Add stack trace field if requested.
+			if (opts.saveStackTraces) {
+			    final FieldVisitor stfv = super.visitField(
+    					newAccess,
+    					name + STACKTRACE_FIELD_SUFFIX, STACKTRACE_DESC, null, null
+    			);
+    			if (stfv != null) {
+    				stfv.visitEnd();
+    			}
+			}
 		}
 	}
 	
