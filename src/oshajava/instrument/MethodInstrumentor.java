@@ -276,6 +276,14 @@ public class MethodInstrumentor extends AdviceAdapter {
 
 	}
 
+	// Get the current stack trace.
+	private void getStackTrace() {
+		// get the current Thread. stack -> thread
+		super.invokeStatic(ClassInstrumentor.THREAD_TYPE, ClassInstrumentor.CURRENTTHREAD_METHOD);
+		// get the stack trace. stack -> trace
+		super.invokeVirtual(ClassInstrumentor.THREAD_TYPE, ClassInstrumentor.GETSTACKTRACE_METHOD);
+    }
+
 	/* Visitor methods ****************************************************************/
 
 	protected final Label beginTry = super.newLabel();
@@ -379,10 +387,13 @@ public class MethodInstrumentor extends AdviceAdapter {
 			//		Util.log("Visiting field ins: owner = " + owner + ", name = " + name + ", desc = " + desc);
 			final Type ownerType = Type.getType(ClassInstrumentor.getDescriptor(owner));
 			final String stateFieldName;
+            final String stacktraceFieldName;
 			if (Config.objectStatesOption.get() && (opcode == Opcodes.PUTFIELD || opcode == Opcodes.GETFIELD)){
 				stateFieldName = ClassInstrumentor.SHADOW_FIELD_SUFFIX;
+				stacktraceFieldName = ClassInstrumentor.STACKTRACE_FIELD_SUFFIX;
 			} else {
 				stateFieldName = name + ClassInstrumentor.SHADOW_FIELD_SUFFIX;
+				stacktraceFieldName = name + ClassInstrumentor.STACKTRACE_FIELD_SUFFIX;
 			}
 			switch(opcode) {
 			case Opcodes.PUTFIELD:
@@ -393,23 +404,56 @@ public class MethodInstrumentor extends AdviceAdapter {
 				super.swap(ClassInstrumentor.OBJECT_TYPE, fieldType);
 				// dup the target. stack -> value obj | obj
 				super.dup();
+				
 				// push the current state on the stack. stack -> value obj | obj state
 				pushCurrentState();
 				// store the new state. stack -> value obj | 
 				super.putField(ownerType, stateFieldName, ClassInstrumentor.STATE_TYPE);
+				
+				// Save stack trace if requested.
+				if (Config.stackTracesOption.get()) {
+			        // dup the target. stack -> value obj | obj
+    				super.dup();
+    				// get the stack trace. stack -> value obj | obj trace
+    				getStackTrace();
+            		// store the stack trace. stack -> value obj |
+            		super.putField(ownerType, stacktraceFieldName, ClassInstrumentor.STACKTRACE_TYPE);
+    			}
+				
 				// swap back (may push 2 past the bar temporarily). stack -> obj value |
 				super.swap(fieldType,  ClassInstrumentor.OBJECT_TYPE);
 				break;
 			case Opcodes.PUTSTATIC:
 				myStackSize(1);
+				
 				// get the current state. stack -> state
 				pushCurrentState();
 				// store the new state. stack -> 
 				super.putStatic(ownerType, stateFieldName, ClassInstrumentor.STATE_TYPE);
+				
+				// Save stack trace if requested.
+				if (Config.stackTracesOption.get()) {
+				    // get the stack trace. stack -> trace
+				    getStackTrace();
+            		// store the stack trace. stack -> 
+            		super.putStatic(ownerType, stacktraceFieldName, ClassInstrumentor.STACKTRACE_TYPE);
+    			}
+				
 				break;
 			case Opcodes.GETFIELD:
 				myStackSize(3);
 				Label homeFree = super.newLabel();
+				int traceVar = UNINITIALIZED;
+				// Store the stack trace if requested.
+				if (Config.stackTracesOption.get()) {
+				    traceVar = super.newLocal(ClassInstrumentor.STACKTRACE_TYPE);
+				    // stack -> obj | obj
+				    super.dup();
+				    // stack -> obj | trace
+				    super.getField(ownerType, stacktraceFieldName, ClassInstrumentor.STACKTRACE_TYPE);
+				    // stack -> obj |
+				    super.storeLocal(traceVar);
+			    }
 				// dup the target. stack -> obj | obj
 				super.dup();
 				// Get the State for this field. stack -> obj | state
@@ -434,6 +478,12 @@ public class MethodInstrumentor extends AdviceAdapter {
 				super.ifZCmp(NE, homeFree); // if that succeeded, we're done, else do heavier check.
 				// stack -> obj | state readerState
 				pushCurrentState();
+				// stack -> obj | state readerState trace
+				if (Config.stackTracesOption.get()) {
+				    super.loadLocal(traceVar);
+				} else {
+				    mv.visitInsn(Opcodes.ACONST_NULL);
+				}
 				// call the read hook. stack -> obj | 
 				super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_READ);
 				Label ok = super.newLabel();
@@ -467,6 +517,12 @@ public class MethodInstrumentor extends AdviceAdapter {
 				super.ifZCmp(NE, sHomeFree); // if that succeeded, we're done, else do heavier check.
 				// stack -> state readerState
 				pushCurrentState();
+				// stack -> obj | state readerState trace
+				if (Config.stackTracesOption.get()) {
+				    super.getStatic(ownerType, stacktraceFieldName, ClassInstrumentor.STACKTRACE_TYPE);
+				} else {
+				    mv.visitInsn(Opcodes.ACONST_NULL);
+				}
 				// call the read hook. stack -> 
 				super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_READ);
 				Label sEnd = super.newLabel();

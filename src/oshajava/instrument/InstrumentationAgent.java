@@ -97,8 +97,8 @@ public class InstrumentationAgent implements ClassFileTransformer {
 		CommandLine.makeBoolean("preVerify", true, "Verify classes read from disk before instrumenting.");
 	
 	public static final CommandLineOption<Boolean> framesOption =
-		CommandLine.makeBoolean("frames", false, "Handle frames intelligently.");
-
+		CommandLine.makeBoolean("frames", true, "Handle frames intelligently.");
+		
 	public byte[] instrument(String className, byte[] bytecode, ClassLoader loader) throws ModuleSpecNotFoundException {
 		try {
 			final ClassReader in = new ClassReader(bytecode);
