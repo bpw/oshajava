@@ -116,13 +116,13 @@ do
 	esac
 	shift
 done
-			echo now shift if -javaOptions: $$@
+			
 if [ "-javaOptions" = "$1" ]
 then
 	shift
 fi
 			
-			echo no read java args $$@
+			
 			
 ## read java args
 while [ -n "$1" -a "--" != "$1" ]
@@ -148,8 +148,11 @@ do
     shift
 done
 
-shift
-			echo no $$@
+if [ -n "$1" ]
+then
+	shift
+fi
+			
 test -z "$1" &amp;&amp; OSHA_ARGS="$OSHA_ARGS,-help"
 
 export CLASSPATH
