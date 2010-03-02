@@ -107,7 +107,7 @@ public class RuntimeMonitor {
 	 * @param readerMethod
 	 */
 	public static void checkReadSlowPath(final State write, final State read, final StackTraceElement[] trace) {
-		if (!read.stack.checkWriter(write.stack)) {
+		if (!(read.stack == Stack.classInitializer || write.stack == Stack.classInitializer) && !read.stack.checkWriter(write.stack)) {
 			throw new IllegalSharingException(write, read, trace);
 		}
 	}
@@ -355,6 +355,17 @@ public class RuntimeMonitor {
 	public static ThreadState enter(final int methodUID) {
 		final ThreadState ts = threadState.get();
 		ts.enter(methodUID);
+		return ts;
+	}
+	
+	/**
+	 * Hook to call when entering class initializer.
+	 * 
+	 * @return the ThreadState for the current thread.
+	 */
+	public static ThreadState enterClinit() {
+		final ThreadState ts = threadState.get();
+		ts.enterClinit();
 		return ts;
 	}
 

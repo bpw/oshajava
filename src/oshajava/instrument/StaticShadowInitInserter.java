@@ -13,9 +13,32 @@ public class StaticShadowInitInserter extends AdviceAdapter {
 		this.classType = classType;
 	}
 
+    private int varCurrentThread;
+    private int maxStack;
+    private int maxLocals;
+
 	@Override
 	public void onMethodEnter() {
+	    super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_ENTER_CLINIT);
+	    varCurrentThread = super.newLocal(ClassInstrumentor.THREAD_STATE_TYPE);
+	    super.storeLocal(varCurrentThread, ClassInstrumentor.THREAD_STATE_TYPE);
+	    
 		super.invokeStatic(classType, ClassInstrumentor.STATIC_SHADOW_INIT_METHOD);
+	}
+	
+	@Override
+	public void visitEnd() {
+	    super.loadLocal(varCurrentThread, ClassInstrumentor.THREAD_STATE_TYPE);
+	    super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_EXIT);
+	    
+	    super.visitMaxs(maxStack+1, maxLocals+1);
+	    super.visitEnd();
+	}
+	
+	@Override
+	public void visitMaxs(int maxStack, int maxLocals) {
+	    this.maxStack = maxStack;
+	    this.maxLocals = maxLocals;
 	}
 
 }

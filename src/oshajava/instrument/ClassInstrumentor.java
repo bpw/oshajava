@@ -77,9 +77,11 @@ public class ClassInstrumentor extends ClassAdapter {
 
 	protected static final Method HOOK_ENTER = new Method("enter", THREAD_STATE_TYPE, ARGS_INT);
 	protected static final Method HOOK_EXIT  = new Method("exit",  Type.VOID_TYPE, new Type[] { THREAD_STATE_TYPE });
+	protected static final Method HOOK_ENTER_CLINIT = new Method("enterClinit", THREAD_STATE_TYPE, ARGS_NONE);
 
 	protected static final Method HOOK_THREAD_STATE = new Method("getThreadState", THREAD_STATE_TYPE, ARGS_NONE);
 	protected static final Method HOOK_CURRENT_STATE = new Method("getCurrentState", STATE_TYPE, ARGS_NONE);
+	protected static final Method HOOK_CLINIT_STATE = new Method("classInitializer", STATE_TYPE, new Type[] { THREAD_STATE_TYPE });
 
 	protected static final Method HOOK_READ  = new Method("checkReadSlowPath",  Type.VOID_TYPE, new Type[] { STATE_TYPE, STATE_TYPE, STACKTRACE_TYPE });
 	
@@ -441,6 +443,7 @@ public class ClassInstrumentor extends ClassAdapter {
 					int varCurrentState = stat.newLocal(STATE_TYPE);
 					stat.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_CURRENT_STATE);
 					stat.storeLocal(varCurrentState);
+					
 					for (String fieldname : staticShadowedFields) {
 					    // Shadow field.
 						stat.loadLocal(varCurrentState);
