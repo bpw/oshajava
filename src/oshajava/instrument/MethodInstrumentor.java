@@ -441,7 +441,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 				
 				break;
 			case Opcodes.GETFIELD:
-				myStackSize(3);
+				myStackSize(4);
 				Label homeFree = super.newLabel();
 				int traceVar = UNINITIALIZED;
 				// Store the stack trace if requested.
@@ -463,7 +463,10 @@ public class MethodInstrumentor extends AdviceAdapter {
 				// stack -> obj | state writerThread
 				loadThreadFromState();
 				// stack -> obj | state writerThread currentThread -> obj | state
-				ifSameThreadGoto(homeFree); // if same thread we're done, else check stacks
+				ifSameThreadGoto(homeFree); // FAST PATH if same thread we're done, else check stacks
+				
+				// Fairly Fast Path
+				
 				// stack -> obj | state state    <------ TODO maybe don't dup and just reload from field later if needed.
 				super.dup();
 				// stack -> obj | state state cache
@@ -476,16 +479,25 @@ public class MethodInstrumentor extends AdviceAdapter {
 				super.invokeVirtual(ClassInstrumentor.BIT_VECTOR_INT_SET_TYPE, ClassInstrumentor.CONTAINS_METHOD);
 				// stack -> obj | state
 				super.ifZCmp(NE, homeFree); // if that succeeded, we're done, else do heavier check.
+				
+				// End Fairly Fast Path
+				
+				// SLOW PATH
+				
 				// stack -> obj | state readerState
 				pushCurrentState();
-				// stack -> obj | state readerState trace
+				// push field name. stack -> obj | state readerState [trace] name
+				super.push(InstrumentationAgent.makeFieldSourceName(owner, name));
 				if (Config.stackTracesOption.get()) {
+					// stack -> obj | state readerState trace
 				    super.loadLocal(traceVar);
-				} else {
-				    mv.visitInsn(Opcodes.ACONST_NULL);
 				}
 				// call the read hook. stack -> obj | 
-				super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_READ);
+				super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, (Config.stackTracesOption.get() ? 
+						ClassInstrumentor.HOOK_READ_STACK_TRACE : ClassInstrumentor.HOOK_READ));
+				
+				// END SLOW PATH
+				
 				Label ok = super.newLabel();
 				super.goTo(ok);
 				super.mark(homeFree);
@@ -493,7 +505,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 				super.mark(ok);
 				break;
 			case Opcodes.GETSTATIC:
-				myStackSize(2);
+				myStackSize(3);
 				Label sHomeFree = super.newLabel();
 				// Get the State for this field. stack -> state
 				super.getStatic(ownerType, stateFieldName, ClassInstrumentor.STATE_TYPE);
@@ -502,7 +514,10 @@ public class MethodInstrumentor extends AdviceAdapter {
 				// stack -> state writerThread
 				loadThreadFromState();
 				// stack -> state writerThread currentThread -> state
-				ifSameThreadGoto(sHomeFree); // if same thread we're done, else check stacks
+				ifSameThreadGoto(sHomeFree); // FAST PATH if same thread we're done, else check stacks
+				
+				// Fairly Fast Path
+				
 				// stack -> state state    <------ TODO maybe don't dup and just reload from field later if needed.
 				super.dup();
 				// stack -> state state cache
@@ -515,16 +530,25 @@ public class MethodInstrumentor extends AdviceAdapter {
 				super.invokeVirtual(ClassInstrumentor.BIT_VECTOR_INT_SET_TYPE, ClassInstrumentor.CONTAINS_METHOD);
 				// stack -> state
 				super.ifZCmp(NE, sHomeFree); // if that succeeded, we're done, else do heavier check.
+				
+				// End Fairly Fast Path
+				
+				// SLOW PATH
+				
 				// stack -> state readerState
 				pushCurrentState();
-				// stack -> obj | state readerState trace
+				// push field name. stack -> obj | state readerState [trace] name
+				super.push(InstrumentationAgent.makeFieldSourceName(owner, name));
 				if (Config.stackTracesOption.get()) {
+					// stack -> obj | state readerState trace
 				    super.getStatic(ownerType, stacktraceFieldName, ClassInstrumentor.STACKTRACE_TYPE);
-				} else {
-				    mv.visitInsn(Opcodes.ACONST_NULL);
 				}
 				// call the read hook. stack -> 
-				super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_READ);
+				super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, (Config.stackTracesOption.get() ? 
+						ClassInstrumentor.HOOK_READ_STACK_TRACE : ClassInstrumentor.HOOK_READ));
+				
+				// END SLOW PATH
+				
 				Label sEnd = super.newLabel();
 				super.goTo(sEnd);
 				super.mark(sHomeFree);

@@ -106,7 +106,18 @@ public class RuntimeMonitor {
 	 * @param state
 	 * @param readerMethod
 	 */
-	public static void checkReadSlowPath(final State write, final State read, final StackTraceElement[] trace) {
+	public static void checkFieldRead(final State write, final State read, final String field) {
+		if (!(read.stack == Stack.classInitializer || write.stack == Stack.classInitializer) && !read.stack.checkWriter(write.stack)) {
+			throw new IllegalSharingException(write, read, null, field);
+		}
+	}
+	public static void checkFieldRead(final State write, final State read, final String field, 
+			final StackTraceElement[] trace) {
+		if (!(read.stack == Stack.classInitializer || write.stack == Stack.classInitializer) && !read.stack.checkWriter(write.stack)) {
+			throw new IllegalSharingException(write, read, trace, field);
+		}
+	}
+	private static void checkReadSlowPath(final State write, final State read, final StackTraceElement[] trace) {
 		if (!(read.stack == Stack.classInitializer || write.stack == Stack.classInitializer) && !read.stack.checkWriter(write.stack)) {
 			throw new IllegalSharingException(write, read, trace);
 		}

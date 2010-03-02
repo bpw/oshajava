@@ -231,5 +231,17 @@ public class InstrumentationAgent implements ClassFileTransformer {
 			return uninstrumentedLoadedClasses.containsKey(cn) || hasUninstrumentedOuterClass(cn);
 		}
 	}
+	
+	// -- Utilities for instrumentation --------------
+	
+	public static String internalName(String sourceName) {
+		return sourceName.replace('.', '/');
+	}
+	public static String sourceName(String internalName) {
+		return internalName.replace('/', '.');
+	}
+	public static String makeFieldSourceName(String className, String fieldName) {
+		return sourceName(className) + '.' + fieldName;
+	}
 
 }

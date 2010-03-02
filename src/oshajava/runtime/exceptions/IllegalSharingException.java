@@ -17,6 +17,10 @@ public class IllegalSharingException extends IllegalCommunicationException {
 		super(writer, reader, trace);
 	}
 
+	public IllegalSharingException(final State writer, final State reader, final StackTraceElement[] trace, String field) {
+		super(writer, reader, trace, "field " + field);
+	}
+
 	@Override
 	protected String actionString() {
 		return "read a value written by";
