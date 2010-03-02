@@ -117,8 +117,8 @@ public class ClassInstrumentor extends ClassAdapter {
 	protected Set<String> shadowedInheritedFields;
 	protected String packageName;
 	protected final ClassLoader loader;
-	private final ArrayList<String> instanceShadowFields = new ArrayList<String>();
-	private final ArrayList<String> staticShadowFields = new ArrayList<String>();
+	private final ArrayList<String> instanceShadowedFields = new ArrayList<String>();
+	private final ArrayList<String> staticShadowedFields = new ArrayList<String>();
 
 	public ClassInstrumentor(ClassVisitor cv, ClassLoader loader) {
 		super(cv);
@@ -227,7 +227,7 @@ public class ClassInstrumentor extends ClassAdapter {
 			if (fv != null) {
 				fv.visitEnd();
 			}
-			((access & Opcodes.ACC_STATIC)  == 0 ? instanceShadowFields : staticShadowFields).add(name + SHADOW_FIELD_SUFFIX);
+			((access & Opcodes.ACC_STATIC)  == 0 ? instanceShadowedFields : staticShadowedFields).add(name);
 			
 			// Add stack trace field if requested.
 			if (Config.stackTracesOption.get()) {
@@ -405,15 +405,24 @@ public class ClassInstrumentor extends ClassAdapter {
 				instance.loadThis();
 				instance.visitMethodInsn(Opcodes.INVOKESPECIAL, superName, INSTANCE_SHADOW_INIT_METHOD.getName(), INSTANCE_SHADOW_INIT_METHOD.getDescriptor());
 			}
-			if (!instanceShadowFields.isEmpty()) {
+			if (!instanceShadowedFields.isEmpty()) {
 				int varCurrentState = instance.newLocal(STATE_TYPE);
 				instance.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_CURRENT_STATE);
 				instance.storeLocal(varCurrentState);
 
-				for (String shadow : instanceShadowFields) {
+				for (String fieldname : instanceShadowedFields) {
+				    // Shadow field.
 					instance.loadThis();
 					instance.loadLocal(varCurrentState);
-					instance.visitFieldInsn(Opcodes.PUTFIELD, className, shadow, STATE_DESC);
+					instance.visitFieldInsn(Opcodes.PUTFIELD, className, fieldname + SHADOW_FIELD_SUFFIX, STATE_DESC);
+					
+					// Traceback field.
+					if (Config.stackTracesOption.get()) {
+					    instance.loadThis();
+					    instance.push(0);
+					    instance.newArray(STACKTRACE_TYPE.getElementType());
+					    instance.visitFieldInsn(Opcodes.PUTFIELD, className, fieldname + STACKTRACE_FIELD_SUFFIX, STACKTRACE_DESC);
+					}
 				}
 				instance.visitInsn(Opcodes.RETURN);
 				instance.visitMaxs(2, 1);
@@ -423,18 +432,26 @@ public class ClassInstrumentor extends ClassAdapter {
 			}
 			instance.visitEnd();
 
-			if (visitedClinit || !staticShadowFields.isEmpty()) {
+			if (visitedClinit || !staticShadowedFields.isEmpty()) {
 				// static.
 				GeneratorAdapter stat = new GeneratorAdapter(Opcodes.ACC_PRIVATE | Opcodes.ACC_STATIC | Opcodes.ACC_SYNTHETIC, STATIC_SHADOW_INIT_METHOD, 
 						super.visitMethod(Opcodes.ACC_PRIVATE | Opcodes.ACC_STATIC | Opcodes.ACC_SYNTHETIC, STATIC_SHADOW_INIT_METHOD.getName(), STATIC_SHADOW_INIT_METHOD.getDescriptor(), null, null));
 				stat.visitCode();
-				if (!staticShadowFields.isEmpty()) {
+				if (!staticShadowedFields.isEmpty()) {
 					int varCurrentState = stat.newLocal(STATE_TYPE);
 					stat.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_CURRENT_STATE);
 					stat.storeLocal(varCurrentState);
-					for (String shadow : staticShadowFields) {
+					for (String fieldname : staticShadowedFields) {
+					    // Shadow field.
 						stat.loadLocal(varCurrentState);
-						stat.visitFieldInsn(Opcodes.PUTSTATIC, className, shadow, STATE_DESC);
+						stat.visitFieldInsn(Opcodes.PUTSTATIC, className, fieldname + SHADOW_FIELD_SUFFIX, STATE_DESC);
+						
+						// Traceback field.
+    					if (Config.stackTracesOption.get()) {
+    					    stat.push(0);
+    					    stat.newArray(STACKTRACE_TYPE.getElementType());
+    					    stat.visitFieldInsn(Opcodes.PUTSTATIC, className, fieldname + STACKTRACE_FIELD_SUFFIX, STACKTRACE_DESC);
+    					}
 					}
 					stat.visitInsn(Opcodes.RETURN);
 					stat.visitMaxs(1, 1);
@@ -444,7 +461,7 @@ public class ClassInstrumentor extends ClassAdapter {
 				}
 				stat.visitEnd();
 			}
-			if (!visitedClinit && !staticShadowFields.isEmpty()) {
+			if (!visitedClinit && !staticShadowedFields.isEmpty()) {
 				final int acc = Opcodes.ACC_STATIC;
 				final String name = "<clinit>";
 				final String desc = "()V";

@@ -34,10 +34,14 @@ public abstract class IllegalCommunicationException extends OshaRuntimeException
 	    String out = reader + "\n" + actionString() + "\n" + writer;
 	    
 		if (trace != null) {
-		    out += "\nOriginator's stack trace:";
-		    for (StackTraceElement element : trace) {
-		        out += "\n" + element.toString();
-		    }
+		    if (trace.length > 0) {
+    		    out += "\nOriginator's stack trace:";
+    		    for (StackTraceElement element : trace) {
+    		        out += "\n" + element.toString();
+    		    }
+    	    } else {
+    	        out += "\nOriginated at field initialization.";
+    	    }
 		}
 		
 		return out;
