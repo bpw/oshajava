@@ -1,5 +1,6 @@
 package oshajava.runtime.exceptions;
 
+import oshajava.instrument.InstrumentationAgent;
 import oshajava.runtime.State;
 import oshajava.runtime.ThreadState;
 
@@ -14,24 +15,28 @@ public abstract class IllegalCommunicationException extends OshaRuntimeException
 	
 	protected final State writer, reader;
 	protected final StackTraceElement[] trace;
+	protected final String on;
 	
 	protected IllegalCommunicationException(final State writer, final State reader) {
-		this.writer = writer;
-		this.reader = reader;
-		this.trace = null;
+		this(writer,reader,null,null);
 	}
 	
 	protected IllegalCommunicationException(final State writer, final State reader, final StackTraceElement[] trace) {
+		this(writer,reader,trace,null);
+	}
+	
+	protected IllegalCommunicationException(final State writer, final State reader, final StackTraceElement[] trace, final String on) {
 		this.writer = writer;
 		this.reader = reader;
 		this.trace = trace;
+		this.on = InstrumentationAgent.sourceName(on);
 	}
 	
 	protected abstract String actionString();
 
 	@Override
 	public String getMessage() {
-	    String out = reader + "\n" + actionString() + "\n" + writer;
+	    String out = (on != null ? "on " + on : "" ) + "\n" + reader + "\n" + actionString() + "\n" + writer;
 	    
 		if (trace != null) {
 		    out += "\nOriginator's stack trace:";

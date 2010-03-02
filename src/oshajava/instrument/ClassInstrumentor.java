@@ -81,7 +81,8 @@ public class ClassInstrumentor extends ClassAdapter {
 	protected static final Method HOOK_THREAD_STATE = new Method("getThreadState", THREAD_STATE_TYPE, ARGS_NONE);
 	protected static final Method HOOK_CURRENT_STATE = new Method("getCurrentState", STATE_TYPE, ARGS_NONE);
 
-	protected static final Method HOOK_READ  = new Method("checkReadSlowPath",  Type.VOID_TYPE, new Type[] { STATE_TYPE, STATE_TYPE, STACKTRACE_TYPE });
+	protected static final Method HOOK_READ  = new Method("checkFieldRead",  Type.VOID_TYPE, new Type[] { STATE_TYPE, STATE_TYPE, Type.getType(String.class) });
+	protected static final Method HOOK_READ_STACK_TRACE  = new Method("checkFieldRead",  Type.VOID_TYPE, new Type[] { STATE_TYPE, STATE_TYPE, Type.getType(String.class), STACKTRACE_TYPE });
 	
 //	protected static final Method HOOK_NEW_ARRAY       = new Method("newArray",      Type.VOID_TYPE, ARGS_INT_OBJECT);
 //	protected static final Method HOOK_NEW_MULTI_ARRAY = new Method("newMultiArray", Type.VOID_TYPE, ARGS_OBJECT_INT);

@@ -254,7 +254,7 @@ public class Stack {
 	        return "(root)";
 	    }
 		final ModuleSpec mod = Spec.getModule(methodUID);
-		return "[" + mod.getName() + "] " + mod.getMethodSignature(methodUID) + "\n" + (parent != null ? " called by " + parent.toString() : "");
+		return "            [module: " + mod.getName() + "] " + mod.getMethodSignature(methodUID) + "\n" + (parent != null ? "  called by " + parent.toString() : "");
 	}
 	
 	/******************************************************************/

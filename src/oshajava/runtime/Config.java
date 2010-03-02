@@ -21,8 +21,6 @@ import oshajava.support.acme.util.option.CommandLineOption;
  * options are set.  This gives us the opportunity to set constants based
  * on options and get better performance if they are heavily used.
  * 
- * TODO: make this or a separate OshaJavaPreMain the Pre-Main-Class to avoid
- * accidental dependencies from InstrumentationAgent...
  * @author bpw
  *
  */
@@ -64,7 +62,7 @@ public class Config {
 
     public static final CommandLineOption<Boolean> stackTracesOption =
         CommandLine.makeBoolean("traces", false, "Save writer stack traces for debugging violations.");
-
+    
 	public static final CommandLine cl = new CommandLine(TOOL_NAME, "[ -javaOptions java options ] -- Class [ class args ]", helpOption, jvmOption);
 	
 	public static void configure(String[] args){
