@@ -106,13 +106,13 @@ public class RuntimeMonitor {
 	 * @param state
 	 * @param readerMethod
 	 */
-	public static void checkReadSlowPath(final State write, final State read) {
+	public static void checkReadSlowPath(final State write, final State read, final StackTraceElement[] trace) {
 		if (!read.stack.checkWriter(write.stack)) {
-			throw new IllegalSharingException(write, read);
+			throw new IllegalSharingException(write, read, trace);
 		}
 	}
-	private static void checkRead(final State write, final ThreadState reader, final BitVectorIntSet wCache) {
-		if (write.thread != reader && !wCache.contains(write.getStackID())) checkReadSlowPath(write, reader.state);
+	private static void checkRead(final State write, final ThreadState reader, final BitVectorIntSet wCache, final StackTraceElement[] trace) {
+		if (write.thread != reader && !wCache.contains(write.getStackID())) checkReadSlowPath(write, reader.state, trace);
 	}
 
 	// TODO Skip the wCache parameter and just do the field lookup if needed?
@@ -127,7 +127,7 @@ public class RuntimeMonitor {
 		if (states != null) {
 			final State write = states[index];
 			if (write != null) {
-				checkRead(write, reader, wCache);
+				checkRead(write, reader, wCache, null);
 			}
 		}
 	}
@@ -150,7 +150,7 @@ public class RuntimeMonitor {
 	public static void coarseArrayRead(final Object array, final ThreadState reader, final BitVectorIntSet wCache) {
 		final Ref<State> stateRef = reader.arrayStateCache.get(array);
 		if (stateRef != null) {
-			checkRead(stateRef.contents, reader, wCache);
+			checkRead(stateRef.contents, reader, wCache, null);
 		}
 	}
 

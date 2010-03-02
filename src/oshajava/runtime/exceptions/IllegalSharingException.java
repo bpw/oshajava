@@ -12,6 +12,10 @@ public class IllegalSharingException extends IllegalCommunicationException {
 	public IllegalSharingException(final State writer, final State reader) {
 		super(writer, reader);
 	}
+	
+	public IllegalSharingException(final State writer, final State reader, final StackTraceElement[] trace) {
+		super(writer, reader, trace);
+	}
 
 	@Override
 	protected String actionString() {

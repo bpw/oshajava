@@ -62,6 +62,9 @@ public class Config {
 	public static final CommandLineOption<Boolean> fudgeExceptionTracesOption =
 		CommandLine.makeBoolean("fudgeExceptionStackTraces", false, "Make communication exceptions look like they occur directly in user code.");
 
+    public static final CommandLineOption<Boolean> stackTracesOption =
+        CommandLine.makeBoolean("traces", false, "Save writer stack traces for debugging violations.");
+
 	public static final CommandLine cl = new CommandLine(TOOL_NAME, "[ -javaOptions java options ] -- Class [ class args ]", helpOption, jvmOption);
 	
 	public static void configure(String[] args){
@@ -74,6 +77,7 @@ public class Config {
 		cl.add(profileOption);
 		cl.add(arrayCacheSizeOption);
 		cl.add(lockCacheSizeOption);
+		cl.add(stackTracesOption);
 
 		cl.addGroup("Instrumentation");
 		
