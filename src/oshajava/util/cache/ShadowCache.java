@@ -2,8 +2,13 @@ package oshajava.util.cache;
 
 import java.util.concurrent.ConcurrentMap;
 
-import oshajava.util.count.Counter;
-
+/**
+ * Outline of cache to be used as a THREAD-LOCAL front end to some concurrent map.
+ * @author bpw
+ *
+ * @param <K>
+ * @param <V>
+ */
 public abstract class ShadowCache<K,V> {
 
 	/**

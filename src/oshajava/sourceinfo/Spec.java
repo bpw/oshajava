@@ -44,15 +44,15 @@ public class Spec {
 	 * @return
 	 * @throws ModuleSpecNotFoundException if there was a problem finding or loading the spec.
 	 */
-	protected static ModuleSpec loadModule(String name, ClassLoader loader) throws ModuleSpecNotFoundException {
+	protected static ModuleSpec loadModule(String name, ClassLoader loader, String requestingClass) throws ModuleSpecNotFoundException {
 		try {
 			final InputStream res = loader.getResourceAsStream(name + ModuleSpec.EXT);
-			if (res == null) throw new ModuleSpecNotFoundException(name + ModuleSpec.EXT + " - ");
+			if (res == null) throw new ModuleSpecNotFoundException(name + ", referenced by " + requestingClass);
 			return (ModuleSpec)ColdStorage.load(res);
 		} catch (IOException e) {
-			throw new ModuleSpecNotFoundException(name);
+			throw new ModuleSpecNotFoundException(name + ", referenced by " + requestingClass);
 		} catch (ClassNotFoundException e) {
-			throw new ModuleSpecNotFoundException(name);
+			throw new ModuleSpecNotFoundException(name + ", referenced by " + requestingClass);
 		}
 	}
 	
@@ -64,10 +64,10 @@ public class Spec {
 	 * @return
 	 * @throws ModuleSpecNotFoundException
 	 */
-	public static synchronized ModuleSpec getModule(String name, ClassLoader loader) throws ModuleSpecNotFoundException {
+	public static synchronized ModuleSpec getModule(String name, ClassLoader loader, String requestingClass) throws ModuleSpecNotFoundException {
 		ModuleSpec module = nameToModule.get(name);
 		if (module == null) {
-			module = loadModule(name, loader);
+			module = loadModule(name, loader, requestingClass);
 //			synchronized (idToModule) { // not needed if this method is synchronized
 				module.setId(idToModule.size());
 				idToModule.add(module);

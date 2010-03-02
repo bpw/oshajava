@@ -7,10 +7,13 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 
+import oshajava.runtime.Config;
 import oshajava.sourceinfo.ModuleSpec;
 import oshajava.sourceinfo.ModuleSpecNotFoundException;
 import oshajava.sourceinfo.Spec;
 import oshajava.support.acme.util.Util;
+import oshajava.support.acme.util.option.CommandLine;
+import oshajava.support.acme.util.option.CommandLineOption;
 import oshajava.support.org.objectweb.asm.AnnotationVisitor;
 import oshajava.support.org.objectweb.asm.ClassAdapter;
 import oshajava.support.org.objectweb.asm.ClassVisitor;
@@ -24,15 +27,6 @@ import oshajava.support.org.objectweb.asm.commons.Method;
 
 
 public class ClassInstrumentor extends ClassAdapter {
-
-	/* TODO: Options
-	 * 
-	 * treat unannotated methods as inline or read-by-all
-	 * (or in other words --default-annotation)
-	 * 
-	 * instrument final fields or not
-	 * 
-	 */
 
 	protected static final Type BIT_VECTOR_INT_SET_TYPE = Type.getType(oshajava.util.intset.BitVectorIntSet.class);
 	protected static final Type STRING_TYPE          = Type.getType(java.lang.String.class);
@@ -103,6 +97,8 @@ public class ClassInstrumentor extends ClassAdapter {
 
 	protected static final Method INSTANCE_SHADOW_INIT_METHOD = new Method(SHADOW_INIT_METHOD_PREFIX, Type.VOID_TYPE, ARGS_NONE);
 	protected static final Method STATIC_SHADOW_INIT_METHOD = new Method(SHADOW_INIT_METHOD_PREFIX + "_clinit", Type.VOID_TYPE, ARGS_NONE);
+
+
 	/****************************************************************************/
 
 	public static String getDescriptor(String name) {
@@ -116,7 +112,6 @@ public class ClassInstrumentor extends ClassAdapter {
 	protected String outerClassDesc = null;
 	protected String classDesc;
 	protected Type classType;
-	protected InstrumentationAgent.Options opts;
 	protected String superName;
 	protected ModuleSpec module;
 	protected Set<String> shadowedInheritedFields;
@@ -125,15 +120,14 @@ public class ClassInstrumentor extends ClassAdapter {
 	private final ArrayList<String> instanceShadowFields = new ArrayList<String>();
 	private final ArrayList<String> staticShadowFields = new ArrayList<String>();
 
-	public ClassInstrumentor(ClassVisitor cv, ClassLoader loader, InstrumentationAgent.Options opts) {
+	public ClassInstrumentor(ClassVisitor cv, ClassLoader loader) {
 		super(cv);
-		this.opts = opts;
 		this.loader = loader;
 	}
 	
 	private ModuleSpec getModule() throws ModuleSpecNotFoundException {
 		if (module == null) {
-			module = Spec.getModule(packageName + ModuleSpec.DEFAULT_NAME, loader);
+			module = Spec.getModule(packageName + ModuleSpec.DEFAULT_NAME, loader, className.replace('/','.'));
 		}
 		Util.assertTrue(module != null, "No module specified for %s.", className);
 		return module;
@@ -236,7 +230,7 @@ public class ClassInstrumentor extends ClassAdapter {
 			((access & Opcodes.ACC_STATIC)  == 0 ? instanceShadowFields : staticShadowFields).add(name + SHADOW_FIELD_SUFFIX);
 			
 			// Add stack trace field if requested.
-			if (opts.saveStackTraces) {
+			if (Config.stackTracesOption.get()) {
 			    final FieldVisitor stfv = super.visitField(
     					newAccess,
     					name + STACKTRACE_FIELD_SUFFIX, STACKTRACE_DESC, null, null
@@ -276,7 +270,7 @@ public class ClassInstrumentor extends ClassAdapter {
 		classType = Type.getObjectType(name);
 		classAccess = access;
 		this.superName = superName;
-		if (opts.coarseFieldStates && (access & Opcodes.ACC_INTERFACE) == 0 && (superName == null || superName.equals("java/lang/Object"))) {
+		if (Config.objectStatesOption.get() && (access & Opcodes.ACC_INTERFACE) == 0 && (superName == null || superName.equals("java/lang/Object"))) {
 			superName = Type.getType(oshajava.runtime.ObjectWithState.class).getInternalName();
 		}
 
@@ -315,7 +309,7 @@ public class ClassInstrumentor extends ClassAdapter {
 			return new AnnotationVisitor() {
 				public void visit(String name, Object value) { // throws ModuleSpecNotFoundException
 					try {
-						ClassInstrumentor.this.module = Spec.getModule((String)name, loader);
+						ClassInstrumentor.this.module = Spec.getModule((String)name, loader, className.replace('/','.'));
 					} catch (ModuleSpecNotFoundException e) {
 						throw e.wrap();
 					}
@@ -338,7 +332,7 @@ public class ClassInstrumentor extends ClassAdapter {
 	
 	@Override
 	public FieldVisitor visitField(int access, String name, String desc, String signature, Object value) {
-		if (  (!opts.coarseFieldStates || (access & Opcodes.ACC_STATIC) != 0)) {
+		if (  (!Config.objectStatesOption.get() || (access & Opcodes.ACC_STATIC) != 0)) {
 			// TODO option to ignore final fields. how?
 			// We make all state fields non-final to be able to set them from outside a constructor
         	if (!shadowedInheritedFields.contains(name)) {
@@ -348,15 +342,12 @@ public class ClassInstrumentor extends ClassAdapter {
 		return super.visitField(access, name, desc, signature, value);
 	}
 
-	private boolean visitedClinit = false, visitedInit = false;
+	private boolean visitedClinit = false;
 	@Override
 	public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
 		if ((access & Opcodes.ACC_NATIVE) == 0) {
 		    MethodVisitor chain = super.visitMethod(access, name, desc, signature, exceptions);
 		    if (!name.equals("<clinit>")) {
-		    	if (name.equals("<init>")) {
-		    		visitedInit = true;
-		    	}
 		    	// (Not instrumenting class initializers avoids balooning the size
 		    	//  of large literal table constructions. It also makes sense, I
 		    	//  think, because no "communication" should occur (semantically)

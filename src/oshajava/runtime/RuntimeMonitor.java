@@ -6,14 +6,12 @@ import java.lang.reflect.Array;
 import oshajava.runtime.exceptions.IllegalCommunicationException;
 import oshajava.runtime.exceptions.IllegalSharingException;
 import oshajava.runtime.exceptions.IllegalSynchronizationException;
-import oshajava.sourceinfo.Graph;
 import oshajava.sourceinfo.ModuleSpec;
 import oshajava.sourceinfo.Spec;
 import oshajava.support.acme.util.Util;
 import oshajava.util.GraphMLWriter;
 import oshajava.util.WeakConcurrentIdentityHashMap;
 import oshajava.util.cache.DirectMappedShadowCache;
-import oshajava.util.count.Counter;
 import oshajava.util.intset.BitVectorIntSet;
 
 /**
@@ -24,16 +22,6 @@ import oshajava.util.intset.BitVectorIntSet;
  *    - do not contain any synchronization (including being a synchronized method);
  *    - do not contain any method calls to inlined methods.
  *    
- *    The last one (no inlined method calls) is thwarted a bit by the current
- *    dynamic spec-reading scheme.  Moving to static spec-reading would allow us
- *    to take advantage of that, but for now we have to assume any method that
- *    does not already have an id could be inlined.  Hence:
- *    
- * 3. Do a static pass to build the spec, at least on the classes that are
- *    immediately accessible.  (We'll always need dynamic spec reading, etc. to
- *    handle reflection and dynamic class loading, but for most apps we'll be able
- *    to get most of what's interesting up front.)
- *        
  * 9. When code is stable, customize and diversify array read/writer hooks.
  * 
  * 12. Choose array granularity on some level other than "yes or no for all."  Asin coarse for
@@ -44,42 +32,25 @@ import oshajava.util.intset.BitVectorIntSet;
  *     has an array of reader sets... 
  *     
  *    
- * TODO Things to fix or add.
+ * TODO Things to fix, add, or consider.
  * 
  * + Copy (partial) of java.*
  * 
- * + command line options
- * 
  * + Graph recording as annotation inference? i.e. insert annotations in the bytecode?
- * 
- * + Static spec reading
- * 
- * + Separate tool/pass to take a spec in some other format and the bytecode of an
- *   un@annotated program and insert the proper annotations in the bytecode.
- *   
- * + Separate tool/pass to take annotated bytecode and build/dump a MethodRegistry.
- * 
- * + measure performance difference of how readerSet is loaded in hooks.
- * 
- * + @Default annotation on class tells default annotation to use on unannotated methods. 
- * 
- * + way to annotate clinit
- * 
- * + see javax.annotation.processing and apt if you want source-level...
  * 
  * @author bpw
  */
 public class RuntimeMonitor {
 
 	// temporary graph-collection hack.
-	protected static final Graph executionGraph = new Graph(1024);
+//	protected static final Graph executionGraph = new Graph(1024);
 
 	public static final boolean RECORD = false;
 	
 	/**
 	 * Record profiling information.
 	 */
-	public static final boolean PROFILE = false;
+	public static final boolean PROFILE = Config.profileOption.get();
 
 	private static final ThreadLocal<ThreadState> threadState = new ThreadLocal<ThreadState>() {
 		@Override
@@ -101,10 +72,6 @@ public class RuntimeMonitor {
 		T contents;
 	}
 
-//	public static final boolean COUNT_ARRAY_CACHE = RuntimeMonitor.PROFILE && true;
-//	private static final Counter arrayCacheHits = new Counter();
-//	private static final Counter arrayCacheMisses = new Counter();
-		
 	/*******************************************************************/
 
 	//	public static void newArray(int length, Object array) {
@@ -400,19 +367,19 @@ public class RuntimeMonitor {
 	}
 
 	private static <T extends Throwable> T fudgeTrace(T t) {
+		if (Config.fudgeExceptionTracesOption.get()) {
+				StackTraceElement[] stack = t.getStackTrace();
+				int i = 0;
+				while (i < stack.length && (stack[i].getClassName().startsWith(RuntimeMonitor.class.getPackage().getName()))) {
+					i++;
+				}
+				if (i > 0) {
+					StackTraceElement[] fudgedStack = new StackTraceElement[stack.length - i];
+					System.arraycopy(stack, i, fudgedStack, 0, stack.length - i);
+					t.setStackTrace(fudgedStack);
+				}
+		}
 		return t;
-		//		StackTraceElement[] stack = t.getStackTrace();
-		//		int i = 0;
-		//		while (i < stack.length && (stack[i].getClassName().startsWith(RuntimeMonitor.class.getPackage().getName())
-		//				|| stack[i].getClassName().startsWith("acme."))) {
-		//			i++;
-		//		}
-		//		if (i > 0) {
-		//			StackTraceElement[] fudgedStack = new StackTraceElement[stack.length - i];
-		//			System.arraycopy(stack, i, fudgedStack, 0, stack.length - i);
-		//			t.setStackTrace(fudgedStack);
-		//		}
-		//		return t;
 	}
 
 	/**
@@ -433,7 +400,7 @@ public class RuntimeMonitor {
 		// Report some stats.
 		if (PROFILE) {
 			Util.log("---- Profile info ------------------------------------");
-			Util.log("Set RuntimeMonitor.PROFILE to false to disable profiling (and speed the tool up!)");
+//			Util.log("Set RuntimeMonitor.PROFILE to false to disable profiling (and speed the tool up!)");
 			Util.logf("Distinct threads created: %d", ThreadState.lastID() + 1);
 			if (Stack.COUNT_STACKS) Util.logf("Distinct stacks created: %d", Stack.stacksCreated.value());
 			Util.logf("Frequently communicating stacks: %d", Stack.lastID() + 1);
@@ -450,14 +417,14 @@ public class RuntimeMonitor {
 				Util.logf("  cache misses: %d", ThreadState.ARRAY_MISSES.value());
 				Util.logf("      hit rate: %f", 
 						(float)ThreadState.ARRAY_HITS.value() / (float)(ThreadState.ARRAY_HITS.value() + ThreadState.ARRAY_MISSES.value()));
-				Util.logf("    cache size: %d", ThreadState.ARRAY_CACHE_SIZE);
+				Util.logf("    cache size: %d", Config.arrayCacheSizeOption.get());
 				
-				Util.logf("Lock accesses: %d", ThreadState.LOCK_HITS.value() + ThreadState.LOCK_MISSES.value());
-				Util.logf("   cache hits: %d", ThreadState.LOCK_HITS.value());
-				Util.logf(" cache misses: %d", ThreadState.LOCK_MISSES.value());
-				Util.logf("     hit rate: %f", 
+				Util.logf(" Lock accesses: %d", ThreadState.LOCK_HITS.value() + ThreadState.LOCK_MISSES.value());
+				Util.logf("    cache hits: %d", ThreadState.LOCK_HITS.value());
+				Util.logf("  cache misses: %d", ThreadState.LOCK_MISSES.value());
+				Util.logf("      hit rate: %f", 
 						(float)ThreadState.LOCK_HITS.value() / (float)(ThreadState.LOCK_HITS.value() + ThreadState.LOCK_MISSES.value()));
-				Util.logf("    cache size: %d", ThreadState.LOCK_CACHE_SIZE);
+				Util.logf("    cache size: %d", Config.lockCacheSizeOption.get());
 //				int totalHitWalk = 0;
 //				for (int i = 0; i < ThreadState.CACHED_ARRAYS; i++) {
 //					Util.logf("Array cache hits of length %d: %d", i+1, ThreadState.hitLengths[i].value());

@@ -1,6 +1,7 @@
 package oshajava.instrument;
 
 
+import oshajava.runtime.Config;
 import oshajava.sourceinfo.ModuleSpec;
 import oshajava.sourceinfo.ModuleSpec.CommunicationKind;
 import oshajava.support.acme.util.Util;
@@ -9,10 +10,6 @@ import oshajava.support.org.objectweb.asm.MethodVisitor;
 import oshajava.support.org.objectweb.asm.Opcodes;
 import oshajava.support.org.objectweb.asm.Type;
 import oshajava.support.org.objectweb.asm.commons.AdviceAdapter;
-
-// TODO allow annotations on interface methods, applied to all their
-// implementers?  This opens a bigger can of worms:
-// TODO allow annotation inheritance?
 
 public class MethodInstrumentor extends AdviceAdapter {
 	
@@ -24,14 +21,10 @@ public class MethodInstrumentor extends AdviceAdapter {
 	protected final boolean isClinit;
 	protected final boolean isStatic;
 	
-//	private final ModuleSpec module;
-
 	protected final String fullNameAndDesc;
 	
 	private final int methodUID;
 	
-//	private final Method readHook;
-
 	protected final CommunicationKind policy;
 
 	protected final ClassInstrumentor inst;
@@ -42,7 +35,6 @@ public class MethodInstrumentor extends AdviceAdapter {
 	
 	public MethodInstrumentor(MethodVisitor next, int access, String name, String desc, ClassInstrumentor inst, ModuleSpec module) {
 		super(next, access, name, desc);
-//		this.module = module;
 		this.inst = inst;
 		isStatic = (access & Opcodes.ACC_STATIC) != 0;
 		isMain = (access & Opcodes.ACC_PUBLIC ) != 0 && isStatic
@@ -240,7 +232,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 
 	private void xastore(int opcode, int local, int width) {
 		// stack == array index value |
-		if (inst.opts.coarseArrayStates) {
+		if (!Config.arrayIndexStatesOption.get()) {
 			myStackSize(3 - width);
 			Label afterHook = super.newLabel();
 			// stack -> array index _ |
@@ -395,8 +387,8 @@ public class MethodInstrumentor extends AdviceAdapter {
 			//		Util.log("Visiting field ins: owner = " + owner + ", name = " + name + ", desc = " + desc);
 			final Type ownerType = Type.getType(ClassInstrumentor.getDescriptor(owner));
 			final String stateFieldName;
-			final String stacktraceFieldName;
-			if (inst.opts.coarseFieldStates && (opcode == Opcodes.PUTFIELD || opcode == Opcodes.GETFIELD)){
+            final String stacktraceFieldName;
+			if (Config.objectStatesOption.get() && (opcode == Opcodes.PUTFIELD || opcode == Opcodes.GETFIELD)){
 				stateFieldName = ClassInstrumentor.SHADOW_FIELD_SUFFIX;
 				stacktraceFieldName = ClassInstrumentor.STACKTRACE_FIELD_SUFFIX;
 			} else {
@@ -419,7 +411,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 				super.putField(ownerType, stateFieldName, ClassInstrumentor.STATE_TYPE);
 				
 				// Save stack trace if requested.
-				if (inst.opts.saveStackTraces) {
+				if (Config.stackTracesOption.get()) {
 			        // dup the target. stack -> value obj | obj
     				super.dup();
     				// get the stack trace. stack -> value obj | obj trace
@@ -440,7 +432,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 				super.putStatic(ownerType, stateFieldName, ClassInstrumentor.STATE_TYPE);
 				
 				// Save stack trace if requested.
-				if (inst.opts.saveStackTraces) {
+				if (Config.stackTracesOption.get()) {
 				    // get the stack trace. stack -> trace
 				    getStackTrace();
             		// store the stack trace. stack -> 
@@ -453,7 +445,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 				Label homeFree = super.newLabel();
 				int traceVar = UNINITIALIZED;
 				// Store the stack trace if requested.
-				if (inst.opts.saveStackTraces) {
+				if (Config.stackTracesOption.get()) {
 				    traceVar = super.newLocal(ClassInstrumentor.STACKTRACE_TYPE);
 				    // stack -> obj | obj
 				    super.dup();
@@ -487,7 +479,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 				// stack -> obj | state readerState
 				pushCurrentState();
 				// stack -> obj | state readerState trace
-				if (inst.opts.saveStackTraces) {
+				if (Config.stackTracesOption.get()) {
 				    super.loadLocal(traceVar);
 				} else {
 				    mv.visitInsn(Opcodes.ACONST_NULL);
@@ -526,7 +518,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 				// stack -> state readerState
 				pushCurrentState();
 				// stack -> obj | state readerState trace
-				if (inst.opts.saveStackTraces) {
+				if (Config.stackTracesOption.get()) {
 				    super.getStatic(ownerType, stacktraceFieldName, ClassInstrumentor.STACKTRACE_TYPE);
 				} else {
 				    mv.visitInsn(Opcodes.ACONST_NULL);
@@ -559,7 +551,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 		case Opcodes.IALOAD:
 		case Opcodes.LALOAD:			
 		case Opcodes.SALOAD:
-			if (inst.opts.coarseArrayStates) {
+			if (!Config.arrayIndexStatesOption.get()) {
 				myStackSize(3);
 				// stack -> index array
 				super.swap();
