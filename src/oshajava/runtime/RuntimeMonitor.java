@@ -3,7 +3,6 @@ package oshajava.runtime;
 import java.io.IOException;
 import java.lang.reflect.Array;
 
-import oshajava.Config;
 import oshajava.runtime.exceptions.IllegalCommunicationException;
 import oshajava.runtime.exceptions.IllegalSharingException;
 import oshajava.runtime.exceptions.IllegalSynchronizationException;
@@ -401,7 +400,7 @@ public class RuntimeMonitor {
 		// Report some stats.
 		if (PROFILE) {
 			Util.log("---- Profile info ------------------------------------");
-			Util.log("Set RuntimeMonitor.PROFILE to false to disable profiling (and speed the tool up!)");
+//			Util.log("Set RuntimeMonitor.PROFILE to false to disable profiling (and speed the tool up!)");
 			Util.logf("Distinct threads created: %d", ThreadState.lastID() + 1);
 			if (Stack.COUNT_STACKS) Util.logf("Distinct stacks created: %d", Stack.stacksCreated.value());
 			Util.logf("Frequently communicating stacks: %d", Stack.lastID() + 1);
@@ -420,10 +419,10 @@ public class RuntimeMonitor {
 						(float)ThreadState.ARRAY_HITS.value() / (float)(ThreadState.ARRAY_HITS.value() + ThreadState.ARRAY_MISSES.value()));
 				Util.logf("    cache size: %d", Config.arrayCacheSizeOption.get());
 				
-				Util.logf("Lock accesses: %d", ThreadState.LOCK_HITS.value() + ThreadState.LOCK_MISSES.value());
-				Util.logf("   cache hits: %d", ThreadState.LOCK_HITS.value());
-				Util.logf(" cache misses: %d", ThreadState.LOCK_MISSES.value());
-				Util.logf("     hit rate: %f", 
+				Util.logf(" Lock accesses: %d", ThreadState.LOCK_HITS.value() + ThreadState.LOCK_MISSES.value());
+				Util.logf("    cache hits: %d", ThreadState.LOCK_HITS.value());
+				Util.logf("  cache misses: %d", ThreadState.LOCK_MISSES.value());
+				Util.logf("      hit rate: %f", 
 						(float)ThreadState.LOCK_HITS.value() / (float)(ThreadState.LOCK_HITS.value() + ThreadState.LOCK_MISSES.value()));
 				Util.logf("    cache size: %d", Config.lockCacheSizeOption.get());
 //				int totalHitWalk = 0;

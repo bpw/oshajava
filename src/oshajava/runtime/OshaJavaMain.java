@@ -9,6 +9,10 @@ import oshajava.support.acme.util.Util;
 public class OshaJavaMain {
 	
 	public static void main(final String[] args) {
+		if (Config.helpOption.get()) {
+			Config.cl.usage();
+			return;
+		}
 		final String mainClass = args[0];
 		InstrumentationAgent.setMainClass(mainClass);
 		final ThreadGroup appGroup = new ThreadGroup("application thread group root");
@@ -41,7 +45,7 @@ public class OshaJavaMain {
 				RuntimeMonitor.fini(mainClass);
 			}
 		});
-		Util.logf("Starting %s", mainClass);
+		Util.debugf("main", "Starting %s", mainClass);
 		app.start();
 		try {
 			app.join();

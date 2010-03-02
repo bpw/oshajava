@@ -26,6 +26,7 @@
 	<property name="annotation.jar" value="${agent.jar}" />
 	
 	<property name="agent.class" value="${top.package}.instrument.InstrumentationAgent" />
+	<property name="premain.class" value="${top.package}.runtime.Config" />
 	<property name="main.class" value="${top.package}.runtime.OshaJavaMain" />
 	<property name="processor.class" value="${top.package}.sourceinfo.SpecProcessor" />
 	<property name="class.loader" value="${top.package}.instrument.InstrumentingClassLoader" />
@@ -43,20 +44,14 @@
 		<javac srcdir="${asm.src.dir}" destdir="${classes.dir}" />
 		<javac srcdir="${acme.src.dir}" destdir="${classes.dir}" />
 		<javac srcdir="${src.dir}" destdir="${classes.dir}">
-			<!-- <classpath refid="libs.classpath" /> -->
 		</javac>
 	</target>
 		
 	<target name="jar" depends="compile">
-		<!-- agent jar (for instrument and runtime) -->
-		<!-- <manifestclasspath property="jar.classpath" jarfile="${agent.jar}">
-			<classpath refid="libs.classpath" />
-		</manifestclasspath> -->
 		<property name="manifest" value="${classes.dir}/Manifest.mf" />
-<echo file="${manifest}">Premain-Class: ${agent.class}
+<echo file="${manifest}">Premain-Class: ${premain.class}
 Agent-Class: ${agent.class}
 </echo>
-<!--Class-Path: ${jar.classpath}-->
 		<jar destfile="${agent.jar}" index="true" manifest="${manifest}">	
 			<fileset dir="${classes.dir}" includes="**/*.class" />
 			<!-- <indexjars refid="libs.classpath" /> -->
@@ -65,11 +60,15 @@ Agent-Class: ${agent.class}
 
 	<target name="bin">
 		<mkdir dir="${bin.dir}" />
+		
+		<!-- Generate setup.sh to set some environment variables. -->
 		<echo file="${paths.script}">export PATH=$$PATH:${basedir}/${bin.dir}
 			export OSHAJAVA_ANNOTATION_CLASSPATH=${basedir}/${annotation.jar}
 			export OSHAJAVA_CLASSPATH=${basedir}/${agent.jar}
 			export OSHAJAVA_PROCESSOR_CLASS=${processor.class}
 		</echo>
+		
+		<!-- Generate the javac wrapper script -->
 		<echo file="${compiler.bin}">#!/bin/sh
 			version() {
 				echo -n "osha"
@@ -86,48 +85,80 @@ Agent-Class: ${agent.class}
 				;;
 			esac
 		</echo>
+		
+		<!-- Generate the java wrapper script -->
 		<echo file="${runtime.bin}">#!/bin/sh
-			version() {
-				echo -n "osha"
-				java -version				
-			}
-			JAVA_ARGS=""
-			while test -n "$1"
-			do
-			    case "$1" in
-				-version) 
-					version
-					exit
-					;;
-				-jar) 
-					shift
-					CLASSPATH="$1:$CLASSPATH"
-					test -d "META-INF" &amp;&amp; mv META-INF META-INF.oshajava.back
-					jar xf $$1 META-INF/MANIFEST.MF
-					MAIN=`grep "^Main-Class:" META-INF/MANIFEST | awk '{print $2}'`
-					rm -rf META-INF
-					test -d "META-INF.oshajava.back" &amp;&amp; mv META-INF.oshajava.back META-INF
-					;;
-				-cp|-classpath) 
-					shift
-					CLASSPATH="$CLASSPATH:$1"
-					;;
-				--) 
-					shift
-					break
-					;;
-				*) 
-					JAVA_ARGS="$$JAVA_ARGS $1" 
-					;;
-			    esac
-			    shift
-			done
+OSHA_ARGS=""
+JVM_ARGS=""
+JVM="java"
 			
-			export CLASSPATH
-			java -javaagent:${basedir}/${agent.jar} -Xbootclasspath/a:${basedir}/${agent.jar} $$JAVA_ARGS ${main.class} $$MAIN $$@
-			# 
-			# -Xbootclasspath/a:${basedir}/${agent.jar}:${toString:libs.classpath} -Djava.system.class.loader=${class.loader}  
+## read osha args
+while [ -n "$1" -a "-javaOptions" != "$1" -a "--" != "$1" ]
+do
+	case "$1" in
+	-java=*)	
+			JVM=`echo "$1" | sed -e "s+-java=++"`
+			if [ -z "$OSHA_ARGS" ]
+			then
+				OSHA_ARGS="$1"
+			else
+				OSHA_ARGS="$OSHA_ARGS,$1"
+			fi
+			;;
+	-*)		
+			if [ -z "$OSHA_ARGS" ]
+			then
+				OSHA_ARGS="$1"
+			else
+				OSHA_ARGS="$OSHA_ARGS,$1"
+			fi
+			;;
+	esac
+	shift
+done
+			echo now shift if -javaOptions: $$@
+if [ "-javaOptions" = "$1" ]
+then
+	shift
+fi
+			
+			echo no read java args $$@
+			
+## read java args
+while [ -n "$1" -a "--" != "$1" ]
+do
+	case "$1" in
+	-jar) 
+		shift
+		CLASSPATH="$1:$CLASSPATH"
+		test -d "META-INF" &amp;&amp; mv META-INF META-INF.oshajava.back
+		jar xf $$1 META-INF/MANIFEST.MF
+		MAIN=`grep "^Main-Class:" META-INF/MANIFEST | awk '{print $2}'`
+		rm -rf META-INF
+		test -d "META-INF.oshajava.back" &amp;&amp; mv META-INF.oshajava.back META-INF
+		;;
+	-cp|-classpath) 
+		shift
+		CLASSPATH="$CLASSPATH:$1"
+		;;
+	*) 
+		JVM_ARGS="$$JVM_ARGS $1" 
+		;;
+	esac
+    shift
+done
+
+shift
+			echo no $$@
+test -z "$1" &amp;&amp; OSHA_ARGS="$OSHA_ARGS,-help"
+
+export CLASSPATH
+echo $$JVM -javaagent:${basedir}/${agent.jar}=$$OSHA_ARGS -Xbootclasspath/a:${basedir}/${agent.jar} $$JVM_ARGS ${main.class} $$MAIN $$@
+$$JVM -javaagent:${basedir}/${agent.jar}=$$OSHA_ARGS -Xbootclasspath/a:${basedir}/${agent.jar} $$JVM_ARGS ${main.class} $$MAIN $$@
+
 		</echo>
+		
+		<!-- Generate the module compressor script -->
 		<echo file="${module.compressor.bin}">#!/usr/bin/env ruby
 classpath = ENV['CLASSPATH']
 if ARGV.first == "-cp" or ARGV.first == "-classpath"
@@ -138,6 +169,8 @@ classpath.split(":").each do |d|
 	system "find #{d} -name '*.omb' | xargs java -cp ${basedir}/${agent.jar} oshajava.sourceinfo.ModuleSpecCompressor"
 end
 		</echo>	
+		
+		<!-- Generate the module rm script -->
 		<echo file="${module.rm.bin}">#!/usr/bin/env ruby
 classpath = ENV['CLASSPATH']
 if ARGV.first == "-cp" or ARGV.first == "-classpath"
@@ -149,6 +182,8 @@ classpath.split(":").each do |d|
 	system "find #{d} -name '*.oshamodule' -delete"
 end
 		</echo>	
+		
+		<!-- make everything in build/bin executable -->
 		<chmod perm="a+x" type="file">
 			<fileset dir="${bin.dir}" includes="*" />	
 		</chmod>

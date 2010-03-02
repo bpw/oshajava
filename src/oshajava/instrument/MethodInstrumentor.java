@@ -1,7 +1,7 @@
 package oshajava.instrument;
 
 
-import oshajava.Config;
+import oshajava.runtime.Config;
 import oshajava.sourceinfo.ModuleSpec;
 import oshajava.sourceinfo.ModuleSpec.CommunicationKind;
 import oshajava.support.acme.util.Util;
@@ -232,7 +232,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 
 	private void xastore(int opcode, int local, int width) {
 		// stack == array index value |
-		if (Config.objectStatesOption.get()) {
+		if (!Config.arrayIndexStatesOption.get()) {
 			myStackSize(3 - width);
 			Label afterHook = super.newLabel();
 			// stack -> array index _ |

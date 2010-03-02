@@ -2,7 +2,6 @@ package oshajava.runtime;
 
 import java.lang.ref.WeakReference;
 
-import oshajava.Config;
 import oshajava.runtime.RuntimeMonitor.Ref;
 import oshajava.support.acme.util.Util;
 import oshajava.util.cache.DirectMappedShadowCache;

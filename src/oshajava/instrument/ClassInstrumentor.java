@@ -7,7 +7,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 
-import oshajava.Config;
+import oshajava.runtime.Config;
 import oshajava.sourceinfo.ModuleSpec;
 import oshajava.sourceinfo.ModuleSpecNotFoundException;
 import oshajava.sourceinfo.Spec;
@@ -120,7 +120,7 @@ public class ClassInstrumentor extends ClassAdapter {
 	
 	private ModuleSpec getModule() throws ModuleSpecNotFoundException {
 		if (module == null) {
-			module = Spec.getModule(packageName + ModuleSpec.DEFAULT_NAME, loader);
+			module = Spec.getModule(packageName + ModuleSpec.DEFAULT_NAME, loader, className.replace('/','.'));
 		}
 		Util.assertTrue(module != null, "No module specified for %s.", className);
 		return module;
@@ -291,7 +291,7 @@ public class ClassInstrumentor extends ClassAdapter {
 			return new AnnotationVisitor() {
 				public void visit(String name, Object value) { // throws ModuleSpecNotFoundException
 					try {
-						ClassInstrumentor.this.module = Spec.getModule((String)name, loader);
+						ClassInstrumentor.this.module = Spec.getModule((String)name, loader, className.replace('/','.'));
 					} catch (ModuleSpecNotFoundException e) {
 						throw e.wrap();
 					}

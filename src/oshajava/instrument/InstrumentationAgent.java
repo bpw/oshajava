@@ -9,7 +9,7 @@ import java.lang.instrument.Instrumentation;
 import java.security.ProtectionDomain;
 import java.util.HashMap;
 
-import oshajava.Config;
+import oshajava.runtime.Config;
 import oshajava.sourceinfo.ModuleSpecNotFoundException;
 import oshajava.support.acme.util.Util;
 import oshajava.support.acme.util.option.CommandLine;
@@ -55,7 +55,7 @@ import oshajava.support.org.objectweb.asm.util.CheckClassAdapter;
  */
 public class InstrumentationAgent implements ClassFileTransformer {
 
-	protected static final String DEBUG_KEY = "instrument";
+	protected static final String DEBUG_KEY = "inst";
 
 	protected static final String[] EXCLUDE_PREFIXES = { 
 		"oshajava/", 
@@ -81,23 +81,23 @@ public class InstrumentationAgent implements ClassFileTransformer {
 	};
 
 	public static final CommandLineOption<Boolean> fullJDKInstrumentationOption =
-		CommandLine.makeBoolean("instrumentFullJDK", false, "");
+		CommandLine.makeBoolean("instrumentFullJDK", false, "Instrument deep into the JDK.");
 	
 	public static final CommandLineOption<Boolean> bytecodeDumpOption =
-		CommandLine.makeBoolean("bytecodeDump", true, "");
+		CommandLine.makeBoolean("bytecodeDump", false, "Dump instrumented bytecode.");
 	
 	public static final CommandLineOption<String> bytecodeDumpDirOption =
-		CommandLine.makeString("bytecodeDump", 
-				Util.outputPathOption.get() + File.separator + "bytecode-dump", "");
+		CommandLine.makeString("bytecodeDumpDir", 
+				Util.outputPathOption.get() + File.separator + "bytecode-dump", "Location of instrumented bytecode dump.");
 	
 	public static final CommandLineOption<Boolean> verifyOption =
-		CommandLine.makeBoolean("verify", true, "");
+		CommandLine.makeBoolean("verify", true, "Run an extra debugging verification pass on instrumented bytecode before loading.");
 	
 	public static final CommandLineOption<Boolean> preVerifyOption =
-		CommandLine.makeBoolean("preVerify", true, "");
+		CommandLine.makeBoolean("preVerify", true, "Verify classes read from disk before instrumenting.");
 	
 	public static final CommandLineOption<Boolean> framesOption =
-		CommandLine.makeBoolean("frames", true, "");
+		CommandLine.makeBoolean("frames", true, "Handle frames intelligently.");
 
 	public byte[] instrument(String className, byte[] bytecode, ClassLoader loader) throws ModuleSpecNotFoundException {
 		try {
@@ -118,7 +118,7 @@ public class InstrumentationAgent implements ClassFileTransformer {
 			if (preVerifyOption.get()) {
 				chain = new CheckClassAdapter(chain);
 			}
-			Util.logf("Instrumenting %s", className);
+			Util.debugf(DEBUG_KEY, "Instrumenting %s", className);
 			in.accept(chain, ClassReader.SKIP_FRAMES); // FIXME frames
 			return out.toByteArray();
 		} catch (ModuleSpecNotFoundException.Wrapper e) {
@@ -130,17 +130,13 @@ public class InstrumentationAgent implements ClassFileTransformer {
 
 	protected static final HashMap<String,String> uninstrumentedLoadedClasses = new HashMap<String,String>();
 
-	public static void premain(String agentArgs, Instrumentation inst) {
+	public static void install(Instrumentation inst) {
 		try {
-			Thread.currentThread().setName("oshajava");
-			
-			Config.cl.apply(agentArgs.split("____"));
-			
-			// TODO if args say to infer/record, Runtime.getRuntime().addShutdownHook(dumper);
-			Util.log("Loading oshajava runtime");
+			Util.debug(DEBUG_KEY, "Installing instrumentation agent.");
 			// Register the instrumentor with the jvm as a class file transformer.
 			InstrumentationAgent agent = new InstrumentationAgent();
 
+			Util.debug(DEBUG_KEY, "Recording previously loaded classes.");
 			// TODO do we miss anything loaded later by asm, acme this way?
 			synchronized(uninstrumentedLoadedClasses) {
 				for (Class<?> c : inst.getAllLoadedClasses()) {
@@ -163,10 +159,11 @@ public class InstrumentationAgent implements ClassFileTransformer {
 	private static volatile boolean instrumentationOn = false;
 	private static String mainClassInternalName;
 	public static void setMainClass(String cl) {
+		Util.debugf(DEBUG_KEY, "Setting main application class to %s.", cl);
 		mainClassInternalName = cl.replace('.', '/');
 	}
 	public static void stopInstrumentation() {
-		Util.log("Turning off instrumentation");
+		Util.debug(DEBUG_KEY, "Turning off instrumentation");
 		instrumentationOn = false;
 	}
 	private static ThreadGroup appThreadGroupRoot;
@@ -190,12 +187,10 @@ public class InstrumentationAgent implements ClassFileTransformer {
 			}
 			return instrumentedBytecode;
 		} catch (ModuleSpecNotFoundException e) {
-			Util.log(className);
-			e.printStackTrace();
-			throw (IllegalClassFormatException)e;
-		} catch (Throwable e) {
-			Util.log("Problem running oshajava instrumentor");
 			Util.fail(e);
+			return null;
+		} catch (Throwable e) {
+			Util.fail("Problem running oshajava instrumentor", e);
 			return null;
 		}
 	}
@@ -204,7 +199,7 @@ public class InstrumentationAgent implements ClassFileTransformer {
 		if (!instrumentationOn) {
 			if(className.equals(mainClassInternalName)) {
 				instrumentationOn = true;
-				Util.logf("Loading main class (%s) and starting instrumentation.", mainClassInternalName);
+				Util.debugf(DEBUG_KEY, "Loading main class (%s) and starting instrumentation.", mainClassInternalName);
 				return true;
 			}
 			//				Util.logf("Ignoring %s (Instrumentation not started yet.)", className);
@@ -215,7 +210,7 @@ public class InstrumentationAgent implements ClassFileTransformer {
 			// TODO this loses finalize methods, called by GC, probably not in an app thread.
 			return true;
 		} else {
-			Util.logf("Ignoring %s", className);
+			Util.debugf(DEBUG_KEY, "Ignoring %s", className);
 		}
 		return false;
 	}
@@ -236,7 +231,5 @@ public class InstrumentationAgent implements ClassFileTransformer {
 			return uninstrumentedLoadedClasses.containsKey(cn) || hasUninstrumentedOuterClass(cn);
 		}
 	}
-
-	//	protected byte[] transform
 
 }
