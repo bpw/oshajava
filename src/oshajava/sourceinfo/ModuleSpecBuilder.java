@@ -22,7 +22,7 @@ public class ModuleSpecBuilder implements Serializable {
 	protected Vector<String> methodIdToSig = new Vector<String>();
 	
 	protected Map<String, Group> groups = new HashMap<String, Group>();
-	protected BitVectorIntSet inlinedMethods = new BitVectorIntSet();
+	protected Vector<String> inlinedMethods = new Vector<String>();
 	
 	public ModuleSpecBuilder(String qualifiedName, URI uri) {
 		this.qualifiedName = qualifiedName;
@@ -107,7 +107,7 @@ public class ModuleSpecBuilder implements Serializable {
 	 * Add a method to the list of inlined methods.
 	 */
 	public void inlineMethod(String signature) {
-	    inlinedMethods.add(idForSig(signature));
+	    inlinedMethods.add(signature);
 	}
 	
 	/**
@@ -129,18 +129,29 @@ public class ModuleSpecBuilder implements Serializable {
 			}
 		}
 
+		final int firstInlinedID = methodIdToSig.size();
+		for (String s : inlinedMethods) {
+			methodIdToSig.add(s);
+		}
+		
 		// map sigs to ids.
 		final HashMap<String, Integer> methodSigToId = new HashMap<String, Integer>();
 		for (int i = 0; i < methodIdToSig.size(); ++i) {
 	        methodSigToId.put(methodIdToSig.get(i), i);
 	    }
+		
+		final BitVectorIntSet inlined = new BitVectorIntSet();
+		for (int i = firstInlinedID; i < methodIdToSig.size(); i++) {
+			inlined.add(i);
+		}
+		
 //	    Util.log(methodSigToId);
 	    return new ModuleSpec(
 	        qualifiedName,
 	        methodIdToSig.toArray(new String[0]),
 	        internalGraph,
 	        interfaceGraph,
-	        inlinedMethods,
+	        inlined,
 	        methodSigToId
 	    );
 	}
