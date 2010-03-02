@@ -26,13 +26,32 @@ public class StaticShadowInitInserter extends AdviceAdapter {
 		super.invokeStatic(classType, ClassInstrumentor.STATIC_SHADOW_INIT_METHOD);
 	}
 	
-	@Override
-	public void visitEnd() {
+	private void exitHook() {
 	    super.loadLocal(varCurrentThread, ClassInstrumentor.THREAD_STATE_TYPE);
 	    super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_EXIT);
-	    
+	}
+	
+	@Override
+	public void visitEnd() {
+	    exitHook();
 	    super.visitMaxs(maxStack+1, maxLocals+1);
 	    super.visitEnd();
+	}
+	
+	@Override
+	public void visitInsn(int opcode) {
+	    switch (opcode) {
+        case IRETURN:
+		case LRETURN:
+		case FRETURN:
+		case DRETURN:
+		case ARETURN:
+		case RETURN:
+		    exitHook();
+	    default:
+			super.visitInsn(opcode);
+			break;
+		}
 	}
 	
 	@Override
