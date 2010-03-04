@@ -312,7 +312,7 @@ public class ClassInstrumentor extends ClassAdapter {
 			return new AnnotationVisitor() {
 				public void visit(String name, Object value) { // throws ModuleSpecNotFoundException
 					try {
-						ClassInstrumentor.this.module = Spec.getModule((String)name, loader, className.replace('/','.'));
+						ClassInstrumentor.this.module = Spec.getModule((String)value, loader, className.replace('/','.'));
 					} catch (ModuleSpecNotFoundException e) {
 						throw e.wrap();
 					}
