@@ -150,6 +150,7 @@ public class Stack {
 		if (writer == root && reader != root || writer != root && reader == root) {
 			// Layer mismatch at root of stacks.
 			// FIXME pop/throw to find a compositional module...
+			return false;
 		}
 		
 		final int writerMod = Spec.getModuleID(writer.methodUID);
