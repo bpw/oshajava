@@ -5,6 +5,7 @@ import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Vector;
 
+import oshajava.instrument.InstrumentationAgent;
 import oshajava.support.acme.util.Util;
 import oshajava.util.ColdStorage;
 
@@ -46,7 +47,7 @@ public class Spec {
 	 */
 	protected static ModuleSpec loadModule(String name, ClassLoader loader, String requestingClass) throws ModuleSpecNotFoundException {
 		try {
-			final InputStream res = loader.getResourceAsStream(name + ModuleSpec.EXT);
+			final InputStream res = loader.getResourceAsStream(InstrumentationAgent.internalName(name) + ModuleSpec.EXT);
 			if (res == null) throw new ModuleSpecNotFoundException(name + ", referenced by " + requestingClass);
 			return (ModuleSpec)ColdStorage.load(res);
 		} catch (IOException e) {
