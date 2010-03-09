@@ -1,6 +1,7 @@
 package oshajava.runtime.exceptions;
 
 import oshajava.instrument.InstrumentationAgent;
+import oshajava.runtime.RuntimeMonitor;
 import oshajava.runtime.State;
 import oshajava.runtime.ThreadState;
 
@@ -34,13 +35,14 @@ public abstract class IllegalCommunicationException extends OshaRuntimeException
 		} else {
     		this.on = InstrumentationAgent.sourceName(on);
 		}
+		RuntimeMonitor.fudgeTrace(this);
 	}
 	
 	protected abstract String actionString();
 
 	@Override
 	public String getMessage() {
-	    String out = (on != null ? "on " + on : "" ) + "\n" + reader + "\n" + actionString() + "\n" + writer;
+	    String out = (on != null ? "on " + on : "" ) + "\n          " + reader + "\n" + actionString() + "\n          " + writer;
 	    
 		if (trace != null) {
 		    if (trace.length > 0) {

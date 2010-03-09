@@ -388,18 +388,19 @@ public class RuntimeMonitor {
 		ts.exit();
 	}
 
-	private static <T extends Throwable> T fudgeTrace(T t) {
+	public static <T extends Throwable> T fudgeTrace(T t) {
 		if (Config.fudgeExceptionTracesOption.get()) {
-				StackTraceElement[] stack = t.getStackTrace();
-				int i = 0;
-				while (i < stack.length && (stack[i].getClassName().startsWith(RuntimeMonitor.class.getPackage().getName()))) {
-					i++;
-				}
-				if (i > 0) {
-					StackTraceElement[] fudgedStack = new StackTraceElement[stack.length - i];
-					System.arraycopy(stack, i, fudgedStack, 0, stack.length - i);
-					t.setStackTrace(fudgedStack);
-				}
+			Util.debugf("fudge", "Fudging. package name is %s", RuntimeMonitor.class.getPackage().getName());
+			StackTraceElement[] stack = t.getStackTrace();
+			int i = 0;
+			while (i < stack.length && (stack[i].getClassName().startsWith(RuntimeMonitor.class.getPackage().getName()))) {
+				i++;
+			}
+			if (i > 0) {
+				StackTraceElement[] fudgedStack = new StackTraceElement[stack.length - i];
+				System.arraycopy(stack, i, fudgedStack, 0, stack.length - i);
+				t.setStackTrace(fudgedStack);
+			}
 		}
 		return t;
 	}
