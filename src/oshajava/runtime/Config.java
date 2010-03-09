@@ -58,7 +58,7 @@ public class Config {
 		CommandLine.makeInteger("lockCacheSize", 4, "Set the lock state cache size.");
 	
 	public static final CommandLineOption<Boolean> fudgeExceptionTracesOption =
-		CommandLine.makeBoolean("fudgeExceptionStackTraces", false, "Make communication exceptions look like they occur directly in user code.");
+		CommandLine.makeBoolean("fudgeExceptionStackTraces", true, "Make communication exceptions look like they occur directly in user code.");
 
     public static final CommandLineOption<Boolean> stackTracesOption =
         CommandLine.makeBoolean("traces", false, "Save writer stack traces for debugging violations.");

@@ -235,10 +235,10 @@ public class InstrumentationAgent implements ClassFileTransformer {
 	// -- Utilities for instrumentation --------------
 	
 	public static String internalName(String sourceName) {
-		return sourceName.replace('.', '/');
+		return sourceName == null ? null : sourceName.replace('.', '/');
 	}
 	public static String sourceName(String internalName) {
-		return internalName.replace('/', '.');
+		return internalName == null ? null : internalName.replace('/', '.');
 	}
 	public static String makeFieldSourceName(String className, String fieldName) {
 		return sourceName(className) + '.' + fieldName;
