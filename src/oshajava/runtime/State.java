@@ -62,6 +62,15 @@ public final class State {
 	}
 	
 	/**
+	 * Get the state resulting from invoking a class initializer.
+	 * @param methodUID
+	 * @return
+	 */
+	public State callClinit() {
+		return new State(thread, this, Stack.classInitializer);
+	}
+	
+	/**
 	 * Get the state resulting from returning from the current method.
 	 * @return
 	 */

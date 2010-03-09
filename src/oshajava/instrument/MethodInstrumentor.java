@@ -334,17 +334,6 @@ public class MethodInstrumentor extends AdviceAdapter {
 			super.mark(beginTry);
 		}
 	}
-	
-	private boolean calledOtherConstructor = false;
-	@Override
-	public void onMethodEnter() {
-		if (isConstructor && !calledOtherConstructor) {
-			// if no call to this() then init all shadow fields.
-			myStackSize(1);
-			super.loadThis();
-			super.invokeVirtual(inst.classType, ClassInstrumentor.INSTANCE_SHADOW_INIT_METHOD);
-		}
-	}
 
 	@Override
 	public void visitEnd() {
@@ -753,8 +742,37 @@ public class MethodInstrumentor extends AdviceAdapter {
 		}
 	}
 
+    private boolean calledOtherConstructor = false;
+    private boolean methodEntered = false;
+	@Override
+	public void onMethodEnter() {
+		if (isConstructor && !calledOtherConstructor) {
+			// No call to this() or super() (i.e., this is a root class like Object).
+			myStackSize(1);
+			super.loadThis();
+			super.invokeVirtual(inst.classType, ClassInstrumentor.INSTANCE_SHADOW_INIT_METHOD);
+		}
+		methodEntered = true;
+	}
+
 	@Override
 	public void visitMethodInsn(int opcode, String owner, String name, String desc) {
+	    if (isConstructor && !methodEntered && opcode == Opcodes.INVOKESPECIAL && name.equals("<init>")) {
+			// Call to another constructor at the beginning of this constructor (i.e., this is not
+			// Object).
+			calledOtherConstructor = true;
+			
+			// Is this a call to a super constructor in an uninstrumented class?
+			if (owner.equals(inst.superName) && !InstrumentationAgent.shouldInstrument(inst.superName)) {
+    		    super.visitMethodInsn(opcode, owner, name, desc); // invoke the constructor
+    		    // init shadow fields after uninstrumented construction finishes
+    			myStackSize(1);
+    			super.loadThis();
+    			super.invokeVirtual(inst.classType, ClassInstrumentor.INSTANCE_SHADOW_INIT_METHOD);
+    			return;
+			}
+		}
+	    
 		if (isConstructor && inst.superName.equals(ClassInstrumentor.OBJECT_WITH_STATE_NAME) 
 				&& opcode == Opcodes.INVOKESPECIAL && owner.equals("java/lang/Object") && name.equals("<init>")) {
 			owner = ClassInstrumentor.OBJECT_WITH_STATE_NAME;
@@ -805,15 +823,10 @@ public class MethodInstrumentor extends AdviceAdapter {
 		    pushCurrentState();
 		    // stack -> 
 			super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_POSTWAIT);
-		    
+		
 		} else {
 		    super.visitMethodInsn(opcode, owner, name, desc);
         }
-		if (isConstructor && opcode == Opcodes.INVOKESPECIAL && name.equals("<init>") 
-				&& (owner.equals(inst.superName) || owner.equals(inst.className)) 
-				&& !InstrumentationAgent.shouldInstrument(inst.superName)) {
-			calledOtherConstructor = true;
-		}
 	}
 
 }

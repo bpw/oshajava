@@ -77,9 +77,11 @@ public class ClassInstrumentor extends ClassAdapter {
 
 	protected static final Method HOOK_ENTER = new Method("enter", THREAD_STATE_TYPE, ARGS_INT);
 	protected static final Method HOOK_EXIT  = new Method("exit",  Type.VOID_TYPE, new Type[] { THREAD_STATE_TYPE });
+	protected static final Method HOOK_ENTER_CLINIT = new Method("enterClinit", THREAD_STATE_TYPE, ARGS_NONE);
 
 	protected static final Method HOOK_THREAD_STATE = new Method("getThreadState", THREAD_STATE_TYPE, ARGS_NONE);
 	protected static final Method HOOK_CURRENT_STATE = new Method("getCurrentState", STATE_TYPE, ARGS_NONE);
+	protected static final Method HOOK_CLINIT_STATE = new Method("classInitializer", STATE_TYPE, new Type[] { THREAD_STATE_TYPE });
 
 	protected static final Method HOOK_READ  = new Method("checkFieldRead",  Type.VOID_TYPE, new Type[] { STATE_TYPE, STATE_TYPE, Type.getType(String.class) });
 	protected static final Method HOOK_READ_STACK_TRACE  = new Method("checkFieldRead",  Type.VOID_TYPE, new Type[] { STATE_TYPE, STATE_TYPE, Type.getType(String.class), STACKTRACE_TYPE });
@@ -310,7 +312,7 @@ public class ClassInstrumentor extends ClassAdapter {
 			return new AnnotationVisitor() {
 				public void visit(String name, Object value) { // throws ModuleSpecNotFoundException
 					try {
-						ClassInstrumentor.this.module = Spec.getModule((String)name, loader, className.replace('/','.'));
+						ClassInstrumentor.this.module = Spec.getModule((String)value, loader, className.replace('/','.'));
 					} catch (ModuleSpecNotFoundException e) {
 						throw e.wrap();
 					}
@@ -442,6 +444,7 @@ public class ClassInstrumentor extends ClassAdapter {
 					int varCurrentState = stat.newLocal(STATE_TYPE);
 					stat.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_CURRENT_STATE);
 					stat.storeLocal(varCurrentState);
+					
 					for (String fieldname : staticShadowedFields) {
 					    // Shadow field.
 						stat.loadLocal(varCurrentState);

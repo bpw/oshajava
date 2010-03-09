@@ -107,6 +107,13 @@ public final class ThreadState {
 	}
 	
 	/**
+	 * Update call stack/state to reflect entering a class initializer.
+	 */
+	protected void enterClinit() {
+		state = state.callClinit();
+	}
+	
+	/**
 	 * Update call stack/state to reflect exiting the method with id mid.
 	 */
 	protected void exit() {

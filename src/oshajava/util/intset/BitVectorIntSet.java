@@ -145,4 +145,12 @@ public class BitVectorIntSet extends IntSet implements Serializable {
 		}
 		return true;
 	}
+	
+	public int size() {
+	    int count = 0;
+	    for (int i : bits) {
+	        count += Integer.bitCount(i);
+	    }
+	    return count;
+	}
 }

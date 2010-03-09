@@ -190,7 +190,7 @@ public class InstrumentationAgent implements ClassFileTransformer {
 			Util.fail(e);
 			return null;
 		} catch (Throwable e) {
-			Util.fail("Problem running oshajava instrumentor", e);
+			Util.fail("Problem running oshajava instrumentor: " + e);
 			return null;
 		}
 	}

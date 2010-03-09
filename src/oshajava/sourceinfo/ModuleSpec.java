@@ -197,11 +197,11 @@ public class ModuleSpec implements Serializable {
 	}
 	
 	private void printGraph(Graph g) {
-	    for (int i=0; i<methodIdToSig.length; ++i) {
+	    for (int i = 0; i < methodSigToId.size() - inlinedMethods.size(); ++i) {
             BitVectorIntSet dests = g.getOutEdges(i);
             if (!dests.isEmpty()) {
                 System.out.print("    " + methodIdToSig[i] + " -> ");
-                for (int j=0; j<methodIdToSig.length; ++j) {
+                for (int j=0; j<methodSigToId.size(); ++j) {
                     if (dests.contains(j)) {
                         System.out.print(methodIdToSig[j] + " ");
                     }

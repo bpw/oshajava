@@ -14,6 +14,7 @@ public class Stack {
 	public static final boolean COUNT_STACKS = RuntimeMonitor.PROFILE && true;
 	
 	protected static final Stack root = new Stack(-1, null);
+	protected static final Stack classInitializer = new Stack(-1, null);
 
 	/**
 	 * The Stack for the caller of the top of this stack.
@@ -250,8 +251,10 @@ public class Stack {
 	
 	@Override
 	public String toString() {
-	    if (methodUID == -1) {
+	    if (this == root) {
 	        return "(root)";
+	    } else if (this == classInitializer) {
+	        return "(class initialization)";
 	    }
 		final ModuleSpec mod = Spec.getModule(methodUID);
 		return "            [module: " + mod.getName() + "] " + mod.getMethodSignature(methodUID) + "\n" + (parent != null ? "  called by " + parent.toString() : "");

@@ -29,7 +29,11 @@ public abstract class IllegalCommunicationException extends OshaRuntimeException
 		this.writer = writer;
 		this.reader = reader;
 		this.trace = trace;
-		this.on = InstrumentationAgent.sourceName(on);
+		if (on == null) {
+		    this.on = null;
+		} else {
+    		this.on = InstrumentationAgent.sourceName(on);
+		}
 	}
 	
 	protected abstract String actionString();

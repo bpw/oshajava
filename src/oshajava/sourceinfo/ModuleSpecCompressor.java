@@ -18,6 +18,7 @@ public class ModuleSpecCompressor {
 			}
 			final ModuleSpecBuilder msb = ((ModuleSpecBuilder)ColdStorage.load(s));
 			System.out.println("Compressing " + msb.getName());
+			// msb.generateSpec().describe();
 			ColdStorage.store(s.substring(0, s.lastIndexOf(ModuleSpecBuilder.EXT)) + ModuleSpec.EXT,
 					msb.generateSpec());
 		}
