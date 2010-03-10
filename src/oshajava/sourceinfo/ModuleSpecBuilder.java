@@ -187,4 +187,27 @@ public class ModuleSpecBuilder implements Serializable {
 	    }
 	}
 	
+	public String summary() {
+	    String out = "";
+	    
+	    int interfaceGroups = 0;
+	    for (Group g : groups.values()) {
+	        if (g.isInterfaceGroup) {
+	            interfaceGroups++;
+	        }
+	    }
+	    out += groups.size() + " groups";
+	    if (interfaceGroups > 0) {
+    	    out += " (" + (groups.size() - interfaceGroups) + " communication, ";
+    	    out += interfaceGroups + " interface), ";
+        } else {
+            out += ", ";
+        }
+	    
+	    out += methodIdToSig.size() + " non-inlined methods, ";
+	    out += inlinedMethods.size() + " inlined";
+	    
+	    return out;
+	}
+	
 }

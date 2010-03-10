@@ -59,6 +59,7 @@ public class SpecProcessor extends AbstractProcessor implements TaskListener {
             for (ModuleSpecBuilder mod : changed) {
             	try {
            			note("Writing " + mod.getName());
+           			note("  " + mod.summary());
 					mod.write();
 				} catch (IOException e1) {
 					processingEnv.getMessager().printMessage(Diagnostic.Kind.OTHER, "Failed to write " + mod.getName() + ModuleSpecBuilder.EXT + ".");
