@@ -296,20 +296,12 @@ public class SpecProcessor extends AbstractProcessor implements TaskListener {
         // Group membership.
         if (readerAnn != null) {
             for (String groupId : readerAnn.value()) {
-                if (!module.addReader(groupId, sig)) {
-                    error("no such group " + groupId + " for method " + sig);
-                } else {
-                    changed.add(module);
-                }
+                module.addReader(groupId, sig);
             }
         }
         if (writerAnn != null) {
             for (String groupId : writerAnn.value()) {
-                if (!module.addWriter(groupId, sig)) {
-                    error("no such group " + groupId + " for method " + sig);
-                } else {
-                    changed.add(module);
-                }
+                module.addWriter(groupId, sig);
             }
         }
         

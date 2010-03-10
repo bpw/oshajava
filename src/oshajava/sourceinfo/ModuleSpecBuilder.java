@@ -23,6 +23,7 @@ public class ModuleSpecBuilder implements Serializable {
 	
 	protected Map<String, Group> groups = new HashMap<String, Group>();
 	protected Vector<String> inlinedMethods = new Vector<String>();
+	protected Vector<GroupMembership> memberships = new Vector<GroupMembership>();
 	
 	public ModuleSpecBuilder(String qualifiedName, URI uri) {
 		this.qualifiedName = qualifiedName;
@@ -80,27 +81,25 @@ public class ModuleSpecBuilder implements Serializable {
 	}
 	
 	/**
-	 * Add a method to a group as a reader. Returns false iff no such group.
+	 * Add a method to a group as a reader.
 	 */
-	public boolean addReader(String groupId, String signature) {
-	    Group group = getGroup(groupId);
-	    if (group == null) {
-	        return false;
-	    }
-	    group.readers.add(idForSig(signature));
-	    return true;
+	public void addReader(String groupId, String signature) {
+	    memberships.add(new GroupMembership(
+	        idForSig(signature),
+	        groupId,
+	        true
+	    ));
 	}
 	
 	/**
-	 * Add a method to a group as a writer. Returns false iff no such group.
+	 * Add a method to a group as a writer.
 	 */
-	public boolean addWriter(String groupId, String signature) {
-	    Group group = getGroup(groupId);
-	    if (group == null) {
-	        return false;
-	    }
-	    group.writers.add(idForSig(signature));
-	    return true;
+	public void addWriter(String groupId, String signature) {
+	    memberships.add(new GroupMembership(
+	        idForSig(signature),
+	        groupId,
+	        false
+	    ));
 	}
 	
 	/**
@@ -120,15 +119,19 @@ public class ModuleSpecBuilder implements Serializable {
 		interfaceGraph.fill();
 
 		// Put in edges.
-		for (Group g : groups.values()) {
-			final Graph graph = g.isInterfaceGroup ? interfaceGraph : internalGraph;
-			for (int i : g.writers) {
-				for (int j : g.readers) {
-					graph.addEdge(i, j);
-				}
-			}
+		for (GroupMembership readerMem : memberships) {
+		    if (readerMem.reader) {		    
+    		    final Group group = getGroup(readerMem.groupId);
+    			final Graph graph = group.isInterfaceGroup ? interfaceGraph : internalGraph;
+    		    for (GroupMembership writerMem : memberships) {
+    		        if (!writerMem.reader && writerMem.groupId.equals(group.id)) {
+        		        graph.addEdge(writerMem.methodId, readerMem.methodId);
+    		        }
+    		    }
+    	    }
 		}
 
+        // Give inlined methods higher IDs.
 		final int firstInlinedID = methodIdToSig.size();
 		for (String s : inlinedMethods) {
 			methodIdToSig.add(s);
@@ -161,8 +164,6 @@ public class ModuleSpecBuilder implements Serializable {
 	 */
 	private class Group implements Serializable {
 	    public String id;
-	    public Set<Integer> readers = new HashSet<Integer>();
-	    public Set<Integer> writers = new HashSet<Integer>();
 	    public Set<String> delegates = new HashSet<String>();
 	    public Set<String> merges = new HashSet<String>();
 	    public boolean isInterfaceGroup = false;
@@ -187,6 +188,24 @@ public class ModuleSpecBuilder implements Serializable {
 	    }
 	}
 	
+	/**
+	 * Represents that a method is part of a group.
+	 */
+	private class GroupMembership implements Serializable {
+	    public int methodId;
+	    public String groupId;
+	    public boolean reader; // otherwise writer
+	    
+	    public GroupMembership(int methodId, String groupId, boolean reader) {
+	        this.methodId = methodId;
+	        this.groupId = groupId;
+	        this.reader = reader;
+	    }
+	}
+	
+	/**
+	 * Statistics about the module.
+	 */
 	public String summary() {
 	    String out = "";
 	    
