@@ -2,6 +2,7 @@ package oshajava.sourceinfo;
 
 import java.io.Serializable;
 
+import oshajava.support.acme.util.Util;
 import oshajava.util.intset.BitVectorIntSet;
 import oshajava.util.intset.IntSet;
 
@@ -41,6 +42,7 @@ public class Graph implements Serializable {
 	 * @return
 	 */
 	public final BitVectorIntSet getOutEdges(int i) {
+		Util.assertTrue(i < table.length && i >= 0, "%d out of range in table of size %d", i, table.length);
 		return table[i];
 	}
 	
@@ -66,6 +68,7 @@ public class Graph implements Serializable {
 	 */
 	public final boolean containsEdge(int i, int j) {
 		assert i >= 0 && i < nextID && j >= 0 && j < nextID;
+		if (i >= table.length) return false;
 		final IntSet set = table[i];
 		return set != null && set.contains(j);
 	}

@@ -175,8 +175,8 @@ public class InstrumentationAgent implements ClassFileTransformer {
 			ProtectionDomain pd, byte[] bytecode) throws IllegalClassFormatException {
 		try {
 			if (!shouldTransform(className)) return null;
+
 			final byte[] instrumentedBytecode = instrument(className, bytecode, loader);
-			//			RuntimeMonitor.loadNewMethods();
 			if (instrumentedBytecode != bytecode && bytecodeDumpOption.get()) {
 				File f = new File(bytecodeDumpDirOption.get() + File.separator + className + ".class");
 				f.getParentFile().mkdirs();
@@ -190,7 +190,7 @@ public class InstrumentationAgent implements ClassFileTransformer {
 			Util.fail(e);
 			return null;
 		} catch (Throwable e) {
-			Util.fail("Problem running oshajava instrumentor: " + e);
+			Util.fail("Problem running oshajava instrumentor: ", e);
 			return null;
 		}
 	}

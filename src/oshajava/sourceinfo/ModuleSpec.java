@@ -60,6 +60,8 @@ public class ModuleSpec implements Serializable {
 	 */
 	protected final String[] methodIdToSig;
 	
+	protected final int commMethods;
+	
 	/**
 	 * The communication allowed amongst methods within the module.
 	 */
@@ -80,12 +82,13 @@ public class ModuleSpec implements Serializable {
 	 * @param inlinedMethods set of methods that are inlined
 	 * @param methodSigToId map from method signature to method id
 	 */
-	public ModuleSpec(final String name, final String[] methodIdToSig, final Graph internalGraph, 
-			final Graph interfaceGraph, final BitVectorIntSet inlinedMethods,
+	public ModuleSpec(final String name, final String[] methodIdToSig, final int commMethods,
+			final Graph internalGraph, final Graph interfaceGraph, final BitVectorIntSet inlinedMethods,
 			final HashMap<String,Integer> methodSigToId) {
 //		checkIntegrity();
 		this.name = name;
 		this.methodIdToSig = methodIdToSig;
+		this.commMethods = commMethods;
 		this.internalGraph = internalGraph;
 		this.interfaceGraph = interfaceGraph;
 		this.inlinedMethods = inlinedMethods;
@@ -155,7 +158,9 @@ public class ModuleSpec implements Serializable {
 	}
 	public boolean allAllowed(final int w, final BitVectorIntSet readers) {
 		Util.assertTrue(Spec.getModuleID(w) == id); //FIXME && Spec.getModuleID(r) == id);
-		return internalGraph.getOutEdges(Spec.getMethodID(w)).containsAll(readers);
+		final BitVectorIntSet edges = internalGraph.getOutEdges(Spec.getMethodID(w));
+		if (edges == null) return false;
+		return edges.containsAll(readers);
 	}
 	
 	/**
@@ -178,14 +183,14 @@ public class ModuleSpec implements Serializable {
 	public CommunicationKind getCommunicationKind(final int uid) {
 		Util.assertTrue(Spec.getModuleID(uid) == id, "method id " + uid + " (module=" + Spec.getModuleID(uid) + ", method=" + Spec.getMethodID(uid) + ") is not a member of module " + name + " (id " + id + ")");
 		final int mid = Spec.getMethodID(uid);
-		if (inlinedMethods.contains(mid)) {
-			return CommunicationKind.INLINE;
-		} else if (internalGraph.getOutEdges(mid).isEmpty()) {
-			if (internalGraph.hasInEdges(mid)) {
-				return CommunicationKind.NONE;
+		if (mid >= commMethods) {
+			if (inlinedMethods.contains(mid)) {
+				return CommunicationKind.INLINE;
 			} else {
-				return CommunicationKind.READ_ONLY;
+				return CommunicationKind.NONE;
 			}
+		} else if (internalGraph.getOutEdges(mid).isEmpty()) {
+			return CommunicationKind.READ_ONLY;
 		} else if (internalGraph.hasInEdges(mid)){
 			return CommunicationKind.WRITE_ONLY;
 		} else {

@@ -41,19 +41,19 @@ public class Spec {
 	
 	/**
 	 * Load a ModuleSpec from disk given its name.
-	 * @param name
+	 * @param qualifiedName
 	 * @return
 	 * @throws ModuleSpecNotFoundException if there was a problem finding or loading the spec.
 	 */
-	protected static ModuleSpec loadModule(String name, ClassLoader loader, String requestingClass) throws ModuleSpecNotFoundException {
+	protected static ModuleSpec loadModule(String qualifiedName, ClassLoader loader, String requestingClass) throws ModuleSpecNotFoundException {
 		try {
-			final InputStream res = loader.getResourceAsStream(InstrumentationAgent.internalName(name) + ModuleSpec.EXT);
-			if (res == null) throw new ModuleSpecNotFoundException(name + ", referenced by " + requestingClass);
+			final InputStream res = loader.getResourceAsStream(InstrumentationAgent.internalName(qualifiedName) + ModuleSpec.EXT);
+			if (res == null) throw new ModuleSpecNotFoundException(qualifiedName + ", referenced by " + requestingClass);
 			return (ModuleSpec)ColdStorage.load(res);
 		} catch (IOException e) {
-			throw new ModuleSpecNotFoundException(name + ", referenced by " + requestingClass);
+			throw new ModuleSpecNotFoundException(qualifiedName + ", referenced by " + requestingClass);
 		} catch (ClassNotFoundException e) {
-			throw new ModuleSpecNotFoundException(name + ", referenced by " + requestingClass);
+			throw new ModuleSpecNotFoundException(qualifiedName + ", referenced by " + requestingClass);
 		}
 	}
 	

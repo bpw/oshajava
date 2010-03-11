@@ -31,6 +31,7 @@ import oshajava.annotation.Groups;
 import oshajava.annotation.Inline;
 import oshajava.annotation.InterfaceGroup;
 import oshajava.annotation.Member;
+import oshajava.annotation.NonComm;
 import oshajava.annotation.Reader;
 import oshajava.annotation.Writer;
 import oshajava.support.acme.util.Util;
@@ -244,13 +245,21 @@ public class SpecProcessor extends AbstractProcessor implements TaskListener {
         // Module membership.
         Member memberAnn = cls.getAnnotation(Member.class);
         ModuleSpecBuilder module;
+        PackageElement pkg = processingEnv.getElementUtils().getPackageOf(cls);
+        String pkgName = pkg.getQualifiedName().toString();
+        if (!pkgName.isEmpty()) {
+        	pkgName += ".";
+        }
         if (memberAnn != null) {
-            module = getModule(memberAnn.value());
+        	String modName = memberAnn.value();
+        	if (modName.contains(".")) {
+        		module = getModule(modName);
+        	} else {
+        		module = getModule(pkgName + modName);
+        	}
         } else {
             // Default membership.
-            PackageElement pkg = processingEnv.getElementUtils().getPackageOf(cls);
-            String pkgName = pkg.getQualifiedName().toString();
-            module = getModule(pkgName + (pkgName.isEmpty() ? "" : ".") + ModuleSpec.DEFAULT_NAME);
+            module = getModule(pkgName + ModuleSpec.DEFAULT_NAME);
         }
         // Facilitate module lookup for this class's methods.
         classToModule.put(name, module);
@@ -288,25 +297,35 @@ public class SpecProcessor extends AbstractProcessor implements TaskListener {
         Reader readerAnn = m.getAnnotation(Reader.class);
         Writer writerAnn = m.getAnnotation(Writer.class);
         Inline inlineAnn = m.getAnnotation(Inline.class);
+        NonComm nonCommAnn = m.getAnnotation(NonComm.class);
         
-        if ((readerAnn != null || writerAnn != null) && (inlineAnn != null)) {
-            error("method " + sig + " annotated as both inlined and part of a group");
+        if (((readerAnn != null || writerAnn != null) && (inlineAnn != null || nonCommAnn != null))
+        		|| (inlineAnn != null && nonCommAnn != null)) {
+            error("method " + sig + ": conflicting annotations. @Inline, @NonComm, and @Writer/@Reader are mutually exclusive.");
         }
         
+        boolean nonEmptyGroups = false;
         // Group membership.
         if (readerAnn != null) {
             for (String groupId : readerAnn.value()) {
                 module.addReader(groupId, sig);
             }
+            nonEmptyGroups = readerAnn.value() != null && readerAnn.value().length > 0;
         }
         if (writerAnn != null) {
             for (String groupId : writerAnn.value()) {
                 module.addWriter(groupId, sig);
             }
+            nonEmptyGroups = nonEmptyGroups || (writerAnn.value() != null && writerAnn.value().length > 0);
+        }
+        
+        // Non-comm
+        if (((writerAnn != null || readerAnn != null) && !nonEmptyGroups) || nonCommAnn != null) {
+        	module.addNonComm(sig);
         }
         
         // Inlining (default).
-        if (readerAnn == null && writerAnn == null) {
+        if (readerAnn == null && writerAnn == null && nonCommAnn == null) {
             module.inlineMethod(sig);
             changed.add(module);
         }

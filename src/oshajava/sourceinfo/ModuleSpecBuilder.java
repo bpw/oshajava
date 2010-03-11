@@ -24,6 +24,7 @@ public class ModuleSpecBuilder implements Serializable {
 	protected Map<String, Group> groups = new HashMap<String, Group>();
 	protected Vector<String> inlinedMethods = new Vector<String>();
 	protected Vector<GroupMembership> memberships = new Vector<GroupMembership>();
+	protected Vector<String> nonCommMethods = new Vector<String>();
 	
 	public ModuleSpecBuilder(String qualifiedName, URI uri) {
 		this.qualifiedName = qualifiedName;
@@ -103,6 +104,12 @@ public class ModuleSpecBuilder implements Serializable {
 	}
 	
 	/**
+	 * Add a method as a non-communicator.
+	 */
+	public void addNonComm(String signature) {
+		nonCommMethods.add(signature);
+	}
+	/**
 	 * Add a method to the list of inlined methods.
 	 */
 	public void inlineMethod(String signature) {
@@ -130,28 +137,34 @@ public class ModuleSpecBuilder implements Serializable {
     		    }
     	    }
 		}
-
-        // Give inlined methods higher IDs.
-		final int firstInlinedID = methodIdToSig.size();
+		
+		Vector<String> specIds = new Vector<String>();
+		specIds.addAll(methodIdToSig);
+        // Give inlined and noncomm methods higher IDs.
+		for (String s: nonCommMethods) {
+			specIds.add(s);
+		} // noncomm must comm before inlined b/c of how used below.
+		final int firstInlinedID = specIds.size();
 		for (String s : inlinedMethods) {
-			methodIdToSig.add(s);
+			specIds.add(s);
 		}
 		
 		// map sigs to ids.
 		final HashMap<String, Integer> methodSigToId = new HashMap<String, Integer>();
-		for (int i = 0; i < methodIdToSig.size(); ++i) {
-	        methodSigToId.put(methodIdToSig.get(i), i);
+		for (int i = 0; i < specIds.size(); ++i) {
+	        methodSigToId.put(specIds.get(i), i);
 	    }
 		
 		final BitVectorIntSet inlined = new BitVectorIntSet();
-		for (int i = firstInlinedID; i < methodIdToSig.size(); i++) {
+		for (int i = firstInlinedID; i < specIds.size(); i++) {
 			inlined.add(i);
 		}
 		
 //	    Util.log(methodSigToId);
 	    return new ModuleSpec(
 	        qualifiedName,
-	        methodIdToSig.toArray(new String[0]),
+	        specIds.toArray(new String[0]),
+	        methodIdToSig.size(),
 	        internalGraph,
 	        interfaceGraph,
 	        inlined,
@@ -223,7 +236,7 @@ public class ModuleSpecBuilder implements Serializable {
             out += ", ";
         }
 	    
-	    out += methodIdToSig.size() + " non-inlined methods, ";
+	    out += methodIdToSig.size() + " non-inlined methods (" + methodIdToSig.size() + " comm., " + nonCommMethods.size() + " non-comm.), ";
 	    out += inlinedMethods.size() + " inlined";
 	    
 	    return out;
