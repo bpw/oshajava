@@ -42,7 +42,9 @@ public abstract class IllegalCommunicationException extends OshaRuntimeException
 
 	@Override
 	public String getMessage() {
-	    String out = (on != null ? "on " + on : "" ) + "\n          " + reader + "\n" + actionString() + "\n          " + writer;
+	    String out = "================================================================================"; 
+	    	
+	    out += (on != null ? "on " + on : "" ) + "\n" + reader + "\n" + actionString() + "\n" + writer;
 	    
 		if (trace != null) {
 		    if (trace.length > 0) {
@@ -54,7 +56,8 @@ public abstract class IllegalCommunicationException extends OshaRuntimeException
     	        out += "\nOriginated at field initialization.";
     	    }
 		}
-		
+	    out += "================================================================================"; 
+
 		return out;
 	}
 
