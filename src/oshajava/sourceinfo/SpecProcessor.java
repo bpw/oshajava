@@ -154,6 +154,8 @@ public class SpecProcessor extends AbstractProcessor implements TaskListener {
             
             name = name.replace('.', '/');
             
+            // Disable <...> appending, because ASM doesn't seem to do it?
+            /*
             if (!decl.getTypeArguments().isEmpty()) {
                 // Add back type parameters.
                 name += "<";
@@ -162,6 +164,7 @@ public class SpecProcessor extends AbstractProcessor implements TaskListener {
                 }
                 name += ">";
             }
+            */
             
             return "L" + name + ";";
             
@@ -170,9 +173,11 @@ public class SpecProcessor extends AbstractProcessor implements TaskListener {
         case TYPEVAR:
             return "T" + tm.toString() + ";";
             
+        case WILDCARD:
+            return "?";
+            
         case EXECUTABLE:        
         case NULL:
-        case WILDCARD:
         case OTHER:
         case PACKAGE:
         case ERROR:
