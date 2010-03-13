@@ -66,6 +66,10 @@ public class Spec {
 	 * @throws ModuleSpecNotFoundException
 	 */
 	public static synchronized ModuleSpec getModule(String name, ClassLoader loader, String requestingClass) throws ModuleSpecNotFoundException {
+	    if (loader == null) {
+	        // Loaded by the JVM.
+	    }
+	    
 		ModuleSpec module = nameToModule.get(name);
 		if (module == null) {
 			module = loadModule(name, loader, requestingClass);
