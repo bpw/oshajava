@@ -53,8 +53,15 @@ public class MethodInstrumentor extends AdviceAdapter {
             // This is an anonymous class.
             methodUID = UNINITIALIZED;
             policy = CommunicationKind.INLINE;
-        } else if (name.matches("access\\$0.+")){
+        } else if (name.matches("access\\$\\d.+")) {
             // Synthetic outer-class private field accessor.
+            methodUID = UNINITIALIZED;
+            policy = CommunicationKind.INLINE;
+        } else if (isConstructor && inst.className.contains("$") &&
+                   desc.matches(".+\\$\\d.+")) {
+            // Synthetic inner class constructor with anonymous
+            // class parameter. I don't have a good explanation
+            // for this one.
             methodUID = UNINITIALIZED;
             policy = CommunicationKind.INLINE;
 		} else {
