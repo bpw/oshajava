@@ -143,6 +143,8 @@ public class SpecProcessor extends AbstractProcessor implements TaskListener {
             return "J";
         case VOID:
             return "V";
+        case SHORT:
+            return "S";
         
         case ARRAY:
             return "[" + typeDescriptor(((ArrayType)tm).getComponentType());
