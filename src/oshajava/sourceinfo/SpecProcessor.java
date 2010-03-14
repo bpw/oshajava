@@ -20,6 +20,7 @@ import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
+import javax.lang.model.element.ElementKind;
 import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
@@ -89,6 +90,7 @@ public class SpecProcessor extends AbstractProcessor implements TaskListener {
                 
             case CLASS:
             case INTERFACE:
+            case ENUM:
                 handleClass((TypeElement)e);
                 processAll(e.getEnclosedElements());
                 break;
@@ -187,10 +189,6 @@ public class SpecProcessor extends AbstractProcessor implements TaskListener {
                 name = enclosingName + "$" + baseName;
             }
             
-            if (name.contains("Methodology")) {
-                Util.log("ee: " + decl.asElement().getEnclosingElement());
-            }
-            
             return "L" + name + ";";
         
         case TYPEVAR:
@@ -213,8 +211,17 @@ public class SpecProcessor extends AbstractProcessor implements TaskListener {
     /**
      * Construct the JVM method descriptor for an ExecutableElement.
      */
-    private String methodDescriptor(ExecutableElement m) {
-        String out = "(";
+    private String methodDescriptor(TypeElement cls, ExecutableElement m) {
+        // Container name.
+        String out = typeDescriptor(cls.asType());
+        // Remove L and ; from container class.
+        out = out.substring(1, out.length() - 1);
+        
+        // Method name.
+        out += "." + m.getSimpleName();
+        
+        // Parameter and return values.
+        out += "(";
         for (VariableElement ve : m.getParameters()) {
             out += typeDescriptor(ve.asType());
         }
@@ -315,10 +322,7 @@ public class SpecProcessor extends AbstractProcessor implements TaskListener {
         TypeElement cls = (TypeElement)m.getEnclosingElement();
 //        String name = cls.getQualifiedName() + "." + m.getSimpleName();
         ModuleSpecBuilder module = classToModule.get(cls.getQualifiedName().toString());
-        
-        // Signature is like:
-        // package/package/Class.method()V
-        String sig = cls.getQualifiedName().toString().replace('.','/') + "." + m.getSimpleName() + methodDescriptor(m);
+        String sig = methodDescriptor(cls, m);
         
         assert module != null;
         
