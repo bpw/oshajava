@@ -1,11 +1,17 @@
 package oshajava.sourceinfo;
 
+import java.util.Vector;
+import java.util.HashMap;
+import oshajava.util.intset.BitVectorIntSet;
+import oshajava.support.acme.util.Util;
+
 public class NullModuleSpec extends ModuleSpec {
     
-    private Vector<String> nullMethodIdToSig;
+    protected Vector<String> nullMethodIdToSig = new Vector<String>();
     
     public NullModuleSpec(final String name) {
-        this.name = name;
+        super(name, null, 0, null, null, null,
+              new HashMap<String,Integer>());
     }
     
     @Override
@@ -14,7 +20,7 @@ public class NullModuleSpec extends ModuleSpec {
 				"method id " + methodUID + " (module=" + Spec.getModuleID(methodUID) 
 				+ ", method=" + Spec.getMethodID(methodUID) + 
 				") is not a member of module " + name + " (id " + id + ")");
-		return nullMethodIdToSig[Spec.getMethodID(methodUID)];
+		return nullMethodIdToSig.get(Spec.getMethodID(methodUID));
     }
     
     @Override
@@ -26,9 +32,8 @@ public class NullModuleSpec extends ModuleSpec {
             // Assign a new id.
             nullMethodIdToSig.add(sig);
             mid = nullMethodIdToSig.size()-1;
-            methodSigToId.put(mid, sig);
+            methodSigToId.put(sig, mid);
         }
-		final int mid = methodSigToId.get(sig);
 		return Spec.makeUID(id, mid);
 	}
     
@@ -48,9 +53,9 @@ public class NullModuleSpec extends ModuleSpec {
     }
     
     @Override
-    public boolean getCommunicationKind(final int uid) {
+    public CommunicationKind getCommunicationKind(final int uid) {
         Util.assertTrue(Spec.getModuleID(uid) == id, "method id " + uid + " (module=" + Spec.getModuleID(uid) + ", method=" + Spec.getMethodID(uid) + ") is not a member of module " + name + " (id " + id + ")");
-        return CommunicationKind.INLINE;
+        return ModuleSpec.CommunicationKind.INLINE;
     }
     
     @Override

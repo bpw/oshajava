@@ -37,7 +37,7 @@ public class ModuleSpec implements Serializable {
 	/**
 	 * The module id of this module. Only instantiated at runtime.
 	 */
-	private transient int id = -1;
+	protected transient int id = -1;
 	
 	/**
 	 * The name of this module.
