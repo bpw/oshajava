@@ -222,7 +222,7 @@ public class SpecProcessor extends AbstractProcessor implements TaskListener {
         // Method name.
         out += "." + m.getSimpleName();
         
-        // Parameter and return values.
+        // Parameter and return types.
         out += "(";
         // Special case for enumeration constructors.
         if (cls.getKind() == ElementKind.ENUM &&

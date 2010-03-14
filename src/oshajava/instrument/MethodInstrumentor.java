@@ -20,7 +20,6 @@ public class MethodInstrumentor extends AdviceAdapter {
 	protected boolean usesThisConstructor = false;
 	protected final boolean isClinit;
 	protected final boolean isStatic;
-	protected final boolean isInAnonymousClass;
 	
 	protected final String fullNameAndDesc;
 	
@@ -45,20 +44,22 @@ public class MethodInstrumentor extends AdviceAdapter {
 		isClinit = name.equals("<clinit>");
 		fullNameAndDesc = inst.className + "." + name + desc;
 		
-		// Check for anonymous classes, which aren't seen by the
-		// annotation processor.
+		// Check for anonymous classes and synthetic outer private field
+		// accessors, which aren't seen by the annotation processor.
 		if (inst.outerClassName != null && 
 		            inst.className.indexOf(inst.outerClassName) == 0 &&
 		            inst.className.substring(inst.outerClassName.length()).
-		                matches("^\\$\\d")) {
+		                matches("\\$\\d.*")) {
             // This is an anonymous class.
             methodUID = UNINITIALIZED;
             policy = CommunicationKind.INLINE;
-            isInAnonymousClass = true;
+        } else if (name.matches("access\\$0.+")){
+            // Synthetic outer-class private field accessor.
+            methodUID = UNINITIALIZED;
+            policy = CommunicationKind.INLINE;
 		} else {
     		methodUID = module.getMethodUID(fullNameAndDesc);
     		policy = module.getCommunicationKind(methodUID);
-    		isInAnonymousClass = false;
 		}
 		
 		
