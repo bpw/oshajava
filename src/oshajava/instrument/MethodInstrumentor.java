@@ -44,28 +44,26 @@ public class MethodInstrumentor extends AdviceAdapter {
 		isClinit = name.equals("<clinit>");
 		fullNameAndDesc = inst.className + "." + name + desc;
 		
-		// Check for anonymous classes and synthetic outer private field
-		// accessors, which aren't seen by the annotation processor.
-		if (inst.outerClassName != null && 
-		            inst.className.indexOf(inst.outerClassName) == 0 &&
-		            inst.className.substring(inst.outerClassName.length()).
-		                matches("\\$\\d.*")) {
-            // This is an anonymous class.
-            methodUID = UNINITIALIZED;
+		// Synthetic methods are, in general, not seen by the annotation
+		// processor. If they're not, then we emit a warning and inline
+		// the method.
+		methodUID = module.getMethodUID(fullNameAndDesc);
+		if (methodUID == -1 && (access & Opcodes.ACC_SYNTHETIC) != 0) {
+		    Util.log("inlining synthetic method " + fullNameAndDesc);
             policy = CommunicationKind.INLINE;
-        } else if (name.matches("access\\$\\d.+")) {
-            // Synthetic outer-class private field accessor.
-            methodUID = UNINITIALIZED;
+        // Such is also the case with methods on inner classes.
+        } else if (methodUID == -1 &&
+                   inst.outerClassName != null && 
+                   inst.className.indexOf(inst.outerClassName) == 0 &&
+                   inst.className.substring(inst.outerClassName.length()).
+                                    matches("\\$\\d.*")) {
             policy = CommunicationKind.INLINE;
-        } else if (isConstructor && inst.className.contains("$") &&
-                   desc.matches(".+\\$\\d.+")) {
-            // Synthetic inner class constructor with anonymous
-            // class parameter. I don't have a good explanation
-            // for this one.
-            methodUID = UNINITIALIZED;
-            policy = CommunicationKind.INLINE;
-		} else {
-    		methodUID = module.getMethodUID(fullNameAndDesc);
+        // Raise an error for other methods that are not found.
+        } else if (methodUID == -1) {
+            Util.fail("in module " + module.getName() + ", " + fullNameAndDesc + " not found");
+            policy = CommunicationKind.INLINE; // avoid warning
+        // Set policy appropriately if method is found.
+        } else {
     		policy = module.getCommunicationKind(methodUID);
 		}
 		
