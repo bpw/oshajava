@@ -21,6 +21,8 @@ import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.element.ElementKind;
+import javax.lang.model.element.NestingKind;
+import javax.lang.model.element.Modifier;
 import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
@@ -222,12 +224,20 @@ public class SpecProcessor extends AbstractProcessor implements TaskListener {
         
         // Parameter and return values.
         out += "(";
-        // Weird special case for enumeration constructors.
+        // Special case for enumeration constructors.
         if (cls.getKind() == ElementKind.ENUM &&
                     m.getSimpleName().toString().equals("<init>")) {
             // For some reason, the annotation processing system seems
             // to miss some enum constructor parameters!
             out += "Ljava/lang/String;I";
+        }
+        // Special case for non-static inner class constructors.
+        if (cls.getNestingKind() == NestingKind.MEMBER &&
+                    !cls.getModifiers().contains(Modifier.STATIC) &&
+                    m.getSimpleName().toString().equals("<init>")) {
+            // Annotation processing is also not aware that inner class
+            // constructors get their outer class passed as a parameter.
+            out += typeDescriptor(cls.getEnclosingElement().asType());
         }
         for (VariableElement ve : m.getParameters()) {
             out += typeDescriptor(ve.asType());
