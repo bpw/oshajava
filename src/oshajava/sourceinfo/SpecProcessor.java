@@ -23,6 +23,7 @@ import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
+import javax.lang.model.type.TypeKind;
 import javax.tools.Diagnostic;
 import javax.tools.StandardLocation;
 
@@ -166,9 +167,31 @@ public class SpecProcessor extends AbstractProcessor implements TaskListener {
             }
             */
             
-            return "L" + name + ";";
+            // Check if it's an iinner class.
+            TypeMirror encloser = null;
+            if (decl.getEnclosingType().getKind() != TypeKind.NONE) {
+                encloser = decl.getEnclosingType();
+            } else if (decl.asElement().getEnclosingElement()
+                       instanceof TypeElement) {
+                encloser = decl.asElement().getEnclosingElement().asType();
+            }
             
-            // TODO do inner classes need special handling?
+            if (encloser != null) {
+                // This is an inner class.
+                int lastSlash = name.lastIndexOf('/');
+                String baseName = name.substring(lastSlash + 1);
+                String enclosingName = typeDescriptor(encloser);
+                // Remove L and ; on either end of encloser descriptor.
+                enclosingName = enclosingName.substring(1,
+                    enclosingName.length() - 1);
+                name = enclosingName + "$" + baseName;
+            }
+            
+            if (name.contains("Methodology")) {
+                Util.log("ee: " + decl.asElement().getEnclosingElement());
+            }
+            
+            return "L" + name + ";";
         
         case TYPEVAR:
             return "T" + tm.toString() + ";";
