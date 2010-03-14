@@ -113,6 +113,7 @@ public class ClassInstrumentor extends ClassAdapter {
 	protected int classAccess;
 	protected String className;
 	protected String outerClassDesc = null;
+	protected String outerClassName = null;
 	protected String classDesc;
 	protected Type classType;
 	protected String superName;
@@ -329,6 +330,7 @@ public class ClassInstrumentor extends ClassAdapter {
 	
 	@Override
 	public void visitOuterClass(String owner, String name, String desc) {
+	    outerClassName = owner;
 		outerClassDesc = getDescriptor(owner);
 		super.visitOuterClass(owner, name, desc);
 	}

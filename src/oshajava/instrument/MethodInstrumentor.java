@@ -20,6 +20,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 	protected boolean usesThisConstructor = false;
 	protected final boolean isClinit;
 	protected final boolean isStatic;
+	protected final boolean isInAnonymousClass;
 	
 	protected final String fullNameAndDesc;
 	
@@ -43,8 +44,23 @@ public class MethodInstrumentor extends AdviceAdapter {
 		isConstructor = name.equals("<init>");
 		isClinit = name.equals("<clinit>");
 		fullNameAndDesc = inst.className + "." + name + desc;
-		methodUID = module.getMethodUID(fullNameAndDesc);
-		policy = module.getCommunicationKind(methodUID);
+		
+		// Check for anonymous classes, which aren't seen by the
+		// annotation processor.
+		if (inst.outerClassName != null && 
+		            inst.className.indexOf(inst.outerClassName) == 0 &&
+		            inst.className.substring(inst.outerClassName.length()).
+		                matches("^\\$\\d")) {
+            // This is an anonymous class.
+            methodUID = UNINITIALIZED;
+            policy = CommunicationKind.INLINE;
+            isInAnonymousClass = true;
+		} else {
+    		methodUID = module.getMethodUID(fullNameAndDesc);
+    		policy = module.getCommunicationKind(methodUID);
+    		isInAnonymousClass = false;
+		}
+		
 		
 //		readHook = ClassInstrumentor.HOOK_READ; //RuntimeMonitor.RECORD ? ClassInstrumentor.HOOK_RECORD_READ : ClassInstrumentor.HOOK_READ;
 	}
