@@ -220,18 +220,15 @@ public class SpecProcessor extends AbstractProcessor implements TaskListener {
         // Method name.
         out += "." + m.getSimpleName();
         
-        // Weird special case for enumeration constructors.
-        if (cls.getKind() == ElementKind.ENUM &&
-                    m.getSimpleName().toString().equals("<init>") &&
-                    m.getParameters().size() == 0) {
-            // For some reason, the annotation processing system seems
-            // to get default enum constructors wrong!
-            Util.log("sepecial casing " + cls + " " + m);
-            return out + "(Ljava/lang/String;I)V";
-        }
-        
         // Parameter and return values.
         out += "(";
+        // Weird special case for enumeration constructors.
+        if (cls.getKind() == ElementKind.ENUM &&
+                    m.getSimpleName().toString().equals("<init>")) {
+            // For some reason, the annotation processing system seems
+            // to miss some enum constructor parameters!
+            out += "Ljava/lang/String;I";
+        }
         for (VariableElement ve : m.getParameters()) {
             out += typeDescriptor(ve.asType());
         }
