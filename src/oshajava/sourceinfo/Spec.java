@@ -57,9 +57,12 @@ public class Spec {
 			    // specifications.
 			    Util.log("No spec found for " + qualifiedName + ", using null spec.");
 			    return new NullModuleSpec(qualifiedName);
-			    // throw new ModuleSpecNotFoundException(qualifiedName + ", referenced by " + requestingClass);
 			}
-			return (ModuleSpec)ColdStorage.load(res);
+			ModuleSpec ms = (ModuleSpec)ColdStorage.load(res);
+			if (ms == null) {
+			    return new NullModuleSpec(qualifiedName);
+			}
+			return ms;
 		} catch (IOException e) {
 			throw new ModuleSpecNotFoundException(qualifiedName + ", referenced by " + requestingClass);
 		} catch (ClassNotFoundException e) {
