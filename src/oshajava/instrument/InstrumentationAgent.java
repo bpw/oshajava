@@ -78,6 +78,7 @@ public class InstrumentationAgent implements ClassFileTransformer {
 		"java/util/LinkedHashMap",
 		"java/util/Vector",
 		"java/awt/RenderingHints",
+		"java/nio/Direct",
 	};
 
 	public static final CommandLineOption<Boolean> fullJDKInstrumentationOption =
