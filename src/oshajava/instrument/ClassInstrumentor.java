@@ -366,9 +366,14 @@ public class ClassInstrumentor extends ClassAdapter {
 		    	}
 			    chain = new JSRInlinerAdapter(chain, access, name, desc, signature, exceptions);
 			    return chain;
+			} else if (name.equals("<clinit>") && (classAccess & Opcodes.ACC_INTERFACE) != 0) {
+			    // Class initializer for an interface. Inline the
+			    // initialization.
+			    visitedClinit = true;
+			    return new StaticShadowInitInserter(chain, access, name, desc, classType, staticShadowedFields);
 		    } else {
 		    	visitedClinit = true;
-		    	return new StaticShadowInitInserter(chain, access, name, desc, classType);
+		    	return new StaticShadowInitInserter(chain, access, name, desc, classType, null);
 		    }
 		} else {
 			return super.visitMethod(access, name, desc, signature, exceptions);
@@ -437,7 +442,7 @@ public class ClassInstrumentor extends ClassAdapter {
 			}
 			instance.visitEnd();
 
-			if (visitedClinit || !staticShadowedFields.isEmpty()) {
+			if ((classAccess & Opcodes.ACC_INTERFACE) == 0 && (visitedClinit || !staticShadowedFields.isEmpty())) {
 				// static.
 				GeneratorAdapter stat = new GeneratorAdapter(Opcodes.ACC_PRIVATE | Opcodes.ACC_STATIC | Opcodes.ACC_SYNTHETIC, STATIC_SHADOW_INIT_METHOD, 
 						super.visitMethod(Opcodes.ACC_PRIVATE | Opcodes.ACC_STATIC | Opcodes.ACC_SYNTHETIC, STATIC_SHADOW_INIT_METHOD.getName(), STATIC_SHADOW_INIT_METHOD.getDescriptor(), null, null));
@@ -474,7 +479,7 @@ public class ClassInstrumentor extends ClassAdapter {
 				GeneratorAdapter clinit = new GeneratorAdapter(
 						new StaticShadowInitInserter(
 								super.visitMethod(acc, name, desc, null, null),
-								acc, name, desc, classType),
+								acc, name, desc, classType, ((classAccess & Opcodes.ACC_INTERFACE) != 0 ? staticShadowedFields : null)),
 								acc, name, desc
 				);
 

@@ -51,7 +51,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 		if (methodUID == -1 && (access & Opcodes.ACC_SYNTHETIC) != 0) {
 		    Util.log("inlining synthetic method " + fullNameAndDesc);
             policy = CommunicationKind.INLINE;
-        // Such is also the case with methods on inner classes.
+        // Such is also the case with methods on anonymous classes.
         } else if (methodUID == -1 &&
                    inst.outerClassName != null && 
                    inst.className.indexOf(inst.outerClassName) == 0 &&
