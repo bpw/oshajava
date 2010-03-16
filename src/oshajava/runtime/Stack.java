@@ -6,11 +6,22 @@ import oshajava.support.acme.util.Util;
 import oshajava.support.acme.util.identityhash.ConcurrentIdentityHashMap;
 import oshajava.support.acme.util.identityhash.IdentityHashSet;
 import oshajava.util.count.Counter;
+import oshajava.util.count.DistributionCounter;
+import oshajava.util.count.SetSizeCounter;
 import oshajava.util.intset.BitVectorIntSet;
 
 public class Stack {
 	
-	public static final Counter stacksCreated = new Counter();
+	public static final Counter stacksCreated = new Counter("Distinct stacks created");
+	public static final DistributionCounter communicatingStackDepths = new DistributionCounter("Communicating stack depths");
+	public static final DistributionCounter readerStackDepths = new DistributionCounter("Reader stack depths (per comm. pair)");
+	public static final DistributionCounter writerStackDepths = new DistributionCounter("Writer stack depths (per comm. pair)");
+	public static final DistributionCounter stackDepthDiffs = new DistributionCounter("Writer stack depth - reader stack depth (per comm. pair)");
+	public static final DistributionCounter setLengthDist = new DistributionCounter("Length in methods of stack segments");
+	public static final DistributionCounter segSizeDist = new DistributionCounter("Set size in methods of stack segments (writers only for now)");
+	public static final DistributionCounter segCountDist = new DistributionCounter("Segments on a communicating stack");
+	public static final SetSizeCounter<ModuleSpec> modulesUsed = new SetSizeCounter<ModuleSpec>("Modules used");
+	
 	public static final boolean COUNT_STACKS = RuntimeMonitor.PROFILE && true;
 	
 	protected static final Stack root = new Stack(-1, null);
@@ -93,6 +104,14 @@ public class Stack {
 		}
 	}
 	
+	public int getDepth() {
+		if (this == root) {
+			return 0;
+		} else {
+			return 1 + parent.getDepth();
+		}
+	}
+	
 	/**
 	 * Count a write in this stack. If we've passed a threshold,
 	 * give this stack an id so reads of its future writes will go
@@ -125,9 +144,17 @@ public class Stack {
 			yes = writerMemoTable.contains(writer);
 		}
 		if (!yes) { //  really slow path: full stack traversal
-			if (walkStacks(writer, this)) {
+			if (walkStacks(writer, this, 0)) {
 				synchronized (writerMemoTable) {
 					writerMemoTable.add(writer);
+				}
+				if (COUNT_STACKS) {
+					final int wd = writer.getDepth(), rd = getDepth();
+					communicatingStackDepths.add(wd);
+					communicatingStackDepths.add(rd);
+					writerStackDepths.add(wd);
+					readerStackDepths.add(rd);
+					stackDepthDiffs.add(wd - rd);
 				}
 			} else {
 				return false;
@@ -142,7 +169,7 @@ public class Stack {
 		return true;
 	}
 	
-	private static boolean walkStacks(final Stack writer, final Stack reader) {
+	private static boolean walkStacks(final Stack writer, final Stack reader, final int segDepth) {
 		if (writer == root && reader == root) {
 			// Successfully walked to the roots of each stack.
 			return true;
@@ -158,13 +185,14 @@ public class Stack {
 			// Immediate pair are in same module: no compositional module check needed here.
 			// Find the reader layer.
 			final BitVectorIntSet layer = new BitVectorIntSet();
-			final Stack readerLayerTop = reader.expandLayer(layer, writerMod);
+			final Stack readerLayerTop = reader.expandLayer(layer, writerMod, 0);
 			Util.assertTrue(!layer.isEmpty());
 			// Find the writer layer and check the layer mapping.
 			final ModuleSpec layerModule = Spec.getModule(writer.methodUID);
+			modulesUsed.add(layerModule);
 			final Stack writerLayerTop;
 			try {
-				writerLayerTop = writer.checkLayer(layer, layerModule);
+				writerLayerTop = writer.checkLayer(layer, layerModule, 0);
 			} catch (IllegalInternalEdgeException e) {
 				return false;
 			}
@@ -172,7 +200,9 @@ public class Stack {
 			// Is the communication exposed?
 			if (layerModule.isPublic(writerLayerTop.methodUID, readerLayerTop.methodUID)) {
 				// communication is exposed here. Must check rest of stacks.
-				return walkStacks(writerLayerTop.parent, readerLayerTop.parent);
+				return walkStacks(writerLayerTop.parent, readerLayerTop.parent, segDepth + 1);
+			} else if (COUNT_STACKS) {
+				segCountDist.add(segDepth + 1);
 			}
 			// communication is hidden here. All checks so far succeeded so the
 			//communication is valid.
@@ -198,18 +228,21 @@ public class Stack {
 	 * @param moduleID
 	 * @return the last stack frame that contributed to the set.
 	 */
-	private Stack expandLayer(final BitVectorIntSet layer, final int moduleID) {
+	private Stack expandLayer(final BitVectorIntSet layer, final int moduleID, final int depth) {
 	    // Should only be called on a stack with at least one method from
 	    // the module.
 	    Util.assertTrue(moduleID == Spec.getModuleID(methodUID));
 	        
         layer.add(Spec.getMethodID(methodUID));
         if (moduleID != Spec.getModuleID(parent.methodUID)) {
+        	if (COUNT_STACKS) {
+        		setLengthDist.add(depth + 1);
+        	}
             // Module boundary.
             return this;
         } else {
             // Continue expanding.
-            return parent.expandLayer(layer, moduleID);
+            return parent.expandLayer(layer, moduleID, depth + 1);
         }
 	}
 	
@@ -223,16 +256,22 @@ public class Stack {
 	 * belonging to this module.
 	 * @throws IllegalInternalEdgeException if there was an illegal internal edge
 	 */
-	private Stack checkLayer(final BitVectorIntSet layer, final ModuleSpec module) throws IllegalInternalEdgeException {
+	private Stack checkLayer(final BitVectorIntSet layer, final ModuleSpec module, int depth) throws IllegalInternalEdgeException {
 	    Util.assertTrue(module.getId() == Spec.getModuleID(methodUID));
 	    
+	    if (COUNT_STACKS) {
+	    	segSizeDist.add(layer.size());
+	    }
 		if (module.allAllowed(methodUID, layer)) {
 			if (module.getId() != Spec.getModuleID(parent.methodUID)) {
+				if (COUNT_STACKS) {
+					setLengthDist.add(depth);
+				}
 			    // Module boundary.
 				return this;
 			} else {
 			    // Continue checking.
-				return parent.checkLayer(layer, module);
+				return parent.checkLayer(layer, module, depth + 1);
 			}
 		} else {
 			throw new IllegalInternalEdgeException();

@@ -236,7 +236,7 @@ public class ModuleSpecBuilder implements Serializable {
             out += ", ";
         }
 	    
-	    out += methodIdToSig.size() + " non-inlined methods (" + methodIdToSig.size() + " comm., " + nonCommMethods.size() + " non-comm.), ";
+	    out += methodIdToSig.size() + nonCommMethods.size() + " non-inlined methods (" + methodIdToSig.size() + " comm., " + nonCommMethods.size() + " non-comm.), ";
 	    out += inlinedMethods.size() + " inlined";
 	    
 	    return out;

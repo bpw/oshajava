@@ -42,7 +42,7 @@ public class Graph implements Serializable {
 	 * @return
 	 */
 	public final BitVectorIntSet getOutEdges(int i) {
-		Util.assertTrue(i < table.length && i >= 0, "%d out of range in table of size %d", i, table.length);
+		if (i >= table.length) return null;
 		return table[i];
 	}
 	

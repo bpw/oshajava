@@ -13,7 +13,7 @@ import oshajava.util.count.Counter;
  */
 public final class State {
 	
-	public static final Counter statesCreated = new Counter();
+	public static final Counter statesCreated = new Counter("States");
 	public static final boolean COUNT_STATES = RuntimeMonitor.PROFILE && true;
 		
 	/**

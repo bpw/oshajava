@@ -28,7 +28,7 @@ public class BitVectorIntSet extends IntSet implements Serializable {
 	 */
 	protected static final int SLOT_SIZE = 32;
 	
-	public static final MaxRecorder maxSlots = new MaxRecorder();
+	public static final MaxRecorder maxSlots = new MaxRecorder("Max BitVectorIntSet slots");
 	public static final boolean COUNT_SLOTS = RuntimeMonitor.PROFILE && true;
 	
 	private static final int MAX_SLOTS = Integer.MAX_VALUE / SLOT_SIZE - 1;

@@ -24,7 +24,7 @@ public class ModuleSpec implements Serializable {
 	 */
 	protected static final String EXT = ".omg"; // for Osha Module Graph
 
-	public static final MaxRecorder maxMethods = new MaxRecorder();
+	public static final MaxRecorder maxMethods = new MaxRecorder("Max methods per module");
 	public static final boolean COUNT_METHODS = RuntimeMonitor.PROFILE && true;
 	
 	/**

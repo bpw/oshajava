@@ -423,16 +423,29 @@ public class RuntimeMonitor {
 		// Report some stats.
 		if (PROFILE) {
 			Util.log("---- Profile info ------------------------------------");
-//			Util.log("Set RuntimeMonitor.PROFILE to false to disable profiling (and speed the tool up!)");
 			Util.logf("Distinct threads created: %d", ThreadState.lastID() + 1);
-			if (Stack.COUNT_STACKS) Util.logf("Distinct stacks created: %d", Stack.stacksCreated.value());
-			Util.logf("Frequently communicating stacks: %d", Stack.lastID() + 1);
+			if (Stack.COUNT_STACKS) {
+				Util.log(Stack.stacksCreated);
+				Util.logf("Frequently communicating stacks: %d", Stack.lastID() + 1);
+				Util.log(Stack.communicatingStackDepths);
+				Util.log(Stack.readerStackDepths);
+				Util.log(Stack.writerStackDepths);
+				Util.log(Stack.stackDepthDiffs);
+				Util.log(Stack.segCountDist);
+				Util.log(Stack.setLengthDist);
+				Util.log(Stack.segSizeDist);
+				Util.log(Stack.modulesUsed);
+			}
 			if (State.COUNT_STATES) {
-				Util.logf("Distinct states created: %d", State.statesCreated.value());
+				Util.log(State.statesCreated);
 				Util.logf("Average duplication of stacks (truncated): %f", (float) State.statesCreated.value() / ((float)Stack.lastID() + 1));
 			}
-			if (BitVectorIntSet.COUNT_SLOTS) Util.logf("Max BitVectorIntSet slots: %d", BitVectorIntSet.maxSlots.value());
-			if (ModuleSpec.COUNT_METHODS) Util.logf("Max non-inlined methods per module: %d", ModuleSpec.maxMethods.value());
+			if (BitVectorIntSet.COUNT_SLOTS) {
+				Util.log(BitVectorIntSet.maxSlots);
+			}
+			if (ModuleSpec.COUNT_METHODS) {
+				Util.log(ModuleSpec.maxMethods);
+			}
 			Util.logf("Modules loaded: %d", Spec.countModules());
 			if (DirectMappedShadowCache.COUNT) {
 				Util.logf("Array accesses: %d", ThreadState.ARRAY_HITS.value() + ThreadState.ARRAY_MISSES.value());
@@ -448,14 +461,6 @@ public class RuntimeMonitor {
 				Util.logf("      hit rate: %f", 
 						(float)ThreadState.LOCK_HITS.value() / (float)(ThreadState.LOCK_HITS.value() + ThreadState.LOCK_MISSES.value()));
 				Util.logf("    cache size: %d", Config.lockCacheSizeOption.get());
-//				int totalHitWalk = 0;
-//				for (int i = 0; i < ThreadState.CACHED_ARRAYS; i++) {
-//					Util.logf("Array cache hits of length %d: %d", i+1, ThreadState.hitLengths[i].value());
-//					totalHitWalk += ThreadState.hitLengths[i].value() * (i+1);
-//				}
-//				Util.logf("Array cache hit rate: %f, average walk to hit: %f", 
-//						(float)arrayCacheHits.value() / (float)(arrayCacheHits.value() + arrayCacheMisses.value()),
-//						(float)totalHitWalk / (float)arrayCacheHits.value());
 			}
 		}
 	}
