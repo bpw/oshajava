@@ -11,6 +11,7 @@ import java.util.Vector;
 
 import oshajava.util.ColdStorage;
 import oshajava.util.intset.BitVectorIntSet;
+import oshajava.support.acme.util.Util;
 
 public class ModuleSpecBuilder implements Serializable {
 	
@@ -127,8 +128,11 @@ public class ModuleSpecBuilder implements Serializable {
 
 		// Put in edges.
 		for (GroupMembership readerMem : memberships) {
-		    if (readerMem.reader) {		    
+		    if (readerMem.reader) {		
     		    final Group group = getGroup(readerMem.groupId);
+    		    if (group == null) {
+    		        Util.fail("group " + readerMem.groupId + " not found in module " + qualifiedName);
+    		    }
     			final Graph graph = group.isInterfaceGroup ? interfaceGraph : internalGraph;
     		    for (GroupMembership writerMem : memberships) {
     		        if (!writerMem.reader && writerMem.groupId.equals(group.id)) {
