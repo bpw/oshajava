@@ -1,5 +1,9 @@
 package oshajava.runtime;
 
+import java.util.HashMap;
+import java.util.Map;
+
+import oshajava.sourceinfo.Graph;
 import oshajava.sourceinfo.ModuleSpec;
 import oshajava.sourceinfo.Spec;
 import oshajava.support.acme.util.Util;
@@ -12,6 +16,8 @@ import oshajava.util.intset.BitVectorIntSet;
 
 public class Stack {
 	
+	public static final boolean RECORD = Config.recordOption.get();
+
 	public static final Counter stacksCreated = new Counter("Distinct stacks created");
 	public static final DistributionCounter communicatingStackDepths = new DistributionCounter("Communicating stack depths");
 	public static final DistributionCounter readerStackDepths = new DistributionCounter("Reader stack depths (per comm. pair)");
@@ -21,6 +27,9 @@ public class Stack {
 	public static final DistributionCounter segSizeDist = new DistributionCounter("Set size in methods of stack segments (writers only for now)");
 	public static final DistributionCounter segCountDist = new DistributionCounter("Segments on a communicating stack");
 	public static final SetSizeCounter<ModuleSpec> modulesUsed = new SetSizeCounter<ModuleSpec>("Modules used");
+	
+	public static final HashMap<ModuleSpec,Graph> commGraphs = new HashMap<ModuleSpec,Graph>();
+	public static final HashMap<ModuleSpec,Graph> interfaceGraphs = new HashMap<ModuleSpec,Graph>();
 	
 	public static final Counter stackWalks = new Counter("Full stack walks");
 	public static final Counter memo2Hits = new Counter("Level 2 memo hits");
@@ -202,7 +211,9 @@ public class Stack {
 			Util.assertTrue(!layer.isEmpty());
 			// Find the writer layer and check the layer mapping.
 			final ModuleSpec layerModule = Spec.getModule(writer.methodUID);
-			modulesUsed.add(layerModule);
+			if (COUNT_STACKS) {
+				modulesUsed.add(layerModule);
+			}
 			final Stack writerLayerTop;
 			try {
 				writerLayerTop = writer.checkLayer(layer, layerModule, 0);
@@ -212,6 +223,14 @@ public class Stack {
 			// The communication in this layer is allowed.
 			// Is the communication exposed?
 			if (layerModule.isPublic(writerLayerTop.methodUID, readerLayerTop.methodUID)) {
+				if (RECORD) {
+					synchronized (interfaceGraphs) {
+						if (!interfaceGraphs.containsKey(layerModule)) {
+							interfaceGraphs.put(layerModule, new Graph(layerModule.numInterfaceMethods()));
+						}
+						interfaceGraphs.get(layerModule).addEdge(Spec.getMethodID(writerLayerTop.methodUID), Spec.getMethodID(readerLayerTop.methodUID));
+					}
+				}
 				// communication is exposed here. Must check rest of stacks.
 				return walkStacks(writerLayerTop.parent, readerLayerTop.parent, segDepth + 1);
 			} else if (COUNT_STACKS) {
@@ -275,6 +294,19 @@ public class Stack {
 	    if (COUNT_STACKS) {
 	    	segSizeDist.add(layer.size());
 	    }
+		if (RECORD) {
+			synchronized (commGraphs) {
+				if (!commGraphs.containsKey(module)) {
+					commGraphs.put(module, new Graph(module.numCommMethods()));
+				}
+				BitVectorIntSet s = commGraphs.get(module).getOutEdges(Spec.getMethodID(methodUID));
+				if (s == null) {
+					s = new BitVectorIntSet();
+					commGraphs.get(module).setOutEdges(Spec.getMethodID(methodUID), s);
+				}
+				s.addAll(layer);
+			}
+		}
 		if (module.allAllowed(methodUID, layer)) {
 			if (module.getId() != Spec.getModuleID(parent.methodUID)) {
 				if (COUNT_STACKS) {
@@ -334,4 +366,72 @@ public class Stack {
 	public static synchronized int lastID() {
 		return idCounter;
 	}
+
+	public static void dumpGraphs(String mainClass) {
+		if (RECORD) {
+			int specCommNodes = 0, specCommEdges = 0, specINodes = 0, specIEdges = 0;
+			for (ModuleSpec mod : Spec.loadedModules()) {
+				specCommNodes += mod.numCommMethods();
+				specINodes += mod.numInterfaceMethods();
+				specCommEdges += mod.numCommEdges();
+				specIEdges += mod.numInterfaceEdges();
+			}
+			int runCommNodes = 0, runCommEdges = 0, runINodes = 0, runIEdges = 0;
+			for (Map.Entry<ModuleSpec,Graph> e : commGraphs.entrySet()) {
+				ModuleSpec mod = e.getKey();
+				Graph g = e.getValue();
+				for (int i = 0; i < mod.numCommMethods(); i++) {
+					BitVectorIntSet bv = g.getOutEdges(i);
+					if (bv != null && ! bv.isEmpty()) {
+						runCommNodes++;
+						runCommEdges += bv.size();
+					}
+				}
+			}
+			for (Map.Entry<ModuleSpec,Graph> e : interfaceGraphs.entrySet()) {
+				ModuleSpec mod = e.getKey();
+				Graph g = e.getValue();
+				for (int i = 0; i < mod.numCommMethods(); i++) {
+					BitVectorIntSet bv = g.getOutEdges(i);
+					if (bv != null && ! bv.isEmpty()) {
+						runCommNodes++;
+						runCommEdges += bv.size();
+					}
+				}
+			}
+			
+			Util.logf("Total comm nodes in used specs: %d", specCommNodes);
+			Util.logf("Total comm nodes in run: %d", runCommNodes);
+			Util.logf("Total comm edges in used specs: %d", specCommEdges);
+			Util.logf("Total comm edges in run: %d", runCommEdges);
+
+			Util.logf("Total interface nodes in used specs: %d", specINodes);
+			Util.logf("Total interface nodes in run: %d", runINodes);
+			Util.logf("Total interface edges in used specs: %d", specIEdges);
+			Util.logf("Total interface edges in run: %d", runIEdges);
+
+//			try {
+//				final GraphMLWriter commGraphml = new GraphMLWriter(mainClass + ".oshajava.comm.graphml");
+//				final GraphMLWriter interfaceGraphml = new GraphMLWriter(mainClass + ".oshajava.comm.graphml");
+//				for (Map.Entry<ModuleSpec, Graph> comm : commGraphs.entrySet()) {
+//					ModuleSpec mod = comm.getKey();
+//					for (int i = 0; i < mod.numCommMethods(); i++) {
+//						int uid = Spec.makeUID(mod.getId(), i);
+//						commGraphml.writeNode(uid + "", mod.getMethodSignature(uid), "");
+//						interfaceGraphml.writeNode(uid + "", mod.getMethodSignature(uid), "");
+//					}
+//					Graph commGraph = comm.getValue();
+//					for (int i = 0; i < commGraph.size()) {
+//						
+//					}
+//				}
+//				commGraphml.close();
+//				interfaceGraphml.close();
+//			} catch (IOException e) {
+//				Util.log("Failed to dump execution graph due to IOException.");
+//			}
+		}
+	}
+
+
 }

@@ -74,6 +74,15 @@ public class BitVectorIntSet extends IntSet implements Serializable {
 		bits[slot] |= (1 << (member % SLOT_SIZE));
 	}
 	
+	public synchronized void addAll(final BitVectorIntSet set) {
+		if (bits.length < set.bits.length) {
+			bits = ArrayUtil.copy(bits, set.bits.length);
+		}
+		for (int i = 0; i < set.bits.length; i++) {
+			bits[i] |= set.bits[i];
+		}
+	}
+	
 	/**
 	 * Remove any excess space, using the minimum space to represent the
 	 * current set.

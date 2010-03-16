@@ -129,4 +129,8 @@ public class Spec {
 	public static int countModules() {
 		return nameToModule.size();
 	}
+	
+	public static Iterable<ModuleSpec> loadedModules() {
+		return idToModule;
+	}
 }

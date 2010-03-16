@@ -24,7 +24,9 @@ public class ModuleSpec implements Serializable {
 	 */
 	protected static final String EXT = ".omg"; // for Osha Module Graph
 
-	public static final MaxRecorder maxMethods = new MaxRecorder("Max methods per module");
+	public static final MaxRecorder maxCommMethods = new MaxRecorder("Max comm. methods per module");
+	public static final MaxRecorder maxInterfaceMethods = new MaxRecorder("Max interface methods per module");
+	public static final MaxRecorder maxMethods = new MaxRecorder("Max total methods per module");
 	public static final boolean COUNT_METHODS = RuntimeMonitor.PROFILE && true;
 	
 	/**
@@ -85,7 +87,6 @@ public class ModuleSpec implements Serializable {
 	public ModuleSpec(final String name, final String[] methodIdToSig, final int commMethods,
 			final Graph internalGraph, final Graph interfaceGraph, final BitVectorIntSet inlinedMethods,
 			final HashMap<String,Integer> methodSigToId) {
-//		checkIntegrity();
 		this.name = name;
 		this.methodIdToSig = methodIdToSig;
 		this.commMethods = commMethods;
@@ -93,7 +94,11 @@ public class ModuleSpec implements Serializable {
 		this.interfaceGraph = interfaceGraph;
 		this.inlinedMethods = inlinedMethods;
 		this.methodSigToId = methodSigToId;
-		
+		if (COUNT_METHODS) {
+			maxCommMethods.add(commMethods);
+			maxInterfaceMethods.add(interfaceGraph.size());
+			maxMethods.add(methodSigToId.size());
+		}
 	}
 	
 	/**
@@ -103,7 +108,6 @@ public class ModuleSpec implements Serializable {
 	 */
 	public void setId(int id) {
 		this.id = id;
-		if (COUNT_METHODS) maxMethods.add(methodIdToSig.length);
 	}
 	
 	/**
@@ -202,6 +206,22 @@ public class ModuleSpec implements Serializable {
 		/* else if (uncheckedMethods.contains(mid)) {
 		 * return CommunicationKind.UNCHECKED;
 		 */
+	}
+	
+	public int numCommMethods() {
+		return internalGraph.capacity();
+	}
+	
+	public int numInterfaceMethods() {
+		return interfaceGraph.capacity();
+	}
+	
+	public int numCommEdges() {
+		return internalGraph.numEdges();
+	}
+	
+	public int numInterfaceEdges() {
+		return interfaceGraph.numEdges();
 	}
 	
 	private void printGraph(Graph g) {

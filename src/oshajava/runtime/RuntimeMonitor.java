@@ -1,6 +1,5 @@
 package oshajava.runtime;
 
-import java.io.IOException;
 import java.lang.reflect.Array;
 
 import oshajava.runtime.exceptions.IllegalCommunicationException;
@@ -9,7 +8,6 @@ import oshajava.runtime.exceptions.IllegalSynchronizationException;
 import oshajava.sourceinfo.ModuleSpec;
 import oshajava.sourceinfo.Spec;
 import oshajava.support.acme.util.Util;
-import oshajava.util.GraphMLWriter;
 import oshajava.util.WeakConcurrentIdentityHashMap;
 import oshajava.util.cache.DirectMappedShadowCache;
 import oshajava.util.count.Counter;
@@ -43,10 +41,6 @@ import oshajava.util.intset.BitVectorIntSet;
  */
 public class RuntimeMonitor {
 
-	// temporary graph-collection hack.
-//	protected static final Graph executionGraph = new Graph(1024);
-
-	public static final boolean RECORD = false;
 	
 	/**
 	 * Record profiling information.
@@ -381,18 +375,6 @@ public class RuntimeMonitor {
 	}
 
 
-	// -- Recording --------------------------------------------------------------------
-
-//	private static void record(final Stack writer, final Stack reader) {
-//		// FIXME repeat stack traversal from Spec.isAllowed to record all edges.
-//		// Or just record in Spec.isAllowed.
-//		// for each edge call recordEdge.
-//	}
-//	
-//	private static void recordEdge(int src, int dest) {
-//		((BitVectorIntSet)executionGraph.getOutEdges(src)).add(dest);
-//	}
-
 	// -- General ----------------------------------------------------------------------
 
 
@@ -468,15 +450,6 @@ public class RuntimeMonitor {
 	 * @param mainClass
 	 */
 	public static void fini(String mainClass) {
-		if (RECORD) {
-			try {
-				final GraphMLWriter graphml = new GraphMLWriter(mainClass + ".oshajava.execution.graphml");
-				//FIXME
-				graphml.close();
-			} catch (IOException e) {
-				Util.log("Failed to dump execution graph due to IOException.");
-			}
-		}
 		// Report some stats.
 		if (PROFILE) {
 			Util.log("---- Profile info ------------------------------------");
@@ -531,6 +504,8 @@ public class RuntimeMonitor {
 				Util.log(BitVectorIntSet.maxSlots);
 			}
 			if (ModuleSpec.COUNT_METHODS) {
+				Util.log(ModuleSpec.maxCommMethods);
+				Util.log(ModuleSpec.maxInterfaceMethods);
 				Util.log(ModuleSpec.maxMethods);
 			}
 			Util.logf("Modules loaded: %d", Spec.countModules());
@@ -550,6 +525,7 @@ public class RuntimeMonitor {
 				Util.logf("    cache size: %d", Config.lockCacheSizeOption.get());
 			}
 		}
+		if (Stack.RECORD) Stack.dumpGraphs(mainClass);
 	}
 	
 

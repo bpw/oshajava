@@ -86,6 +86,11 @@ public class Graph implements Serializable {
 		return id;
 	}
 	
+	public void setOutEdges(int i, BitVectorIntSet set) {
+		assert i < table.length;
+		table[i] = set;
+	}
+	
 	public void addEdge(int i, int j) {
 		getOutEdges(i).add(j);
 	}
@@ -112,6 +117,14 @@ public class Graph implements Serializable {
 	 */
 	public int size() {
 		return nextID;
+	}
+	
+	public int numEdges() {
+		int n = 0;
+		for (BitVectorIntSet b : table) {
+			if (b != null)  n += b.size();
+		}
+		return n;
 	}
 	
 	/**
