@@ -101,6 +101,8 @@ public class ClassInstrumentor extends ClassAdapter {
 	protected static final Method INSTANCE_SHADOW_INIT_METHOD = new Method(SHADOW_INIT_METHOD_PREFIX, Type.VOID_TYPE, ARGS_NONE);
 	protected static final Method STATIC_SHADOW_INIT_METHOD = new Method(SHADOW_INIT_METHOD_PREFIX + "_clinit", Type.VOID_TYPE, ARGS_NONE);
 
+	protected static final Method HOOK_COUNT_READ        = new Method("countRead", Type.VOID_TYPE, ARGS_NONE);
+	protected static final Method HOOK_COUNT_COMM        = new Method("countComm", Type.VOID_TYPE, ARGS_NONE);
 
 	/****************************************************************************/
 

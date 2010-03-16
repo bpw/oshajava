@@ -12,6 +12,7 @@ import oshajava.support.acme.util.Util;
 import oshajava.util.GraphMLWriter;
 import oshajava.util.WeakConcurrentIdentityHashMap;
 import oshajava.util.cache.DirectMappedShadowCache;
+import oshajava.util.count.Counter;
 import oshajava.util.intset.BitVectorIntSet;
 
 /**
@@ -51,6 +52,17 @@ public class RuntimeMonitor {
 	 * Record profiling information.
 	 */
 	public static final boolean PROFILE = Config.profileOption.get();
+
+	public static final Counter fieldReadCounter = new Counter("All field reads");
+	public static final Counter fieldCommCounter = new Counter("Communicating field reads");
+	public static final Counter fieldSlowPathCounter = new Counter("Communicating field read slow path");
+	public static final Counter arrayReadCounter = new Counter("All array reads");
+	public static final Counter arrayCommCounter = new Counter("Communicating array reads");
+	public static final Counter arraySlowPathCounter = new Counter("Communicating array read slow path");
+	public static final Counter lockCounter = new Counter("All acquires");
+	public static final Counter lockCommCounter = new Counter("Communicating acquires");
+	public static final Counter lockSlowPathCounter = new Counter("Communicating acquire slow path");
+
 
 	private static final ThreadLocal<ThreadState> threadState = new ThreadLocal<ThreadState>() {
 		@Override
@@ -107,28 +119,44 @@ public class RuntimeMonitor {
 	 * @param readerMethod
 	 */
 	public static void checkFieldRead(final State write, final State read, final String on) {
+		if (PROFILE) {
+			fieldSlowPathCounter.inc();
+		}
 		if (!read.stack.checkWriter(write.stack)) {
 			throw new IllegalSharingException(write, read, null, on);
 		}
 	}
 	public static void checkFieldRead(final State write, final State read, final String on, 
 			final StackTraceElement[] trace) {
+		if (PROFILE) {
+			fieldSlowPathCounter.inc();
+		}
 		if (!read.stack.checkWriter(write.stack)) {
 			throw new IllegalSharingException(write, read, trace, on);
 		}
 	}
-	private static void checkReadSlowPath(final State write, final State read, final StackTraceElement[] trace) {
-		if (!read.stack.checkWriter(write.stack)) {
-			throw new IllegalSharingException(write, read, trace);
+	private static void checkArrayRead(final State write, final ThreadState reader, final BitVectorIntSet wCache, final StackTraceElement[] trace) {
+		if (write.thread != reader) {
+			if (PROFILE) {
+				arrayCommCounter.inc();
+			}
+			if (!wCache.contains(write.getStackID())) {
+				if (PROFILE) {
+					arraySlowPathCounter.inc();
+				}
+				if (!reader.state.stack.checkWriter(write.stack)) {
+					throw new IllegalSharingException(write, reader.state, trace);
+				}
+			}
 		}
-	}
-	private static void checkRead(final State write, final ThreadState reader, final BitVectorIntSet wCache, final StackTraceElement[] trace) {
-		if (write.thread != reader && !wCache.contains(write.getStackID())) checkReadSlowPath(write, reader.state, trace);
 	}
 
 	// TODO Skip the wCache parameter and just do the field lookup if needed?
 	// OK if array == null. Slower, but the program is about to throw a NullPointerException anyway.
 	public static void arrayRead(final Object array, final int index, final ThreadState reader, final BitVectorIntSet wCache) {
+		if (PROFILE) {
+			arrayReadCounter.inc();
+		}
 		final State[] states;
 		try {
 			states = reader.arrayIndexStateCache.get(array);
@@ -138,7 +166,7 @@ public class RuntimeMonitor {
 		if (states != null) {
 			final State write = states[index];
 			if (write != null) {
-				checkRead(write, reader, wCache, null);
+				checkArrayRead(write, reader, wCache, null);
 			}
 		}
 	}
@@ -159,9 +187,12 @@ public class RuntimeMonitor {
 	// TODO Skip the wCache parameter and just do the field lookup if needed?
 	// OK if array == null. Slower, but the program is about to throw a NullPointerException anyway.
 	public static void coarseArrayRead(final Object array, final ThreadState reader, final BitVectorIntSet wCache) {
+		if (PROFILE) {
+			arrayReadCounter.inc();
+		}
 		final Ref<State> stateRef = reader.arrayStateCache.get(array);
 		if (stateRef != null) {
-			checkRead(stateRef.contents, reader, wCache, null);
+			checkArrayRead(stateRef.contents, reader, wCache, null);
 		}
 	}
 
@@ -216,6 +247,7 @@ public class RuntimeMonitor {
 	 */
 	public static void acquire(final Object lock, final ThreadState holder, final State holderState) {
 		try {
+			lockCounter.inc();
 			// get the lock state
 			final LockState lockState = holder.lockStateCache.get(lock);
 			if (lockState == null) {
@@ -245,9 +277,17 @@ public class RuntimeMonitor {
 					lockState.incrementDepth();
 					// if last holder was not the same thread
 					if (lastHolderState.thread != holder) {
+						if (PROFILE) {
+							lockCommCounter.inc();
+						}
 						// if communication is not allowed, throw an exception.
-						if (!holderState.stack.writerCache.contains(lastHolderState.getStackID()) && !holderState.stack.checkWriter(lockState.lastHolder.stack)) {
-							throw new IllegalSynchronizationException(lastHolderState, holderState);
+						if (!holderState.stack.writerCache.contains(lastHolderState.getStackID())) {
+							if (PROFILE) {
+								lockSlowPathCounter.inc();
+							}
+							if (!holderState.stack.checkWriter(lockState.lastHolder.stack)) {
+								throw new IllegalSynchronizationException(lastHolderState, holderState);
+							}
 						}
 					}
 				}
@@ -315,6 +355,9 @@ public class RuntimeMonitor {
 	 * Hook to call when returning from a call to wait.
 	 */
 	public static void postwait(final Object lock, final int resumeDepth, final ThreadState ts, final State currentState) {
+		if (PROFILE) {
+			lockCounter.inc();
+		}
 		final LockState lockState = ts.lockStateCache.get(lock);
 		Util.assertTrue(lockState.getDepth() == 0, "Bad postwait");
 		lockState.setDepth(resumeDepth);
@@ -322,10 +365,17 @@ public class RuntimeMonitor {
 		if (lastHolderState != currentState) { // necessary because of the timeout versions of wait.
 			lockState.lastHolder = currentState;
 			// No thread check needed here. If last lastHolderState != currentState then last thread != this thread
+			if (PROFILE) {
+				lockCommCounter.inc();
+			}
 			// TODO pass writerCache as param
-			if (!currentState.stack.writerCache.contains(lastHolderState.getStackID()) 
-					&& !currentState.stack.checkWriter(lastHolderState.stack)) {
-				throw new IllegalSynchronizationException(lastHolderState, currentState);
+			if (!currentState.stack.writerCache.contains(lastHolderState.getStackID())) {
+				if (PROFILE) {
+					lockSlowPathCounter.inc();
+				}
+				if (!currentState.stack.checkWriter(lastHolderState.stack)) {
+					throw new IllegalSynchronizationException(lastHolderState, currentState);
+				}
 			}
 		}
 	}
@@ -387,6 +437,13 @@ public class RuntimeMonitor {
 	public static void exit(final ThreadState ts) {
 		ts.exit();
 	}
+	
+	public static void countRead() {
+		fieldReadCounter.inc();
+	}
+	public static void countComm() {
+		fieldCommCounter.inc();
+	}
 
 	public static <T extends Throwable> T fudgeTrace(T t) {
 		if (Config.fudgeExceptionTracesOption.get()) {
@@ -435,10 +492,40 @@ public class RuntimeMonitor {
 				Util.log(Stack.setLengthDist);
 				Util.log(Stack.segSizeDist);
 				Util.log(Stack.modulesUsed);
+				Util.log(Stack.stackWalks);
+				Util.log(Stack.memo2Hits);
 			}
+			Util.log(fieldReadCounter);
+			Util.log(fieldCommCounter);
+			Util.log(fieldSlowPathCounter);
+			Util.log(lockCounter);
+			Util.log(lockCommCounter);
+			Util.log(lockSlowPathCounter);
+			Util.log(arrayReadCounter);
+			Util.log(arrayCommCounter);
+			Util.log(arraySlowPathCounter);
+			Util.log("");
+			double fr = (double)fieldReadCounter.value();
+			Util.logf("Thread-local field reads:    %f%%", 
+					(double)(fieldReadCounter.value() - fieldCommCounter.value()) / fr * 100.0);
+			Util.logf("Comm. fast path field reads: %f%%", (double)(fieldCommCounter.value() - fieldSlowPathCounter.value()) / fr * 100.0);
+			Util.logf("Comm. slow path field reads: %f%%", (double)fieldSlowPathCounter.value() / fr * 100.0);
+			Util.log("");
+			double ar = (double)arrayReadCounter.value();
+			Util.logf("Thread-local array reads:    %f%%", 
+					(double)(arrayReadCounter.value() - arrayCommCounter.value()) / ar * 100.0);
+			Util.logf("Comm. fast path array reads: %f%%", (double)(arrayCommCounter.value() - arraySlowPathCounter.value()) / ar * 100.0);
+			Util.logf("Comm. slow path array reads: %f%%", (double)arraySlowPathCounter.value() / ar * 100.0);
+			Util.log("");
+			double lr = (double)lockCounter.value();
+			Util.logf("Thread-local lock acquires:    %f%%", 
+					(double)(lockCounter.value() - lockCommCounter.value()) / lr * 100.0);
+			Util.logf("Comm. fast path lock acquires: %f%%", (double)(lockCommCounter.value() - lockSlowPathCounter.value()) / lr * 100.0);
+			Util.logf("Comm. slow path lock acquires: %f%%", (double)lockSlowPathCounter.value() / lr * 100.0);
+			
 			if (State.COUNT_STATES) {
 				Util.log(State.statesCreated);
-				Util.logf("Average duplication of stacks (truncated): %f", (float) State.statesCreated.value() / ((float)Stack.lastID() + 1));
+//				Util.logf("Average duplication of stacks would be: %f", (float) State.statesCreated.value() / ((float)Stack.lastID() + 1));
 			}
 			if (BitVectorIntSet.COUNT_SLOTS) {
 				Util.log(BitVectorIntSet.maxSlots);
@@ -451,15 +538,15 @@ public class RuntimeMonitor {
 				Util.logf("Array accesses: %d", ThreadState.ARRAY_HITS.value() + ThreadState.ARRAY_MISSES.value());
 				Util.logf("    cache hits: %d", ThreadState.ARRAY_HITS.value());
 				Util.logf("  cache misses: %d", ThreadState.ARRAY_MISSES.value());
-				Util.logf("      hit rate: %f", 
-						(float)ThreadState.ARRAY_HITS.value() / (float)(ThreadState.ARRAY_HITS.value() + ThreadState.ARRAY_MISSES.value()));
+				Util.logf("      hit rate: %f%%", 
+						100.0 * (float)ThreadState.ARRAY_HITS.value() / (float)(ThreadState.ARRAY_HITS.value() + ThreadState.ARRAY_MISSES.value()));
 				Util.logf("    cache size: %d", Config.arrayCacheSizeOption.get());
 				
 				Util.logf(" Lock accesses: %d", ThreadState.LOCK_HITS.value() + ThreadState.LOCK_MISSES.value());
 				Util.logf("    cache hits: %d", ThreadState.LOCK_HITS.value());
 				Util.logf("  cache misses: %d", ThreadState.LOCK_MISSES.value());
-				Util.logf("      hit rate: %f", 
-						(float)ThreadState.LOCK_HITS.value() / (float)(ThreadState.LOCK_HITS.value() + ThreadState.LOCK_MISSES.value()));
+				Util.logf("      hit rate: %f%%", 
+						100.0 * (float)ThreadState.LOCK_HITS.value() / (float)(ThreadState.LOCK_HITS.value() + ThreadState.LOCK_MISSES.value()));
 				Util.logf("    cache size: %d", Config.lockCacheSizeOption.get());
 			}
 		}

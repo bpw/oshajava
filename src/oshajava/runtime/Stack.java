@@ -22,6 +22,9 @@ public class Stack {
 	public static final DistributionCounter segCountDist = new DistributionCounter("Segments on a communicating stack");
 	public static final SetSizeCounter<ModuleSpec> modulesUsed = new SetSizeCounter<ModuleSpec>("Modules used");
 	
+	public static final Counter stackWalks = new Counter("Full stack walks");
+	public static final Counter memo2Hits = new Counter("Level 2 memo hits");
+	
 	public static final boolean COUNT_STACKS = RuntimeMonitor.PROFILE && true;
 	
 	protected static final Stack root = new Stack(-1, null);
@@ -141,9 +144,15 @@ public class Stack {
 	public boolean checkWriter(Stack writer) {
 		final boolean yes;
 		synchronized (writerMemoTable) {
+			if (COUNT_STACKS) {
+				memo2Hits.inc();
+			}
 			yes = writerMemoTable.contains(writer);
 		}
 		if (!yes) { //  really slow path: full stack traversal
+			if (COUNT_STACKS) {
+				stackWalks.inc();
+			}
 			if (walkStacks(writer, this, 0)) {
 				synchronized (writerMemoTable) {
 					writerMemoTable.add(writer);
@@ -154,7 +163,7 @@ public class Stack {
 					communicatingStackDepths.add(rd);
 					writerStackDepths.add(wd);
 					readerStackDepths.add(rd);
-					stackDepthDiffs.add(wd - rd);
+					stackDepthDiffs.add(wd > rd ? wd - rd : rd - wd);
 				}
 			} else {
 				return false;
@@ -269,7 +278,7 @@ public class Stack {
 		if (module.allAllowed(methodUID, layer)) {
 			if (module.getId() != Spec.getModuleID(parent.methodUID)) {
 				if (COUNT_STACKS) {
-					setLengthDist.add(depth);
+					setLengthDist.add(depth + 1);
 				}
 			    // Module boundary.
 				return this;
