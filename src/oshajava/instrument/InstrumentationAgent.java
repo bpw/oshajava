@@ -78,6 +78,7 @@ public class InstrumentationAgent implements ClassFileTransformer {
 		"java/util/LinkedHashMap",
 		"java/util/Vector",
 		"java/awt/RenderingHints",
+		"java/nio/Direct",
 	};
 
 	public static final CommandLineOption<Boolean> fullJDKInstrumentationOption =
@@ -190,7 +191,7 @@ public class InstrumentationAgent implements ClassFileTransformer {
 			Util.fail(e);
 			return null;
 		} catch (Throwable e) {
-			Util.fail("Problem running oshajava instrumentor: ", e);
+			Util.fail("Problem running oshajava instrumentor: " + e);
 			return null;
 		}
 	}

@@ -20,9 +20,13 @@ import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
+import javax.lang.model.element.ElementKind;
+import javax.lang.model.element.NestingKind;
+import javax.lang.model.element.Modifier;
 import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
+import javax.lang.model.type.TypeKind;
 import javax.tools.Diagnostic;
 import javax.tools.StandardLocation;
 
@@ -88,6 +92,7 @@ public class SpecProcessor extends AbstractProcessor implements TaskListener {
                 
             case CLASS:
             case INTERFACE:
+            case ENUM:
                 handleClass((TypeElement)e);
                 processAll(e.getEnclosedElements());
                 break;
@@ -138,6 +143,8 @@ public class SpecProcessor extends AbstractProcessor implements TaskListener {
             return "J";
         case VOID:
             return "V";
+        case SHORT:
+            return "S";
         
         case ARRAY:
             return "[" + typeDescriptor(((ArrayType)tm).getComponentType());
@@ -154,6 +161,8 @@ public class SpecProcessor extends AbstractProcessor implements TaskListener {
             
             name = name.replace('.', '/');
             
+            // Disable <...> appending, because ASM doesn't seem to do it?
+            /*
             if (!decl.getTypeArguments().isEmpty()) {
                 // Add back type parameters.
                 name += "<";
@@ -162,17 +171,38 @@ public class SpecProcessor extends AbstractProcessor implements TaskListener {
                 }
                 name += ">";
             }
+            */
+            
+            // Check if it's an iinner class.
+            TypeMirror encloser = null;
+            if (decl.getEnclosingType().getKind() != TypeKind.NONE) {
+                encloser = decl.getEnclosingType();
+            } else if (decl.asElement().getEnclosingElement()
+                       instanceof TypeElement) {
+                encloser = decl.asElement().getEnclosingElement().asType();
+            }
+            
+            if (encloser != null) {
+                // This is an inner class.
+                int lastSlash = name.lastIndexOf('/');
+                String baseName = name.substring(lastSlash + 1);
+                String enclosingName = typeDescriptor(encloser);
+                // Remove L and ; on either end of encloser descriptor.
+                enclosingName = enclosingName.substring(1,
+                    enclosingName.length() - 1);
+                name = enclosingName + "$" + baseName;
+            }
             
             return "L" + name + ";";
-            
-            // TODO do inner classes need special handling?
         
         case TYPEVAR:
             return "T" + tm.toString() + ";";
             
+        case WILDCARD:
+            return "?";
+            
         case EXECUTABLE:        
         case NULL:
-        case WILDCARD:
         case OTHER:
         case PACKAGE:
         case ERROR:
@@ -185,8 +215,32 @@ public class SpecProcessor extends AbstractProcessor implements TaskListener {
     /**
      * Construct the JVM method descriptor for an ExecutableElement.
      */
-    private String methodDescriptor(ExecutableElement m) {
-        String out = "(";
+    private String methodDescriptor(TypeElement cls, ExecutableElement m) {
+        // Container name.
+        String out = typeDescriptor(cls.asType());
+        // Remove L and ; from container class.
+        out = out.substring(1, out.length() - 1);
+        
+        // Method name.
+        out += "." + m.getSimpleName();
+        
+        // Parameter and return types.
+        out += "(";
+        // Special case for enumeration constructors.
+        if (cls.getKind() == ElementKind.ENUM &&
+                    m.getSimpleName().toString().equals("<init>")) {
+            // For some reason, the annotation processing system seems
+            // to miss some enum constructor parameters!
+            out += "Ljava/lang/String;I";
+        }
+        // Special case for non-static inner class constructors.
+        if (cls.getNestingKind() == NestingKind.MEMBER &&
+                    !cls.getModifiers().contains(Modifier.STATIC) &&
+                    m.getSimpleName().toString().equals("<init>")) {
+            // Annotation processing is also not aware that inner class
+            // constructors get their outer class passed as a parameter.
+            out += typeDescriptor(cls.getEnclosingElement().asType());
+        }
         for (VariableElement ve : m.getParameters()) {
             out += typeDescriptor(ve.asType());
         }
@@ -287,10 +341,7 @@ public class SpecProcessor extends AbstractProcessor implements TaskListener {
         TypeElement cls = (TypeElement)m.getEnclosingElement();
 //        String name = cls.getQualifiedName() + "." + m.getSimpleName();
         ModuleSpecBuilder module = classToModule.get(cls.getQualifiedName().toString());
-        
-        // Signature is like:
-        // package/package/Class.method()V
-        String sig = cls.getQualifiedName().toString().replace('.','/') + "." + m.getSimpleName() + methodDescriptor(m);
+        String sig = methodDescriptor(cls, m);
         
         assert module != null;
         

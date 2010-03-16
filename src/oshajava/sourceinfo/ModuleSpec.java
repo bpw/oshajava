@@ -37,7 +37,7 @@ public class ModuleSpec implements Serializable {
 	/**
 	 * The module id of this module. Only instantiated at runtime.
 	 */
-	private transient int id = -1;
+	protected transient int id = -1;
 	
 	/**
 	 * The name of this module.
@@ -136,12 +136,15 @@ public class ModuleSpec implements Serializable {
 	}
 	
 	/**
-	 * Get the method ID for the method with signature sig. Use for ???
+	 * Get the method ID for the method with signature sig. Returns -1
+	 * if not found.
 	 * @param sig
 	 * @return
 	 */
 	public int getMethodUID(final String sig) {
-		Util.assertTrue(methodSigToId.containsKey(sig), "in module " + name + ", " + sig + " not found in " + methodSigToId);
+	    if (!methodSigToId.containsKey(sig)) {
+	        return -1;
+	    }
 		final int mid = methodSigToId.get(sig);
 		return Spec.makeUID(id, mid);
 	}

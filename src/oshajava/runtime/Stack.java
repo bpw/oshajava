@@ -174,6 +174,10 @@ public class Stack {
 			// Successfully walked to the roots of each stack.
 			return true;
 		}
+		if (writer == classInitializer || reader == classInitializer) {
+		    // Allow communication with class initializers.
+		    return true;
+		}
 		if (writer == root && reader != root || writer != root && reader == root) {
 			// Layer mismatch at root of stacks.
 			// FIXME pop/throw to find a compositional module...

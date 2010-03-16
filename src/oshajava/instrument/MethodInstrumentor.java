@@ -43,8 +43,28 @@ public class MethodInstrumentor extends AdviceAdapter {
 		isConstructor = name.equals("<init>");
 		isClinit = name.equals("<clinit>");
 		fullNameAndDesc = inst.className + "." + name + desc;
+		
+		// Synthetic methods are, in general, not seen by the annotation
+		// processor. If they're not, then we emit a warning and inline
+		// the method.
 		methodUID = module.getMethodUID(fullNameAndDesc);
-		policy = module.getCommunicationKind(methodUID);
+		if (methodUID == -1 && (access & Opcodes.ACC_SYNTHETIC) != 0) {
+		    Util.log("inlining synthetic method " + fullNameAndDesc);
+            policy = CommunicationKind.INLINE;
+        // Such is also the case with methods inside anonymous classes.
+        } else if (methodUID == -1 &&
+                   inst.className.matches(".*\\$\\d.*")) {
+            policy = CommunicationKind.INLINE;
+        // Raise an error for other methods that are not found.
+        } else if (methodUID == -1) {
+            module.describe();
+            Util.fail("in module " + module.getName() + ", " + fullNameAndDesc + " not found");
+            policy = CommunicationKind.INLINE; // avoid warning
+        // Set policy appropriately if method is found.
+        } else {
+    		policy = module.getCommunicationKind(methodUID);
+		}
+		
 		
 //		readHook = ClassInstrumentor.HOOK_READ; //RuntimeMonitor.RECORD ? ClassInstrumentor.HOOK_RECORD_READ : ClassInstrumentor.HOOK_READ;
 	}

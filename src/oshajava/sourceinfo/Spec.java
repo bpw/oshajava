@@ -48,8 +48,21 @@ public class Spec {
 	protected static ModuleSpec loadModule(String qualifiedName, ClassLoader loader, String requestingClass) throws ModuleSpecNotFoundException {
 		try {
 			final InputStream res = loader.getResourceAsStream(InstrumentationAgent.internalName(qualifiedName) + ModuleSpec.EXT);
-			if (res == null) throw new ModuleSpecNotFoundException(qualifiedName + ", referenced by " + requestingClass);
-			return (ModuleSpec)ColdStorage.load(res);
+			if (res == null) {
+			    // Module spec file legitimately not present. This is a
+			    // somewhat questionable decision, but we warn the user
+			    // that the module is unspecified and give it a null
+			    // (inlined) spec. This is somewhat unsafe, but allows
+			    // use of precompiled libraries that don't have
+			    // specifications.
+			    Util.log("No spec found for " + qualifiedName + ", using null spec.");
+			    return new NullModuleSpec(qualifiedName);
+			}
+			ModuleSpec ms = (ModuleSpec)ColdStorage.load(res);
+			if (ms == null) {
+			    return new NullModuleSpec(qualifiedName);
+			}
+			return ms;
 		} catch (IOException e) {
 			throw new ModuleSpecNotFoundException(qualifiedName + ", referenced by " + requestingClass);
 		} catch (ClassNotFoundException e) {
@@ -66,6 +79,11 @@ public class Spec {
 	 * @throws ModuleSpecNotFoundException
 	 */
 	public static synchronized ModuleSpec getModule(String name, ClassLoader loader, String requestingClass) throws ModuleSpecNotFoundException {
+	    if (loader == null) {
+	        // Loaded by the JVM.
+	        return new NullModuleSpec(name);
+	    }
+	    
 		ModuleSpec module = nameToModule.get(name);
 		if (module == null) {
 			module = loadModule(name, loader, requestingClass);
