@@ -122,7 +122,7 @@ public final class ThreadState {
 	
 	// -- Array state caching --------------------------------------------------------
 	
-	public static final Counter ARRAY_HITS = new Counter(), ARRAY_MISSES = new Counter();
+	public static final Counter ARRAY_HITS = new Counter("Array hits"), ARRAY_MISSES = new Counter("Array misses");
 	
 	protected final ShadowCache<Object,Ref<State>> arrayStateCache = 
 		Config.arrayIndexStatesOption.get() ? null :
@@ -301,7 +301,7 @@ public final class ThreadState {
 	
 	// -- Lock state caching ---------------------------------------------------------
 	
-	public static final Counter LOCK_HITS = new Counter(), LOCK_MISSES = new Counter();
+	public static final Counter LOCK_HITS = new Counter("Lock hits"), LOCK_MISSES = new Counter("Lock misses");
 
 	protected final ShadowCache<Object,LockState> lockStateCache = 
 		new DirectMappedShadowCache<Object,LockState>(RuntimeMonitor.lockStates, 

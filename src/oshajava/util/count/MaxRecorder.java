@@ -1,13 +1,14 @@
 package oshajava.util.count;
 
-public class MaxRecorder {
+public class MaxRecorder extends AbstractCounter<Integer> {
 	private int max;
 	
-	public MaxRecorder(final int max) {
+	public MaxRecorder(final String desc, final int max) {
+		super(desc);
 		this.max = max;
 	}
-	public MaxRecorder() {
-		this(Integer.MIN_VALUE);
+	public MaxRecorder(final String desc) {
+		this(desc, Integer.MIN_VALUE);
 	}
 	
 	public synchronized void add(final int x) {
@@ -16,7 +17,7 @@ public class MaxRecorder {
 		}
 	}
 	
-	public synchronized int value() {
+	public synchronized Integer value() {
 		return max;
 	}
 }

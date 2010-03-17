@@ -42,19 +42,30 @@ public abstract class IllegalCommunicationException extends OshaRuntimeException
 
 	@Override
 	public String getMessage() {
-	    String out = (on != null ? "on " + on : "" ) + "\n          " + reader + "\n" + actionString() + "\n          " + writer;
+	    String out = "\n================================================================================"; 
+	    	
+	    out += "\nIllegal communication " + (on != null ? "on " + on : "" ) + "\n";
+	    
+	    out += "Last write:\n";
+	    	
+	    out += writer + "\n";
 	    
 		if (trace != null) {
 		    if (trace.length > 0) {
-    		    out += "\nOriginator's stack trace:";
+    		    out += "\nLast writer stack trace:";
     		    for (StackTraceElement element : trace) {
     		        out += "\n" + element.toString();
     		    }
     	    } else {
-    	        out += "\nOriginated at field initialization.";
+    	        out += "\nLastWrite at field initialization.";
     	    }
+		    out += "\n";
 		}
 		
+		out += "\nCurrent read:\n";
+		out += reader;
+	    out += "\n================================================================================"; 
+
 		return out;
 	}
 

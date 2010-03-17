@@ -1,16 +1,39 @@
 package oshajava.runtime;
 
+import java.util.HashMap;
+import java.util.Map;
+
+import oshajava.sourceinfo.Graph;
 import oshajava.sourceinfo.ModuleSpec;
 import oshajava.sourceinfo.Spec;
 import oshajava.support.acme.util.Util;
 import oshajava.support.acme.util.identityhash.ConcurrentIdentityHashMap;
 import oshajava.support.acme.util.identityhash.IdentityHashSet;
 import oshajava.util.count.Counter;
+import oshajava.util.count.DistributionCounter;
+import oshajava.util.count.SetSizeCounter;
 import oshajava.util.intset.BitVectorIntSet;
 
 public class Stack {
 	
-	public static final Counter stacksCreated = new Counter();
+	public static final boolean RECORD = Config.recordOption.get();
+
+	public static final Counter stacksCreated = new Counter("Distinct stacks created");
+	public static final DistributionCounter communicatingStackDepths = new DistributionCounter("Communicating stack depths");
+	public static final DistributionCounter readerStackDepths = new DistributionCounter("Reader stack depths (per comm. pair)");
+	public static final DistributionCounter writerStackDepths = new DistributionCounter("Writer stack depths (per comm. pair)");
+	public static final DistributionCounter stackDepthDiffs = new DistributionCounter("Writer stack depth - reader stack depth (per comm. pair)");
+	public static final DistributionCounter setLengthDist = new DistributionCounter("Length in methods of stack segments");
+	public static final DistributionCounter segSizeDist = new DistributionCounter("Set size in methods of stack segments (writers only for now)");
+	public static final DistributionCounter segCountDist = new DistributionCounter("Segments on a communicating stack");
+	public static final SetSizeCounter<ModuleSpec> modulesUsed = new SetSizeCounter<ModuleSpec>("Modules used");
+	
+	public static final HashMap<ModuleSpec,Graph> commGraphs = new HashMap<ModuleSpec,Graph>();
+	public static final HashMap<ModuleSpec,Graph> interfaceGraphs = new HashMap<ModuleSpec,Graph>();
+	
+	public static final Counter stackWalks = new Counter("Full stack walks");
+	public static final Counter memo2Hits = new Counter("Level 2 memo hits");
+	
 	public static final boolean COUNT_STACKS = RuntimeMonitor.PROFILE && true;
 	
 	protected static final Stack root = new Stack(-1, null);
@@ -93,6 +116,14 @@ public class Stack {
 		}
 	}
 	
+	public int getDepth() {
+		if (this == root) {
+			return 0;
+		} else {
+			return 1 + parent.getDepth();
+		}
+	}
+	
 	/**
 	 * Count a write in this stack. If we've passed a threshold,
 	 * give this stack an id so reads of its future writes will go
@@ -122,12 +153,26 @@ public class Stack {
 	public boolean checkWriter(Stack writer) {
 		final boolean yes;
 		synchronized (writerMemoTable) {
+			if (COUNT_STACKS) {
+				memo2Hits.inc();
+			}
 			yes = writerMemoTable.contains(writer);
 		}
 		if (!yes) { //  really slow path: full stack traversal
-			if (walkStacks(writer, this)) {
+			if (COUNT_STACKS) {
+				stackWalks.inc();
+			}
+			if (walkStacks(writer, this, 0)) {
 				synchronized (writerMemoTable) {
 					writerMemoTable.add(writer);
+				}
+				if (COUNT_STACKS) {
+					final int wd = writer.getDepth(), rd = getDepth();
+					communicatingStackDepths.add(wd);
+					communicatingStackDepths.add(rd);
+					writerStackDepths.add(wd);
+					readerStackDepths.add(rd);
+					stackDepthDiffs.add(wd > rd ? wd - rd : rd - wd);
 				}
 			} else {
 				return false;
@@ -142,7 +187,7 @@ public class Stack {
 		return true;
 	}
 	
-	private static boolean walkStacks(final Stack writer, final Stack reader) {
+	private static boolean walkStacks(final Stack writer, final Stack reader, final int segDepth) {
 		if (writer == root && reader == root) {
 			// Successfully walked to the roots of each stack.
 			return true;
@@ -162,21 +207,34 @@ public class Stack {
 			// Immediate pair are in same module: no compositional module check needed here.
 			// Find the reader layer.
 			final BitVectorIntSet layer = new BitVectorIntSet();
-			final Stack readerLayerTop = reader.expandLayer(layer, writerMod);
+			final Stack readerLayerTop = reader.expandLayer(layer, writerMod, 0);
 			Util.assertTrue(!layer.isEmpty());
 			// Find the writer layer and check the layer mapping.
 			final ModuleSpec layerModule = Spec.getModule(writer.methodUID);
+			if (COUNT_STACKS) {
+				modulesUsed.add(layerModule);
+			}
 			final Stack writerLayerTop;
 			try {
-				writerLayerTop = writer.checkLayer(layer, layerModule);
+				writerLayerTop = writer.checkLayer(layer, layerModule, 0);
 			} catch (IllegalInternalEdgeException e) {
 				return false;
 			}
 			// The communication in this layer is allowed.
 			// Is the communication exposed?
 			if (layerModule.isPublic(writerLayerTop.methodUID, readerLayerTop.methodUID)) {
+				if (RECORD) {
+					synchronized (interfaceGraphs) {
+						if (!interfaceGraphs.containsKey(layerModule)) {
+							interfaceGraphs.put(layerModule, new Graph(layerModule.numInterfaceMethods()));
+						}
+						interfaceGraphs.get(layerModule).addEdge(Spec.getMethodID(writerLayerTop.methodUID), Spec.getMethodID(readerLayerTop.methodUID));
+					}
+				}
 				// communication is exposed here. Must check rest of stacks.
-				return walkStacks(writerLayerTop.parent, readerLayerTop.parent);
+				return walkStacks(writerLayerTop.parent, readerLayerTop.parent, segDepth + 1);
+			} else if (COUNT_STACKS) {
+				segCountDist.add(segDepth + 1);
 			}
 			// communication is hidden here. All checks so far succeeded so the
 			//communication is valid.
@@ -202,18 +260,21 @@ public class Stack {
 	 * @param moduleID
 	 * @return the last stack frame that contributed to the set.
 	 */
-	private Stack expandLayer(final BitVectorIntSet layer, final int moduleID) {
+	private Stack expandLayer(final BitVectorIntSet layer, final int moduleID, final int depth) {
 	    // Should only be called on a stack with at least one method from
 	    // the module.
 	    Util.assertTrue(moduleID == Spec.getModuleID(methodUID));
 	        
         layer.add(Spec.getMethodID(methodUID));
         if (moduleID != Spec.getModuleID(parent.methodUID)) {
+        	if (COUNT_STACKS) {
+        		setLengthDist.add(depth + 1);
+        	}
             // Module boundary.
             return this;
         } else {
             // Continue expanding.
-            return parent.expandLayer(layer, moduleID);
+            return parent.expandLayer(layer, moduleID, depth + 1);
         }
 	}
 	
@@ -227,16 +288,35 @@ public class Stack {
 	 * belonging to this module.
 	 * @throws IllegalInternalEdgeException if there was an illegal internal edge
 	 */
-	private Stack checkLayer(final BitVectorIntSet layer, final ModuleSpec module) throws IllegalInternalEdgeException {
+	private Stack checkLayer(final BitVectorIntSet layer, final ModuleSpec module, int depth) throws IllegalInternalEdgeException {
 	    Util.assertTrue(module.getId() == Spec.getModuleID(methodUID));
 	    
+	    if (COUNT_STACKS) {
+	    	segSizeDist.add(layer.size());
+	    }
+		if (RECORD) {
+			synchronized (commGraphs) {
+				if (!commGraphs.containsKey(module)) {
+					commGraphs.put(module, new Graph(module.numCommMethods()));
+				}
+				BitVectorIntSet s = commGraphs.get(module).getOutEdges(Spec.getMethodID(methodUID));
+				if (s == null) {
+					s = new BitVectorIntSet();
+					commGraphs.get(module).setOutEdges(Spec.getMethodID(methodUID), s);
+				}
+				s.addAll(layer);
+			}
+		}
 		if (module.allAllowed(methodUID, layer)) {
 			if (module.getId() != Spec.getModuleID(parent.methodUID)) {
+				if (COUNT_STACKS) {
+					setLengthDist.add(depth + 1);
+				}
 			    // Module boundary.
 				return this;
 			} else {
 			    // Continue checking.
-				return parent.checkLayer(layer, module);
+				return parent.checkLayer(layer, module, depth + 1);
 			}
 		} else {
 			throw new IllegalInternalEdgeException();
@@ -286,4 +366,72 @@ public class Stack {
 	public static synchronized int lastID() {
 		return idCounter;
 	}
+
+	public static void dumpGraphs(String mainClass) {
+		if (RECORD) {
+			int specCommNodes = 0, specCommEdges = 0, specINodes = 0, specIEdges = 0;
+			for (ModuleSpec mod : Spec.loadedModules()) {
+				specCommNodes += mod.numCommMethods();
+				specINodes += mod.numInterfaceMethods();
+				specCommEdges += mod.numCommEdges();
+				specIEdges += mod.numInterfaceEdges();
+			}
+			int runCommNodes = 0, runCommEdges = 0, runINodes = 0, runIEdges = 0;
+			for (Map.Entry<ModuleSpec,Graph> e : commGraphs.entrySet()) {
+				ModuleSpec mod = e.getKey();
+				Graph g = e.getValue();
+				for (int i = 0; i < mod.numCommMethods(); i++) {
+					BitVectorIntSet bv = g.getOutEdges(i);
+					if (bv != null && ! bv.isEmpty()) {
+						runCommNodes++;
+						runCommEdges += bv.size();
+					}
+				}
+			}
+			for (Map.Entry<ModuleSpec,Graph> e : interfaceGraphs.entrySet()) {
+				ModuleSpec mod = e.getKey();
+				Graph g = e.getValue();
+				for (int i = 0; i < mod.numCommMethods(); i++) {
+					BitVectorIntSet bv = g.getOutEdges(i);
+					if (bv != null && ! bv.isEmpty()) {
+						runCommNodes++;
+						runCommEdges += bv.size();
+					}
+				}
+			}
+			
+			Util.logf("Total comm nodes in used specs: %d", specCommNodes);
+			Util.logf("Total comm nodes in run: %d", runCommNodes);
+			Util.logf("Total comm edges in used specs: %d", specCommEdges);
+			Util.logf("Total comm edges in run: %d", runCommEdges);
+
+			Util.logf("Total interface nodes in used specs: %d", specINodes);
+			Util.logf("Total interface nodes in run: %d", runINodes);
+			Util.logf("Total interface edges in used specs: %d", specIEdges);
+			Util.logf("Total interface edges in run: %d", runIEdges);
+
+//			try {
+//				final GraphMLWriter commGraphml = new GraphMLWriter(mainClass + ".oshajava.comm.graphml");
+//				final GraphMLWriter interfaceGraphml = new GraphMLWriter(mainClass + ".oshajava.comm.graphml");
+//				for (Map.Entry<ModuleSpec, Graph> comm : commGraphs.entrySet()) {
+//					ModuleSpec mod = comm.getKey();
+//					for (int i = 0; i < mod.numCommMethods(); i++) {
+//						int uid = Spec.makeUID(mod.getId(), i);
+//						commGraphml.writeNode(uid + "", mod.getMethodSignature(uid), "");
+//						interfaceGraphml.writeNode(uid + "", mod.getMethodSignature(uid), "");
+//					}
+//					Graph commGraph = comm.getValue();
+//					for (int i = 0; i < commGraph.size()) {
+//						
+//					}
+//				}
+//				commGraphml.close();
+//				interfaceGraphml.close();
+//			} catch (IOException e) {
+//				Util.log("Failed to dump execution graph due to IOException.");
+//			}
+		}
+	}
+
+
 }

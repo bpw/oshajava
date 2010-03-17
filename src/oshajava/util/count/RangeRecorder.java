@@ -1,18 +1,20 @@
 package oshajava.util.count;
 
-public class RangeRecorder {
-	private long min;
-	private long max;
+public class RangeRecorder extends AbstractCounter<RangeRecorder.Range> {
+	private int min;
+	private int max;
+	private Range range = new Range();
 	
-	public RangeRecorder(final long initMin, final long initMax) {
+	public RangeRecorder(final String desc, final int initMin, final int initMax) {
+		super(desc);
 		min = initMin;
 		max = initMax;
 	}
-	public RangeRecorder() {
-		this(Long.MAX_VALUE, Long.MIN_VALUE);
+	public RangeRecorder(final String desc) {
+		this(desc, Integer.MAX_VALUE, Integer.MIN_VALUE);
 	}
 	
-	public synchronized void add(final long x) {
+	public synchronized void add(final int x) {
 		if (x < min) {
 			min = x;
 		}
@@ -21,15 +23,20 @@ public class RangeRecorder {
 		}
 	}
 	
-	public static class Range {
-		public final long min, max;
-		public Range(final long min, final long max) {
-			this.min = min;
-			this.max = max;
+	class Range {
+		public String toString() {
+			return "min: " + min + ", max: " + max;
 		}
 	}
 	
-	public synchronized Range value() {
-		return new Range(min, max);
+	public Range value() {
+		return range;
+	}
+	
+	public int getMin() {
+		return min;
+	}
+	public int getMax() {
+		return max;
 	}
 }

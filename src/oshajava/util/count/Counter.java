@@ -1,13 +1,14 @@
 package oshajava.util.count;
 
-public class Counter {
+public class Counter extends AbstractCounter<Long> {
 	private long count;
 	
-	public Counter(final long init) {
+	public Counter(final String desc, final long init) {
+		super(desc);
 		count = init;
 	}
-	public Counter() {
-		this(0);
+	public Counter(final String desc) {
+		this(desc, 0);
 	}
 	
 	public synchronized long inc() {
@@ -18,7 +19,7 @@ public class Counter {
 		return --count;
 	}
 	
-	public synchronized long value() {
+	public synchronized Long value() {
 		return count;
 	}
 }

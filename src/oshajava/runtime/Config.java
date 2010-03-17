@@ -66,6 +66,9 @@ public class Config {
     public static final CommandLineOption<Boolean> failStopOption =
         CommandLine.makeBoolean("fail", false, "Instead of throwing exceptions, fail immediately on violations.");
     
+    public static final CommandLineOption<Boolean> recordOption =
+    		CommandLine.makeBoolean("record", false, "Record exercised graph.");
+    
 	public static final CommandLine cl = new CommandLine(TOOL_NAME, "[ -javaOptions java options ] -- Class [ class args ]", helpOption, jvmOption);
 	
 	public static void configure(String[] args){
@@ -76,6 +79,7 @@ public class Config {
 		cl.add(arrayIndexStatesOption);
 		cl.add(objectStatesOption);
 		cl.add(profileOption);
+		cl.add(recordOption);
 		cl.add(arrayCacheSizeOption);
 		cl.add(lockCacheSizeOption);
 		cl.add(stackTracesOption);
