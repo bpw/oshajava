@@ -108,18 +108,33 @@ public class RuntimeMonitor {
 	 */
 	public static void checkFieldRead(final State write, final State read, final String on) {
 		if (!read.stack.checkWriter(write.stack)) {
-			throw new IllegalSharingException(write, read, null, on);
+		    IllegalSharingException exc = new IllegalSharingException(write, read, null, on);
+		    if (Config.failStopOption.get()) {
+		        Util.fail(exc);
+		    } else {
+		        throw exc;
+		    }
 		}
 	}
 	public static void checkFieldRead(final State write, final State read, final String on, 
 			final StackTraceElement[] trace) {
 		if (!read.stack.checkWriter(write.stack)) {
-			throw new IllegalSharingException(write, read, trace, on);
+			IllegalSharingException exc = new IllegalSharingException(write, read, trace, on);
+		    if (Config.failStopOption.get()) {
+		        Util.fail(exc);
+		    } else {
+		        throw exc;
+		    }
 		}
 	}
 	private static void checkReadSlowPath(final State write, final State read, final StackTraceElement[] trace) {
 		if (!read.stack.checkWriter(write.stack)) {
-			throw new IllegalSharingException(write, read, trace);
+		    IllegalSharingException exc = new IllegalSharingException(write, read, trace);
+		    if (Config.failStopOption.get()) {
+		        Util.fail(exc);
+		    } else {
+		        throw exc;
+		    }
 		}
 	}
 	private static void checkRead(final State write, final ThreadState reader, final BitVectorIntSet wCache, final StackTraceElement[] trace) {
@@ -256,7 +271,11 @@ public class RuntimeMonitor {
 			}
 
 		} catch (IllegalCommunicationException e) {
-			throw e;
+		    if (Config.failStopOption.get()) {
+		        Util.fail(e);
+		    } else {
+		        throw e;
+		    }
 		} catch (Throwable t) {
 			Util.fail(t);
 		}
@@ -325,7 +344,12 @@ public class RuntimeMonitor {
 			// TODO pass writerCache as param
 			if (!currentState.stack.writerCache.contains(lastHolderState.getStackID()) 
 					&& !currentState.stack.checkWriter(lastHolderState.stack)) {
-				throw new IllegalSynchronizationException(lastHolderState, currentState);
+		        IllegalSynchronizationException exc = new IllegalSynchronizationException(lastHolderState, currentState);
+    		    if (Config.failStopOption.get()) {
+    		        Util.fail(exc);
+    		    } else {
+    		        throw exc;
+    		    }
 			}
 		}
 	}
