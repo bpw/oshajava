@@ -402,8 +402,7 @@ public class ClassInstrumentor extends ClassAdapter {
 	}
 	
 	protected boolean shouldInstrumentField(String name, String desc) {
-		return (outerClassDesc == null 
-				|| ! (name.startsWith("this$") && desc.equals(outerClassDesc)));
+		return !name.matches("this\\$\\d.*");
 	}
 	
 
