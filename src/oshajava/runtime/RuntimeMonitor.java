@@ -294,8 +294,8 @@ public class RuntimeMonitor {
 							if (PROFILE) {
 								lockSlowPathCounter.inc();
 							}
-							if (!holderState.stack.checkWriter(lockState.lastHolder.stack)) {
-								throw new IllegalSynchronizationException(lastHolderState, holderState);
+							if (!holderState.stack.checkWriter(lastHolderState.stack)) {
+							    throw new IllegalSynchronizationException(lastHolderState, holderState);
 							}
 						}
 					}
