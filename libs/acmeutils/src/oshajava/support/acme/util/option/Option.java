@@ -132,4 +132,8 @@ public class Option<T> {
 		result += "</options>";
 		return result;
 	}
+	
+	public static Iterable<Option<?>> all() {
+		return options;
+	}
 }

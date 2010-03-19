@@ -94,10 +94,10 @@ public class InstrumentationAgent implements ClassFileTransformer {
 				Util.outputPathOption.get() + File.separator + "bytecode-dump", "Location of instrumented bytecode dump.");
 	
 	public static final CommandLineOption<Boolean> verifyOption =
-		CommandLine.makeBoolean("verify", true, "Run an extra debugging verification pass on instrumented bytecode before loading.");
+		CommandLine.makeBoolean("verify", false, "Run an extra debugging verification pass on instrumented bytecode before loading.");
 	
 	public static final CommandLineOption<Boolean> preVerifyOption =
-		CommandLine.makeBoolean("preVerify", true, "Verify classes read from disk before instrumenting.");
+		CommandLine.makeBoolean("preVerify", false, "Verify classes read from disk before instrumenting.");
 	
 	public static final CommandLineOption<Boolean> framesOption =
 		CommandLine.makeBoolean("frames", false, "Handle frames intelligently.");

@@ -14,6 +14,8 @@ import oshajava.runtime.exceptions.IllegalCommunicationException;
 import oshajava.runtime.exceptions.IllegalSharingException;
 import oshajava.runtime.exceptions.IllegalSynchronizationException;
 import oshajava.support.acme.util.Util;
+import oshajava.support.acme.util.option.Option;
+import oshajava.util.Py;
 import oshajava.util.PyWriter;
 import oshajava.util.WeakConcurrentIdentityHashMap;
 import oshajava.util.cache.DirectMappedShadowCache;
@@ -535,9 +537,15 @@ public class RuntimeMonitor {
 
 		// dump profile
 		try {
-			final PyWriter py = new PyWriter(mainClass + "_oshajava_profile.py", true);
+			final PyWriter py = new PyWriter(mainClass + Config.profileExtOption.get(), true);
 			try {
 				py.startMap();
+				py.writeMapKey("options");
+				py.startMap();
+				for (Option<?> o : Option.all()) {
+					py.writeMapPair(o.getId(), Py.quote(o.get()));
+				}
+				py.endMap();
 				py.writeMapPair("threads", ThreadState.lastID() + 1);
 				py.writeMapPair("frequently communicating stacks", Stack.lastID() + 1);
 				for (final AbstractCounter<?> c : AbstractCounter.all()) {

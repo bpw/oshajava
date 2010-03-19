@@ -72,15 +72,26 @@ public class Py {
 		return s.toString();
 	}
 	
+	public static <T> String list(Iterable<T> c) {
+		StringWriter s = new StringWriter();
+		PyWriter py = new PyWriter(s, false);
+		try {
+			py.writeTuple(c);
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		return s.toString();
+	}
+
 //	public static <T> String tuple(Iterable<T> c) {
-//		StringWriter s = new StringWriter();
-//		PyWriter py = new PyWriter(s, false);
-//		try {
-//			py.writeTuple(c);
-//		} catch (IOException e) {
-//			throw new RuntimeException(e);
-//		}
-//		return s.toString();
+//	StringWriter s = new StringWriter();
+//	PyWriter py = new PyWriter(s, false);
+//	try {
+//		py.writeTuple(c);
+//	} catch (IOException e) {
+//		throw new RuntimeException(e);
 //	}
+//	return s.toString();
+//}
 
 }
