@@ -2,6 +2,8 @@ package oshajava.util.count;
 
 import java.util.HashSet;
 
+import oshajava.util.Py;
+
 public class SetSizeCounter<T> extends AbstractCounter<Integer> {
 	private final HashSet<T> set = new HashSet<T>();
 	public SetSizeCounter(String desc) {
@@ -12,5 +14,9 @@ public class SetSizeCounter<T> extends AbstractCounter<Integer> {
 	}
 	public Integer value() {
 		return set.size();
+	}
+	
+	public String valueToPy() {
+		return set.size() + "";
 	}
 }

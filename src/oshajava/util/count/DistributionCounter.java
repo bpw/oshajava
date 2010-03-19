@@ -3,6 +3,8 @@ package oshajava.util.count;
 import java.util.HashMap;
 import java.util.Map;
 
+import oshajava.util.Py;
+
 public class DistributionCounter extends RangeRecorder {
 	private final HashMap<Integer,Integer> dist = new HashMap<Integer,Integer>();
 	private Distribution distrib = new Distribution();
@@ -41,6 +43,10 @@ public class DistributionCounter extends RangeRecorder {
 	
 	public Distribution value() {
 		return distrib;
+	}
+	
+	public String valueToPy() {
+		return Py.repr(dist);
 	}
 	
 }

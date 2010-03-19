@@ -1,5 +1,7 @@
 package oshajava.util.count;
 
+import oshajava.util.Py;
+
 public class RangeRecorder extends AbstractCounter<RangeRecorder.Range> {
 	private int min;
 	private int max;
@@ -38,5 +40,9 @@ public class RangeRecorder extends AbstractCounter<RangeRecorder.Range> {
 	}
 	public int getMax() {
 		return max;
+	}
+	
+	public String valueToPy() {
+		return Py.tuple(min, max);
 	}
 }

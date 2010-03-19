@@ -19,7 +19,15 @@ public class Counter extends AbstractCounter<Long> {
 		return --count;
 	}
 	
+	public synchronized void add(long l) {
+		count += l;
+	}
+	
 	public synchronized Long value() {
 		return count;
+	}
+	
+	public synchronized String valueToPy() {
+		return count + "";
 	}
 }

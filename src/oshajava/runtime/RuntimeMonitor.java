@@ -1,15 +1,16 @@
 package oshajava.runtime;
 
+import java.io.IOException;
 import java.lang.reflect.Array;
 
 import oshajava.runtime.exceptions.IllegalCommunicationException;
 import oshajava.runtime.exceptions.IllegalSharingException;
 import oshajava.runtime.exceptions.IllegalSynchronizationException;
-import oshajava.sourceinfo.ModuleSpec;
-import oshajava.sourceinfo.Spec;
 import oshajava.support.acme.util.Util;
+import oshajava.util.PyWriter;
 import oshajava.util.WeakConcurrentIdentityHashMap;
 import oshajava.util.cache.DirectMappedShadowCache;
+import oshajava.util.count.AbstractCounter;
 import oshajava.util.count.Counter;
 import oshajava.util.intset.BitVectorIntSet;
 
@@ -449,35 +450,30 @@ public class RuntimeMonitor {
 	 * 
 	 * @param mainClass
 	 */
-	public static void fini(String mainClass) {
+	public static void fini(final String mainClass) {
 		// Report some stats.
 		if (PROFILE) {
 			Util.log("---- Profile info ------------------------------------");
-			Util.logf("Distinct threads created: %d", ThreadState.lastID() + 1);
-			if (Stack.COUNT_STACKS) {
-				Util.log(Stack.stacksCreated);
-				Util.logf("Frequently communicating stacks: %d", Stack.lastID() + 1);
-				Util.log(Stack.communicatingStackDepths);
-				Util.log(Stack.readerStackDepths);
-				Util.log(Stack.writerStackDepths);
-				Util.log(Stack.stackDepthDiffs);
-				Util.log(Stack.segCountDist);
-				Util.log(Stack.setLengthDist);
-				Util.log(Stack.segSizeDist);
-				Util.log(Stack.modulesUsed);
-				Util.log(Stack.stackWalks);
-				Util.log(Stack.memo2Hits);
+			if (Stack.RECORD) Stack.dumpGraphs(mainClass);
+			try {
+				final PyWriter py = new PyWriter(mainClass + "_oshajava_profile.py", true);
+				try {
+					py.startMap();
+					py.writeMapPair("threads", ThreadState.lastID() + 1);
+					py.writeMapPair("frequently communicating stacks", Stack.lastID() + 1);
+					for (final AbstractCounter<?> c : AbstractCounter.all()) {
+						py.writeCounterAsMapPair(c);
+					}
+					py.endMap();
+					// END PY
+				} finally {
+					py.close();
+				}
+			} catch (IOException e) {
+				Util.fail("Failed to dump py.");
+				//FIXME
 			}
-			Util.log(fieldReadCounter);
-			Util.log(fieldCommCounter);
-			Util.log(fieldSlowPathCounter);
-			Util.log(lockCounter);
-			Util.log(lockCommCounter);
-			Util.log(lockSlowPathCounter);
-			Util.log(arrayReadCounter);
-			Util.log(arrayCommCounter);
-			Util.log(arraySlowPathCounter);
-			Util.log("");
+
 			double fr = (double)fieldReadCounter.value();
 			Util.logf("Thread-local field reads:    %f%%", 
 					(double)(fieldReadCounter.value() - fieldCommCounter.value()) / fr * 100.0);
@@ -495,20 +491,7 @@ public class RuntimeMonitor {
 					(double)(lockCounter.value() - lockCommCounter.value()) / lr * 100.0);
 			Util.logf("Comm. fast path lock acquires: %f%%", (double)(lockCommCounter.value() - lockSlowPathCounter.value()) / lr * 100.0);
 			Util.logf("Comm. slow path lock acquires: %f%%", (double)lockSlowPathCounter.value() / lr * 100.0);
-			
-			if (State.COUNT_STATES) {
-				Util.log(State.statesCreated);
-//				Util.logf("Average duplication of stacks would be: %f", (float) State.statesCreated.value() / ((float)Stack.lastID() + 1));
-			}
-			if (BitVectorIntSet.COUNT_SLOTS) {
-				Util.log(BitVectorIntSet.maxSlots);
-			}
-			if (ModuleSpec.COUNT_METHODS) {
-				Util.log(ModuleSpec.maxCommMethods);
-				Util.log(ModuleSpec.maxInterfaceMethods);
-				Util.log(ModuleSpec.maxMethods);
-			}
-			Util.logf("Modules loaded: %d", Spec.countModules());
+
 			if (DirectMappedShadowCache.COUNT) {
 				Util.logf("Array accesses: %d", ThreadState.ARRAY_HITS.value() + ThreadState.ARRAY_MISSES.value());
 				Util.logf("    cache hits: %d", ThreadState.ARRAY_HITS.value());
@@ -516,7 +499,7 @@ public class RuntimeMonitor {
 				Util.logf("      hit rate: %f%%", 
 						100.0 * (float)ThreadState.ARRAY_HITS.value() / (float)(ThreadState.ARRAY_HITS.value() + ThreadState.ARRAY_MISSES.value()));
 				Util.logf("    cache size: %d", Config.arrayCacheSizeOption.get());
-				
+
 				Util.logf(" Lock accesses: %d", ThreadState.LOCK_HITS.value() + ThreadState.LOCK_MISSES.value());
 				Util.logf("    cache hits: %d", ThreadState.LOCK_HITS.value());
 				Util.logf("  cache misses: %d", ThreadState.LOCK_MISSES.value());
@@ -524,9 +507,9 @@ public class RuntimeMonitor {
 						100.0 * (float)ThreadState.LOCK_HITS.value() / (float)(ThreadState.LOCK_HITS.value() + ThreadState.LOCK_MISSES.value()));
 				Util.logf("    cache size: %d", Config.lockCacheSizeOption.get());
 			}
+
 		}
-		if (Stack.RECORD) Stack.dumpGraphs(mainClass);
 	}
-	
+
 
 }
