@@ -20,4 +20,8 @@ public class MaxRecorder extends AbstractCounter<Integer> {
 	public synchronized Integer value() {
 		return max;
 	}
+	
+	public synchronized String valueToPy() {
+		return max + "";
+	}
 }

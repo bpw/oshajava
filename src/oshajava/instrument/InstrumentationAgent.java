@@ -20,6 +20,7 @@ import oshajava.support.org.objectweb.asm.ClassWriter;
 import oshajava.support.org.objectweb.asm.commons.RemappingClassAdapter;
 import oshajava.support.org.objectweb.asm.commons.SimpleRemapper;
 import oshajava.support.org.objectweb.asm.util.CheckClassAdapter;
+import oshajava.util.count.ConcurrentTimer;
 
 /**
  * TODO options
@@ -100,6 +101,8 @@ public class InstrumentationAgent implements ClassFileTransformer {
 	
 	public static final CommandLineOption<Boolean> framesOption =
 		CommandLine.makeBoolean("frames", false, "Handle frames intelligently.");
+	
+	private static final ConcurrentTimer insTimer = new ConcurrentTimer("Instrumentation time");
 		
 	public byte[] instrument(String className, byte[] bytecode, ClassLoader loader) throws ModuleSpecNotFoundException {
 		try {
@@ -178,6 +181,8 @@ public class InstrumentationAgent implements ClassFileTransformer {
 		try {
 			if (!shouldTransform(className)) return null;
 
+			insTimer.start();
+			
 			final byte[] instrumentedBytecode = instrument(className, bytecode, loader);
 			if (instrumentedBytecode != bytecode && bytecodeDumpOption.get()) {
 				File f = new File(bytecodeDumpDirOption.get() + File.separator + className + ".class");
@@ -194,6 +199,8 @@ public class InstrumentationAgent implements ClassFileTransformer {
 		} catch (Throwable e) {
 			Util.fail("Problem running oshajava instrumentor: " + e);
 			return null;
+		} finally {
+			insTimer.stop();
 		}
 	}
 

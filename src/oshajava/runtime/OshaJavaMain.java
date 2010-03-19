@@ -5,6 +5,9 @@ import java.lang.reflect.Method;
 
 import oshajava.instrument.InstrumentationAgent;
 import oshajava.support.acme.util.Util;
+import oshajava.util.count.Counter;
+import oshajava.util.count.SequentialTimer;
+import oshajava.util.count.ConcurrentTimer;
 
 public class OshaJavaMain {
 	
@@ -19,6 +22,9 @@ public class OshaJavaMain {
 		InstrumentationAgent.setAppThreadGroupRoot(appGroup);
 		final Thread app = new Thread(appGroup, "application main") {
 			public void run() {
+				final SequentialTimer mainTimer = new SequentialTimer("Main time");
+				mainTimer.start();
+				
 				try {
 					final Class<?> cl;
 					final Method main;
@@ -36,6 +42,8 @@ public class OshaJavaMain {
 					Util.fail(e.getCause());
 				} catch (Throwable e) {
 					Util.fail(e);
+				} finally {
+					mainTimer.stop();
 				}
 			}
 		};

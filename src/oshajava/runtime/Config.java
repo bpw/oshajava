@@ -6,6 +6,8 @@ import oshajava.instrument.InstrumentationAgent;
 import oshajava.support.acme.util.Util;
 import oshajava.support.acme.util.option.CommandLine;
 import oshajava.support.acme.util.option.CommandLineOption;
+import oshajava.util.count.SequentialTimer;
+import oshajava.util.count.ConcurrentTimer;
 
 /**
  * Options may be created here or in any class, but must be listed as args
@@ -47,6 +49,9 @@ public class Config {
 	// FIXME belongs in the static processor.
 //	public static final CommandLineOption<Boolean> nonCommAsDefaultOption =
 //		CommandLine.makeBoolean("defaultToNonComm", false, "Make methods non-communicating by default (instead of inlined).");
+	
+	public static final CommandLineOption<Boolean> noInstrumentOption =
+		CommandLine.makeBoolean("noInstrument", false, "Turn off instrumentation");
 	
 	public static final CommandLineOption<Boolean> profileOption =
 		CommandLine.makeBoolean("profile", false, "Report tool profiling information.");
@@ -102,15 +107,21 @@ public class Config {
 			
 		cl.apply(args);	
 	}
-	
+	protected static ConcurrentTimer premainTimer = new ConcurrentTimer("Premain time");
+	protected static SequentialTimer premainFiniTimer = new SequentialTimer("Premain to fini time");
 	public static void premain(String agentArgs, Instrumentation inst) {
+		premainTimer.start();
 		Thread.currentThread().setName(TOOL_NAME);
 		configure(agentArgs == null ? new String[0] : agentArgs.replace('#', ' ').split(","));
 		if( !CommandLine.javaArgs.get().replaceAll(" ", "").isEmpty()) {
 			Util.logf("remaining args are \"%s\"", CommandLine.javaArgs.get());
 			helpOption.set(true);
 		}
-		InstrumentationAgent.install(inst);
+		if (!noInstrumentOption.get()) {
+			InstrumentationAgent.install(inst);
+		}
+		premainTimer.stop();
+		premainFiniTimer.start();
 	}
 
 }

@@ -1,5 +1,11 @@
 package oshajava.runtime;
 
+import java.io.IOException;
+import java.lang.management.CompilationMXBean;
+import java.lang.management.GarbageCollectorMXBean;
+import java.lang.management.ManagementFactory;
+import java.lang.management.MemoryMXBean;
+import java.lang.management.MemoryPoolMXBean;
 import java.lang.reflect.Array;
 import java.util.Set;
 import java.util.HashSet;
@@ -7,12 +13,13 @@ import java.util.HashSet;
 import oshajava.runtime.exceptions.IllegalCommunicationException;
 import oshajava.runtime.exceptions.IllegalSharingException;
 import oshajava.runtime.exceptions.IllegalSynchronizationException;
-import oshajava.sourceinfo.ModuleSpec;
-import oshajava.sourceinfo.Spec;
 import oshajava.support.acme.util.Util;
+import oshajava.util.PyWriter;
 import oshajava.util.WeakConcurrentIdentityHashMap;
 import oshajava.util.cache.DirectMappedShadowCache;
+import oshajava.util.count.AbstractCounter;
 import oshajava.util.count.Counter;
+import oshajava.util.count.ConcurrentTimer;
 import oshajava.util.intset.BitVectorIntSet;
 
 /**
@@ -477,6 +484,7 @@ public class RuntimeMonitor {
 		return t;
 	}
 	
+	// Very hacky full function graph collection.
 	private static String getTopFrame(StackTraceElement[] trace) {
 	    if (trace == null) {
 	        return "?";
@@ -505,35 +513,59 @@ public class RuntimeMonitor {
 	 * 
 	 * @param mainClass
 	 */
-	public static void fini(String mainClass) {
+	public static void fini(final String mainClass) {
+		Config.premainFiniTimer.stop();
 		// Report some stats.
 		if (PROFILE) {
 			Util.log("---- Profile info ------------------------------------");
-			Util.logf("Distinct threads created: %d", ThreadState.lastID() + 1);
-			if (Stack.COUNT_STACKS) {
-				Util.log(Stack.stacksCreated);
-				Util.logf("Frequently communicating stacks: %d", Stack.lastID() + 1);
-				Util.log(Stack.communicatingStackDepths);
-				Util.log(Stack.readerStackDepths);
-				Util.log(Stack.writerStackDepths);
-				Util.log(Stack.stackDepthDiffs);
-				Util.log(Stack.segCountDist);
-				Util.log(Stack.setLengthDist);
-				Util.log(Stack.segSizeDist);
-				Util.log(Stack.modulesUsed);
-				Util.log(Stack.stackWalks);
-				Util.log(Stack.memo2Hits);
+			if (Stack.RECORD) {
+				Stack.dumpGraphs(mainClass);
 			}
-			Util.log(fieldReadCounter);
-			Util.log(fieldCommCounter);
-			Util.log(fieldSlowPathCounter);
-			Util.log(lockCounter);
-			Util.log(lockCommCounter);
-			Util.log(lockSlowPathCounter);
-			Util.log(arrayReadCounter);
-			Util.log(arrayCommCounter);
-			Util.log(arraySlowPathCounter);
-			Util.log("");
+		}
+
+		// mem and gc
+		MemoryMXBean bean = ManagementFactory.getMemoryMXBean();
+		CompilationMXBean cbean = ManagementFactory.getCompilationMXBean();
+
+		long peakMem = 0;
+
+		for (MemoryPoolMXBean b : ManagementFactory.getMemoryPoolMXBeans()) {
+			peakMem += b.getPeakUsage().getUsed();
+		}
+
+		// dump profile
+		try {
+			final PyWriter py = new PyWriter(mainClass + "_oshajava_profile.py", true);
+			try {
+				py.startMap();
+				py.writeMapPair("threads", ThreadState.lastID() + 1);
+				py.writeMapPair("frequently communicating stacks", Stack.lastID() + 1);
+				for (final AbstractCounter<?> c : AbstractCounter.all()) {
+					py.writeCounterAsMapPair(c);
+				}
+				py.writeMapPair("Memory peak", peakMem);
+				py.writeMapPair("Memory used", bean.getHeapMemoryUsage().getUsed());
+				py.writeMapPair("Memory max", bean.getHeapMemoryUsage().getMax());
+				if (cbean!=null) {
+					py.writeMapPair("Compile time", cbean.getTotalCompilationTime());
+				}
+				long gcTime = 0;
+				for (GarbageCollectorMXBean gcb : ManagementFactory.getGarbageCollectorMXBeans()) {
+					gcTime += gcb.getCollectionTime();
+				}
+				py.writeMapPair("GC time", gcTime);
+				// times
+				py.endMap();
+				// END PY
+			} finally {
+				py.close();
+			}
+		} catch (IOException e) {
+			Util.fail("Failed to dump py.");
+			//FIXME
+		}
+		
+		if (PROFILE) {
 			double fr = (double)fieldReadCounter.value();
 			Util.logf("Thread-local field reads:    %f%%", 
 					(double)(fieldReadCounter.value() - fieldCommCounter.value()) / fr * 100.0);
@@ -551,20 +583,7 @@ public class RuntimeMonitor {
 					(double)(lockCounter.value() - lockCommCounter.value()) / lr * 100.0);
 			Util.logf("Comm. fast path lock acquires: %f%%", (double)(lockCommCounter.value() - lockSlowPathCounter.value()) / lr * 100.0);
 			Util.logf("Comm. slow path lock acquires: %f%%", (double)lockSlowPathCounter.value() / lr * 100.0);
-			
-			if (State.COUNT_STATES) {
-				Util.log(State.statesCreated);
-//				Util.logf("Average duplication of stacks would be: %f", (float) State.statesCreated.value() / ((float)Stack.lastID() + 1));
-			}
-			if (BitVectorIntSet.COUNT_SLOTS) {
-				Util.log(BitVectorIntSet.maxSlots);
-			}
-			if (ModuleSpec.COUNT_METHODS) {
-				Util.log(ModuleSpec.maxCommMethods);
-				Util.log(ModuleSpec.maxInterfaceMethods);
-				Util.log(ModuleSpec.maxMethods);
-			}
-			Util.logf("Modules loaded: %d", Spec.countModules());
+
 			if (DirectMappedShadowCache.COUNT) {
 				Util.logf("Array accesses: %d", ThreadState.ARRAY_HITS.value() + ThreadState.ARRAY_MISSES.value());
 				Util.logf("    cache hits: %d", ThreadState.ARRAY_HITS.value());
@@ -572,7 +591,7 @@ public class RuntimeMonitor {
 				Util.logf("      hit rate: %f%%", 
 						100.0 * (float)ThreadState.ARRAY_HITS.value() / (float)(ThreadState.ARRAY_HITS.value() + ThreadState.ARRAY_MISSES.value()));
 				Util.logf("    cache size: %d", Config.arrayCacheSizeOption.get());
-				
+
 				Util.logf(" Lock accesses: %d", ThreadState.LOCK_HITS.value() + ThreadState.LOCK_MISSES.value());
 				Util.logf("    cache hits: %d", ThreadState.LOCK_HITS.value());
 				Util.logf("  cache misses: %d", ThreadState.LOCK_MISSES.value());
@@ -580,9 +599,9 @@ public class RuntimeMonitor {
 						100.0 * (float)ThreadState.LOCK_HITS.value() / (float)(ThreadState.LOCK_HITS.value() + ThreadState.LOCK_MISSES.value()));
 				Util.logf("    cache size: %d", Config.lockCacheSizeOption.get());
 			}
+
 		}
-		if (Stack.RECORD) Stack.dumpGraphs(mainClass);
 	}
-	
+
 
 }

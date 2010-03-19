@@ -8,10 +8,8 @@ public abstract class AbstractCounter<T> {
 	
 	private static final Vector<AbstractCounter<?>> counts = new Vector<AbstractCounter<?>>();
 	
-	public static void printCounts() {
-		for (AbstractCounter<?> c : counts) {
-			Util.log(c);
-		}
+	public static Iterable<AbstractCounter<?>> all() {
+		return counts;
 	}
 
 	private final String desc;
@@ -21,6 +19,11 @@ public abstract class AbstractCounter<T> {
 	}
 	
 	public abstract T value();
+	public String getDesc() {
+		return desc;
+	}
+	
+	public abstract String valueToPy();
 	
 	public String toString() {
 		return desc + ": " + value();

@@ -1,5 +1,6 @@
 package oshajava.runtime;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -9,6 +10,7 @@ import oshajava.sourceinfo.Spec;
 import oshajava.support.acme.util.Util;
 import oshajava.support.acme.util.identityhash.ConcurrentIdentityHashMap;
 import oshajava.support.acme.util.identityhash.IdentityHashSet;
+import oshajava.util.GraphMLWriter;
 import oshajava.util.count.Counter;
 import oshajava.util.count.DistributionCounter;
 import oshajava.util.count.SetSizeCounter;
@@ -369,67 +371,59 @@ public class Stack {
 
 	public static void dumpGraphs(String mainClass) {
 		if (RECORD) {
-			int specCommNodes = 0, specCommEdges = 0, specINodes = 0, specIEdges = 0;
-			for (ModuleSpec mod : Spec.loadedModules()) {
-				specCommNodes += mod.numCommMethods();
-				specINodes += mod.numInterfaceMethods();
-				specCommEdges += mod.numCommEdges();
-				specIEdges += mod.numInterfaceEdges();
-			}
-			int runCommNodes = 0, runCommEdges = 0, runINodes = 0, runIEdges = 0;
-			for (Map.Entry<ModuleSpec,Graph> e : commGraphs.entrySet()) {
-				ModuleSpec mod = e.getKey();
-				Graph g = e.getValue();
-				for (int i = 0; i < mod.numCommMethods(); i++) {
-					BitVectorIntSet bv = g.getOutEdges(i);
-					if (bv != null && ! bv.isEmpty()) {
-						runCommNodes++;
-						runCommEdges += bv.size();
+			try {
+				final GraphMLWriter commGraphml = new GraphMLWriter(mainClass + ".oshajava.comm.graphml");
+				final GraphMLWriter interfaceGraphml = new GraphMLWriter(mainClass + ".oshajava.comm.graphml");
+				final Counter specCommNodes = new Counter("Total comm nodes in used specs");
+				final Counter specCommEdges = new Counter("Total comm edges in used specs");
+				final Counter specINodes = new Counter("Total interface nodes in used specs");
+				final Counter specIEdges = new Counter("Total interface edges in used specs");
+				for (ModuleSpec mod : Spec.loadedModules()) {
+					specCommNodes.add(mod.numCommMethods());
+					specINodes.add(mod.numInterfaceMethods());
+					specCommEdges.add(mod.numCommEdges());
+					specIEdges.add(mod.numInterfaceEdges());
+				}
+				final Counter runCommNodes = new Counter("Total comm nodes in run");
+				final Counter runCommEdges = new Counter("Total comm edges in run");
+				final Counter runINodes = new Counter("Total interface nodes in run");
+				final Counter runIEdges = new Counter("Total interface edges in run");
+				for (Map.Entry<ModuleSpec,Graph> e : commGraphs.entrySet()) {
+					ModuleSpec mod = e.getKey();
+					Graph g = e.getValue();
+					for (int i = 0; i < mod.numCommMethods(); i++) {
+						int uid = Spec.makeUID(mod.getId(), i);
+						commGraphml.writeNode(uid + "", mod.getMethodSignature(uid), "");
+						interfaceGraphml.writeNode(uid + "", mod.getMethodSignature(uid), "");
+						BitVectorIntSet bv = g.getOutEdges(i);
+						if (bv != null && ! bv.isEmpty()) {
+							// FIXME
+							// commGraphml.writeEdge(uid + "", destID, "rw");
+							runCommNodes.inc();
+							runCommEdges.add(bv.size());
+						}
 					}
 				}
-			}
-			for (Map.Entry<ModuleSpec,Graph> e : interfaceGraphs.entrySet()) {
-				ModuleSpec mod = e.getKey();
-				Graph g = e.getValue();
-				for (int i = 0; i < mod.numCommMethods(); i++) {
-					BitVectorIntSet bv = g.getOutEdges(i);
-					if (bv != null && ! bv.isEmpty()) {
-						runCommNodes++;
-						runCommEdges += bv.size();
+				for (Map.Entry<ModuleSpec,Graph> e : interfaceGraphs.entrySet()) {
+					ModuleSpec mod = e.getKey();
+					Graph g = e.getValue();
+					for (int i = 0; i < mod.numInterfaceMethods(); i++) {
+						int uid = Spec.makeUID(mod.getId(), i);
+						BitVectorIntSet bv = g.getOutEdges(i);
+						if (bv != null && ! bv.isEmpty()) {
+							// FIXME
+							// interfaceGraphml.writeEdge(uid + "", destID, "rw");
+							runINodes.inc();
+							runIEdges.add(bv.size());
+						}
 					}
 				}
+
+				commGraphml.close();
+				interfaceGraphml.close();
+			} catch (IOException e) {
+				Util.log("Failed to dump execution graph due to IOException.");
 			}
-			
-			Util.logf("Total comm nodes in used specs: %d", specCommNodes);
-			Util.logf("Total comm nodes in run: %d", runCommNodes);
-			Util.logf("Total comm edges in used specs: %d", specCommEdges);
-			Util.logf("Total comm edges in run: %d", runCommEdges);
-
-			Util.logf("Total interface nodes in used specs: %d", specINodes);
-			Util.logf("Total interface nodes in run: %d", runINodes);
-			Util.logf("Total interface edges in used specs: %d", specIEdges);
-			Util.logf("Total interface edges in run: %d", runIEdges);
-
-//			try {
-//				final GraphMLWriter commGraphml = new GraphMLWriter(mainClass + ".oshajava.comm.graphml");
-//				final GraphMLWriter interfaceGraphml = new GraphMLWriter(mainClass + ".oshajava.comm.graphml");
-//				for (Map.Entry<ModuleSpec, Graph> comm : commGraphs.entrySet()) {
-//					ModuleSpec mod = comm.getKey();
-//					for (int i = 0; i < mod.numCommMethods(); i++) {
-//						int uid = Spec.makeUID(mod.getId(), i);
-//						commGraphml.writeNode(uid + "", mod.getMethodSignature(uid), "");
-//						interfaceGraphml.writeNode(uid + "", mod.getMethodSignature(uid), "");
-//					}
-//					Graph commGraph = comm.getValue();
-//					for (int i = 0; i < commGraph.size()) {
-//						
-//					}
-//				}
-//				commGraphml.close();
-//				interfaceGraphml.close();
-//			} catch (IOException e) {
-//				Util.log("Failed to dump execution graph due to IOException.");
-//			}
 		}
 	}
 
