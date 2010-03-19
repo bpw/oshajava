@@ -77,6 +77,9 @@ public class Config {
     public static final CommandLineOption<String> profileExtOption =
     	CommandLine.makeString("profileExt", "-oshajava-profile.py", "Extension on profile file (prefixed by main class)");
     
+    public static final CommandLineOption<Boolean> createOption =
+    		CommandLine.makeBoolean("create", false, "Create a full execution graph.");
+    
 	public static final CommandLine cl = new CommandLine(TOOL_NAME, "[ -javaOptions java options ] -- Class [ class args ]", helpOption, jvmOption);
 	
 	public static void configure(String[] args){
@@ -93,6 +96,7 @@ public class Config {
 		cl.add(stackTracesOption);
 		cl.add(failStopOption);
 		cl.add(profileExtOption);
+		cl.add(createOption);
 
 		cl.addGroup("Instrumentation");
 		
