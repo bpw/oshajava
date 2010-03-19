@@ -227,6 +227,10 @@ public class ModuleSpec implements Serializable {
 	private void printGraph(Graph g) {
 	    for (int i = 0; i < methodSigToId.size() - inlinedMethods.size(); ++i) {
             BitVectorIntSet dests = g.getOutEdges(i);
+            if (dests == null) {
+                System.out.println("    " + methodIdToSig[i] + ": noncomm");
+                continue;
+            }
             if (!dests.isEmpty()) {
                 System.out.print("    " + methodIdToSig[i] + " -> ");
                 for (int j=0; j<methodSigToId.size(); ++j) {
