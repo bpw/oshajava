@@ -79,6 +79,7 @@ public class InstrumentationAgent implements ClassFileTransformer {
 		"java/util/Vector",
 		"java/awt/RenderingHints",
 		"java/nio/Direct",
+		"java/text",
 	};
 
 	public static final CommandLineOption<Boolean> fullJDKInstrumentationOption =

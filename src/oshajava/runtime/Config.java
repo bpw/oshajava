@@ -63,6 +63,9 @@ public class Config {
     public static final CommandLineOption<Boolean> stackTracesOption =
         CommandLine.makeBoolean("traces", false, "Save writer stack traces for debugging violations.");
     
+    public static final CommandLineOption<Boolean> failStopOption =
+        CommandLine.makeBoolean("fail", false, "Instead of throwing exceptions, fail immediately on violations.");
+    
     public static final CommandLineOption<Boolean> recordOption =
     		CommandLine.makeBoolean("record", false, "Record exercised graph.");
     
@@ -80,6 +83,7 @@ public class Config {
 		cl.add(arrayCacheSizeOption);
 		cl.add(lockCacheSizeOption);
 		cl.add(stackTracesOption);
+		cl.add(failStopOption);
 
 		cl.addGroup("Instrumentation");
 		

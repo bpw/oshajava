@@ -118,7 +118,12 @@ public class RuntimeMonitor {
 			fieldSlowPathCounter.inc();
 		}
 		if (!read.stack.checkWriter(write.stack)) {
-			throw new IllegalSharingException(write, read, null, on);
+		    IllegalSharingException exc = new IllegalSharingException(write, read, null, on);
+		    if (Config.failStopOption.get()) {
+		        Util.fail(exc);
+		    } else {
+		        throw exc;
+		    }
 		}
 	}
 	public static void checkFieldRead(final State write, final State read, final String on, 
@@ -127,7 +132,12 @@ public class RuntimeMonitor {
 			fieldSlowPathCounter.inc();
 		}
 		if (!read.stack.checkWriter(write.stack)) {
-			throw new IllegalSharingException(write, read, trace, on);
+			IllegalSharingException exc = new IllegalSharingException(write, read, trace, on);
+		    if (Config.failStopOption.get()) {
+		        Util.fail(exc);
+		    } else {
+		        throw exc;
+		    }
 		}
 	}
 	private static void checkArrayRead(final State write, final ThreadState reader, final BitVectorIntSet wCache, final StackTraceElement[] trace) {
@@ -140,7 +150,12 @@ public class RuntimeMonitor {
 					arraySlowPathCounter.inc();
 				}
 				if (!reader.state.stack.checkWriter(write.stack)) {
-					throw new IllegalSharingException(write, reader.state, trace);
+					IllegalSharingException exc = new IllegalSharingException(write, reader.state, trace);
+		    		if (Config.failStopOption.get()) {
+		        		Util.fail(exc);
+		    		} else {
+		        		throw exc;
+		    		}
 				}
 			}
 		}
@@ -280,8 +295,8 @@ public class RuntimeMonitor {
 							if (PROFILE) {
 								lockSlowPathCounter.inc();
 							}
-							if (!holderState.stack.checkWriter(lockState.lastHolder.stack)) {
-								throw new IllegalSynchronizationException(lastHolderState, holderState);
+							if (!holderState.stack.checkWriter(lastHolderState.stack)) {
+							    throw new IllegalSynchronizationException(lastHolderState, holderState);
 							}
 						}
 					}
@@ -291,7 +306,11 @@ public class RuntimeMonitor {
 			}
 
 		} catch (IllegalCommunicationException e) {
-			throw e;
+		    if (Config.failStopOption.get()) {
+		        Util.fail(e);
+		    } else {
+		        throw e;
+		    }
 		} catch (Throwable t) {
 			Util.fail(t);
 		}
@@ -369,7 +388,12 @@ public class RuntimeMonitor {
 					lockSlowPathCounter.inc();
 				}
 				if (!currentState.stack.checkWriter(lastHolderState.stack)) {
-					throw new IllegalSynchronizationException(lastHolderState, currentState);
+					IllegalSynchronizationException exc = new IllegalSynchronizationException(lastHolderState, currentState);
+    		    	if (Config.failStopOption.get()) {
+    		        	Util.fail(exc);
+    		    	} else {
+    		        	throw exc;
+    		    	}
 				}
 			}
 		}

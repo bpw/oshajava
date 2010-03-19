@@ -315,7 +315,13 @@ public class ClassInstrumentor extends ClassAdapter {
 			return new AnnotationVisitor() {
 				public void visit(String name, Object value) { // throws ModuleSpecNotFoundException
 					try {
-						ClassInstrumentor.this.module = Spec.getModule(packageName + (String)value, loader, className.replace('/','.'));
+					    String modName = (String)value;
+					    if (modName.contains(".")) {
+                            modName = modName.replace('.', '/');
+					    } else {
+    					    modName = packageName + modName;
+                    	}
+						ClassInstrumentor.this.module = Spec.getModule(modName, loader, className.replace('/','.'));
 					} catch (ModuleSpecNotFoundException e) {
 						throw e.wrap();
 					}
@@ -398,8 +404,7 @@ public class ClassInstrumentor extends ClassAdapter {
 	}
 	
 	protected boolean shouldInstrumentField(String name, String desc) {
-		return (outerClassDesc == null 
-				|| ! (name.startsWith("this$") && desc.equals(outerClassDesc)));
+		return !name.matches("this\\$\\d.*");
 	}
 	
 
