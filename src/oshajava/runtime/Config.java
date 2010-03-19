@@ -74,6 +74,9 @@ public class Config {
     public static final CommandLineOption<Boolean> recordOption =
     		CommandLine.makeBoolean("record", false, "Record exercised graph.");
     
+    public static final CommandLineOption<String> profileExtOption =
+    	CommandLine.makeString("profileExt", "-oshajava-profile.py", "Extension on profile file (prefixed by main class)");
+    
 	public static final CommandLine cl = new CommandLine(TOOL_NAME, "[ -javaOptions java options ] -- Class [ class args ]", helpOption, jvmOption);
 	
 	public static void configure(String[] args){
@@ -89,9 +92,11 @@ public class Config {
 		cl.add(lockCacheSizeOption);
 		cl.add(stackTracesOption);
 		cl.add(failStopOption);
+		cl.add(profileExtOption);
 
 		cl.addGroup("Instrumentation");
 		
+		cl.add(noInstrumentOption);
 		cl.add(InstrumentationAgent.bytecodeDumpOption);
 		cl.add(InstrumentationAgent.bytecodeDumpDirOption);
 		cl.add(InstrumentationAgent.framesOption);

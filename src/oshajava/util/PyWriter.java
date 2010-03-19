@@ -26,7 +26,7 @@ public class PyWriter {
 		this.echo = echo;
 	}
 	
-	private void write(String s) throws IOException {
+	public void write(String s) throws IOException {
 		if (echo) {
 			System.err.println(s);
 		}
@@ -134,6 +134,14 @@ public class PyWriter {
 		}
 		write("}");
 		firstElem = false;
+	}
+	
+	public void writeMapKey(Object key) throws IOException {
+		writeElem(key.toString() + " : ");
+	}
+	
+	public void writeMapKey(String key) throws IOException {
+		writeElem(Py.quote(key) + " : ");
 	}
 	
 	public void writeMapPair(Object key, Object val) throws IOException {
