@@ -1,6 +1,11 @@
 package oshajava.runtime;
 
 import java.io.IOException;
+import java.lang.management.CompilationMXBean;
+import java.lang.management.GarbageCollectorMXBean;
+import java.lang.management.ManagementFactory;
+import java.lang.management.MemoryMXBean;
+import java.lang.management.MemoryPoolMXBean;
 import java.lang.reflect.Array;
 
 import oshajava.runtime.exceptions.IllegalCommunicationException;
@@ -12,6 +17,7 @@ import oshajava.util.WeakConcurrentIdentityHashMap;
 import oshajava.util.cache.DirectMappedShadowCache;
 import oshajava.util.count.AbstractCounter;
 import oshajava.util.count.Counter;
+import oshajava.util.count.ConcurrentTimer;
 import oshajava.util.intset.BitVectorIntSet;
 
 /**
@@ -468,36 +474,65 @@ public class RuntimeMonitor {
 		}
 		return t;
 	}
-
+	
 	/**
 	 * Hook to call on program exit.
 	 * 
 	 * @param mainClass
 	 */
 	public static void fini(final String mainClass) {
+		Config.premainFiniTimer.stop();
 		// Report some stats.
 		if (PROFILE) {
 			Util.log("---- Profile info ------------------------------------");
-			if (Stack.RECORD) Stack.dumpGraphs(mainClass);
-			try {
-				final PyWriter py = new PyWriter(mainClass + "_oshajava_profile.py", true);
-				try {
-					py.startMap();
-					py.writeMapPair("threads", ThreadState.lastID() + 1);
-					py.writeMapPair("frequently communicating stacks", Stack.lastID() + 1);
-					for (final AbstractCounter<?> c : AbstractCounter.all()) {
-						py.writeCounterAsMapPair(c);
-					}
-					py.endMap();
-					// END PY
-				} finally {
-					py.close();
-				}
-			} catch (IOException e) {
-				Util.fail("Failed to dump py.");
-				//FIXME
+			if (Stack.RECORD) {
+				Stack.dumpGraphs(mainClass);
 			}
+		}
 
+		// mem and gc
+		MemoryMXBean bean = ManagementFactory.getMemoryMXBean();
+		CompilationMXBean cbean = ManagementFactory.getCompilationMXBean();
+
+		long peakMem = 0;
+
+		for (MemoryPoolMXBean b : ManagementFactory.getMemoryPoolMXBeans()) {
+			peakMem += b.getPeakUsage().getUsed();
+		}
+
+		// dump profile
+		try {
+			final PyWriter py = new PyWriter(mainClass + "_oshajava_profile.py", true);
+			try {
+				py.startMap();
+				py.writeMapPair("threads", ThreadState.lastID() + 1);
+				py.writeMapPair("frequently communicating stacks", Stack.lastID() + 1);
+				for (final AbstractCounter<?> c : AbstractCounter.all()) {
+					py.writeCounterAsMapPair(c);
+				}
+				py.writeMapPair("Memory peak", peakMem);
+				py.writeMapPair("Memory used", bean.getHeapMemoryUsage().getUsed());
+				py.writeMapPair("Memory max", bean.getHeapMemoryUsage().getMax());
+				if (cbean!=null) {
+					py.writeMapPair("Compile time", cbean.getTotalCompilationTime());
+				}
+				long gcTime = 0;
+				for (GarbageCollectorMXBean gcb : ManagementFactory.getGarbageCollectorMXBeans()) {
+					gcTime += gcb.getCollectionTime();
+				}
+				py.writeMapPair("GC time", gcTime);
+				// times
+				py.endMap();
+				// END PY
+			} finally {
+				py.close();
+			}
+		} catch (IOException e) {
+			Util.fail("Failed to dump py.");
+			//FIXME
+		}
+		
+		if (PROFILE) {
 			double fr = (double)fieldReadCounter.value();
 			Util.logf("Thread-local field reads:    %f%%", 
 					(double)(fieldReadCounter.value() - fieldCommCounter.value()) / fr * 100.0);
