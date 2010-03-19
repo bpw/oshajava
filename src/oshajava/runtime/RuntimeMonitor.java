@@ -1,6 +1,8 @@
 package oshajava.runtime;
 
 import java.lang.reflect.Array;
+import java.util.Set;
+import java.util.HashSet;
 
 import oshajava.runtime.exceptions.IllegalCommunicationException;
 import oshajava.runtime.exceptions.IllegalSharingException;
@@ -46,6 +48,7 @@ public class RuntimeMonitor {
 	 * Record profiling information.
 	 */
 	public static final boolean PROFILE = Config.profileOption.get();
+ 	public static final boolean CREATE = Config.createOption.get();
 
 	public static final Counter fieldReadCounter = new Counter("All field reads");
 	public static final Counter fieldCommCounter = new Counter("Communicating field reads");
@@ -56,7 +59,7 @@ public class RuntimeMonitor {
 	public static final Counter lockCounter = new Counter("All acquires");
 	public static final Counter lockCommCounter = new Counter("Communicating acquires");
 	public static final Counter lockSlowPathCounter = new Counter("Communicating acquire slow path");
-
+    public static final Set<String> createdGraphSet = new HashSet<String>();
 
 	private static final ThreadLocal<ThreadState> threadState = new ThreadLocal<ThreadState>() {
 		@Override
@@ -130,6 +133,9 @@ public class RuntimeMonitor {
 		if (PROFILE) {
 			fieldSlowPathCounter.inc();
 		}
+		if (CREATE) {
+		    createEdge(trace);
+		}
 		if (!read.stack.checkWriter(write.stack)) {
 			IllegalSharingException exc = new IllegalSharingException(write, read, trace, on);
 		    if (Config.failStopOption.get()) {
@@ -143,6 +149,9 @@ public class RuntimeMonitor {
 		if (write.thread != reader) {
 			if (PROFILE) {
 				arrayCommCounter.inc();
+			}
+			if (CREATE) {
+			    createEdge(trace);
 			}
 			if (!wCache.contains(write.getStackID())) {
 				if (PROFILE) {
@@ -466,6 +475,29 @@ public class RuntimeMonitor {
 			}
 		}
 		return t;
+	}
+	
+	private static String getTopFrame(StackTraceElement[] trace) {
+	    if (trace == null) {
+	        return "?";
+	    }
+	    for (StackTraceElement frame : trace) {
+	        if (!frame.getClassName().contains("Thread") && !frame.getClassName().contains("RuntimeMonitor")) {
+	            return frame.getClassName() + "." + frame.getMethodName();
+	        }
+	    }
+	    return "?";
+	}
+	private static void createEdge(StackTraceElement[] writeTrace) {
+	    try {
+	    StackTraceElement[] readTrace = Thread.currentThread().getStackTrace();
+	    String edge = getTopFrame(writeTrace) + " -> " + getTopFrame(readTrace);
+	    if (createdGraphSet.add(edge)) {
+	        Util.log("EDGE: " + edge);
+	    }
+        } catch (Throwable t) {
+            Util.fail(t);
+        }
 	}
 
 	/**
