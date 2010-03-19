@@ -49,7 +49,6 @@ public class MethodInstrumentor extends AdviceAdapter {
 		// the method.
 		methodUID = module.getMethodUID(fullNameAndDesc);
 		if (methodUID == -1 && (access & Opcodes.ACC_SYNTHETIC) != 0) {
-		    Util.log("inlining synthetic method " + fullNameAndDesc);
             policy = CommunicationKind.INLINE;
         // Such is also the case with methods inside anonymous classes.
         } else if (methodUID == -1 &&
