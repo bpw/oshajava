@@ -14,6 +14,7 @@ import oshajava.sourceinfo.ModuleSpecNotFoundException;
 import oshajava.support.acme.util.Util;
 import oshajava.support.acme.util.option.CommandLine;
 import oshajava.support.acme.util.option.CommandLineOption;
+import oshajava.support.acme.util.option.Option;
 import oshajava.support.org.objectweb.asm.ClassReader;
 import oshajava.support.org.objectweb.asm.ClassVisitor;
 import oshajava.support.org.objectweb.asm.ClassWriter;
@@ -163,9 +164,11 @@ public class InstrumentationAgent implements ClassFileTransformer {
 
 	private static volatile boolean instrumentationOn = false;
 	private static String mainClassInternalName;
+	private static final Option<String> mainClassOption = new Option<String>("mainClass", "");
 	public static void setMainClass(String cl) {
 		Util.debugf(DEBUG_KEY, "Setting main application class to %s.", cl);
-		mainClassInternalName = cl.replace('.', '/');
+		mainClassInternalName = internalName(cl);
+		mainClassOption.set(mainClassInternalName);
 	}
 	public static void stopInstrumentation() {
 		Util.debug(DEBUG_KEY, "Turning off instrumentation");
