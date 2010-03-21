@@ -47,7 +47,7 @@ for t,profs in thread_profs:
     if not made_canvas:
         canvas = area.T(x_coord = category_coord.T(sd, 0),
                 x_axis=axis.X(label="Benchmarks", format="/a60%s"),
-                y_axis=axis.Y(label="OshaJava Slowdown (x)", tic_interval=5),
+                y_axis=axis.Y(label="Slowdown (x)", tic_interval=5),
                 y_grid_interval=5,
                 size=(240,110))
         made_canvas = True
