@@ -26,14 +26,13 @@ def jgfName(name):
     # remove "JGF" from head, "BenchSize_" from end
     return name if not name.startswith("JGF") else name[3:-10]
 
-bench_profs = prof.partition(lambda p: jgfName(p["mainClass"]),
-                             prof.loadAll(sys.argv[1:], 
-                                          filename_filter=(lambda fn: not fn.endswith("warmup.py")),
-                                          prof_filter=(lambda p: prof.matchOptions(options, p))))
+all = prof.loadAll(sys.argv[1:], 
+                   filename_filter=(lambda fn: not fn.endswith("warmup.py")),
+                   prof_filter=(lambda p: prof.matchOptions(options, p)))
+bench_profs = prof.partition(lambda p: jgfName(p["mainClass"]), all)
 
 def checks((name, profiles)):
     total = float(sum(map(prof.getChecks, profiles)))
-    print name, len(profiles)
     return (name, 
             float(sum(map(prof.getThreadLocalHits, profiles))) / total,
             float(sum(map(prof.getFastMemoHits, profiles))) / total,
@@ -43,8 +42,7 @@ def checks((name, profiles)):
 
 sd = map(checks, bench_profs)
 
-print '(name, tl, fast memo, slow memo, walk)'
-print sd
+print 'Per program:', sd
 ystep = .1
 canvas = area.T(x_coord = category_coord.T(sd, 0),
                 x_axis=axis.X(label="Benchmarks", format="/a90%s"),
@@ -60,3 +58,7 @@ walk = bar_plot.T(label="Stack walk", data=sd, hcol=4, stack_on=slow)
 canvas.add_plot(tl, fast, slow, walk)
 
 canvas.draw()
+
+c = checks(('all', all))
+
+print 'Across all:', c[1], 'thread-local,', c[2], 'fast memo,', c[3], 'slow memo,', c[4], 'stack walk'
