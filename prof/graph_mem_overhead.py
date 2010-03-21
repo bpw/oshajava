@@ -50,7 +50,7 @@ for t,profs in thread_profs:
         ystep = .5
         canvas = area.T(x_coord = category_coord.T(sd, 0),
                         x_axis=axis.X(label="Benchmarks", format="/a60%s"),
-                        y_axis=axis.Y(label="OshaJava Peak Memory Overhead (x)", tic_interval=ystep),
+                        y_axis=axis.Y(label="OshaJava Memory Overhead (x)", tic_interval=ystep),
                         y_grid_interval=ystep,
                         size=(240,110))
     canvas.add_plot(bar_plot.T(label=str(t), data=sd, cluster=(i,len(thread_profs))))
