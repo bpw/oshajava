@@ -44,7 +44,7 @@ canvas = None
 
 i = 0
 for t,profs in thread_profs:
-    sd = map(slowdown, prof.partition(lambda p: jgfName(p["mainClass"]), profs))
+    sd = sorted(map(slowdown, prof.partition(lambda p: jgfName(p["mainClass"]), profs)))
     print sd
     if canvas == None:
         ystep = .5

@@ -4,7 +4,7 @@ from pychart import *
 import prof
 import sys
 
-prof.configPychart(name="scalability", color=False)
+prof.configPychart(name="slowdown", color=False)
 
 nthreads = 8
 
@@ -43,7 +43,7 @@ made_canvas = False
 
 i = 0
 for t,profs in thread_profs:
-    sd = map(slowdown, prof.partition(lambda p: jgfName(p["mainClass"]), profs))
+    sd = sorted(map(slowdown, prof.partition(lambda p: jgfName(p["mainClass"]), profs)))
     if not made_canvas:
         canvas = area.T(x_coord = category_coord.T(sd, 0),
                 x_axis=axis.X(label="Benchmarks", format="/a60%s"),
