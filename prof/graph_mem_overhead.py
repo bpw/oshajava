@@ -28,10 +28,10 @@ def jgfName(name):
     # remove "JGF" from head, "BenchSize_" from end
     return name if not name.startswith("JGF") else name[3:-10]
 
-thread_profs = prof.partition(lambda p: int(p["options"]["profileExt"].split("-")[1]),
-                             prof.loadAll(sys.argv[1:], 
-                                          filename_filter=(lambda fn: not fn.endswith("warmup.py")),
-                                          prof_filter=(lambda p: prof.matchOptions(options, p))))
+#thread_profs = prof.partition(lambda p: int(p["options"]["profileExt"].split("-")[1]),
+profs = prof.loadAll(sys.argv[1:], 
+                     filename_filter=(lambda fn: not fn.endswith("warmup.py")),
+                     prof_filter=(lambda p: prof.matchOptions(options, p))) #)
 
 def slowdown((name, profiles)):
     oshajava, java = prof.bisect(lambda p: prof.matchOptions({"noInstrument" : "false"}, p), profiles)
@@ -40,20 +40,15 @@ def slowdown((name, profiles)):
 #    print name, oj, j
     return (name, float(sum(oj)) / float(sum(j)))
 
-canvas = None
+sd = sorted(map(slowdown, prof.partition(lambda p: jgfName(p["mainClass"]), profs)))
 
-i = 0
-for t,profs in thread_profs:
-    sd = sorted(map(slowdown, prof.partition(lambda p: jgfName(p["mainClass"]), profs)))
-    print sd
-    if canvas == None:
-        ystep = .5
-        canvas = area.T(x_coord = category_coord.T(sd, 0),
-                        x_axis=axis.X(label="Benchmarks", format="/a60%s"),
-                        y_axis=axis.Y(label="OshaJava Memory Overhead (x)", tic_interval=ystep),
-                        y_grid_interval=ystep,
-                        size=(240,110))
-    canvas.add_plot(bar_plot.T(label=str(t), data=sd, cluster=(i,len(thread_profs))))
-    i += 1
+ystep = .5
+canvas = area.T(x_coord = category_coord.T(sd, 0),
+                x_axis=axis.X(label="Benchmarks", format="/a90%s"),
+                y_axis=axis.Y(label="OshaJava Memory Overhead (x)", tic_interval=ystep),
+                y_grid_interval=ystep,
+                legend=None)
+
+canvas.add_plot(bar_plot.T(label="mem", data=sd))
 
 canvas.draw()
