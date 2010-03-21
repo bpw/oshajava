@@ -1,0 +1,919 @@
+java -javaagent:/sampa/home/bpw/oshajava-test/oshajava/build/oshajava.jar=-noInstrument,-profileExt=-8-threads-noinst-warmup.py -Xbootclasspath/a:/sampa/home/bpw/oshajava-test/oshajava/build/oshajava.jar -Xmx4000M oshajava.runtime.OshaJavaMain JGFSparseMatmultBenchSizeC 8
+[oshajava: OPTIONS:]
+  [oshajava: (oshajava.runtime.Config)          javaArgs             =                     ]
+  [oshajava: (oshajava.runtime.Config)          help                 = false               ]
+  [oshajava: (oshajava.runtime.Config)          java                 = java                ]
+  [oshajava: (oshajava.runtime.Config)          arrayIndexStates     = false               ]
+  [oshajava: (oshajava.runtime.Config)          objectStates         = false               ]
+  [oshajava: (oshajava.runtime.Config)          noInstrument         = true                ]
+  [oshajava: (oshajava.runtime.Config)          profile              = false               ]
+  [oshajava: (oshajava.runtime.Config)          arrayCacheSize       = 16                  ]
+  [oshajava: (oshajava.runtime.Config)          lockCacheSize        = 4                   ]
+  [oshajava: (oshajava.runtime.Config)          fudgeExceptionStackTraces = true                ]
+  [oshajava: (oshajava.runtime.Config)          traces               = false               ]
+  [oshajava: (oshajava.runtime.Config)          fail                 = false               ]
+  [oshajava: (oshajava.runtime.Config)          record               = false               ]
+  [oshajava: (oshajava.runtime.Config)          profileExt           = -8-threads-noinst-warmup.py]
+  [oshajava: (oshajava.runtime.Config)          create               = false               ]
+  [oshajava: (oshajava.runtime.Config)          args                 = []                  ]
+  [oshajava: (oshajava.support.acme.util.Util)  quiet                = false               ]
+  [oshajava: (oshajava.support.acme.util.Util)  d                    = []                  ]
+  [oshajava: (oshajava.support.acme.util.Util)  logs                 = log                 ]
+  [oshajava: (oshajava.support.acme.util.Util)  out                  =                     ]
+  [oshajava: (oshajava.support.acme.util.Util)  err                  =                     ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) instrumentFullJDK    = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) bytecodeDump         = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) bytecodeDumpDir      = log/bytecode-dump   ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) verify               = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) preVerify            = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) frames               = false               ]
+[oshajava: 0.00600 sec]
+Java Grande Forum Thread Benchmark Suite - Version 1.0 - Section 2 - Size C
+Executing on 8 threads
+
+Section2:SparseMatmult:Kernel:SizeC	3.285 (s) 	 60.8828	 (Iterations/s)
+java -javaagent:/sampa/home/bpw/oshajava-test/oshajava/build/oshajava.jar=-noInstrument,-profileExt=-8-threads-noinst-0.py -Xbootclasspath/a:/sampa/home/bpw/oshajava-test/oshajava/build/oshajava.jar -Xmx4000M oshajava.runtime.OshaJavaMain JGFSparseMatmultBenchSizeC 8
+[oshajava: OPTIONS:]
+  [oshajava: (oshajava.runtime.Config)          javaArgs             =                     ]
+  [oshajava: (oshajava.runtime.Config)          help                 = false               ]
+  [oshajava: (oshajava.runtime.Config)          java                 = java                ]
+  [oshajava: (oshajava.runtime.Config)          arrayIndexStates     = false               ]
+  [oshajava: (oshajava.runtime.Config)          objectStates         = false               ]
+  [oshajava: (oshajava.runtime.Config)          noInstrument         = true                ]
+  [oshajava: (oshajava.runtime.Config)          profile              = false               ]
+  [oshajava: (oshajava.runtime.Config)          arrayCacheSize       = 16                  ]
+  [oshajava: (oshajava.runtime.Config)          lockCacheSize        = 4                   ]
+  [oshajava: (oshajava.runtime.Config)          fudgeExceptionStackTraces = true                ]
+  [oshajava: (oshajava.runtime.Config)          traces               = false               ]
+  [oshajava: (oshajava.runtime.Config)          fail                 = false               ]
+  [oshajava: (oshajava.runtime.Config)          record               = false               ]
+  [oshajava: (oshajava.runtime.Config)          profileExt           = -8-threads-noinst-0.py]
+  [oshajava: (oshajava.runtime.Config)          create               = false               ]
+  [oshajava: (oshajava.runtime.Config)          args                 = []                  ]
+  [oshajava: (oshajava.support.acme.util.Util)  quiet                = false               ]
+  [oshajava: (oshajava.support.acme.util.Util)  d                    = []                  ]
+  [oshajava: (oshajava.support.acme.util.Util)  logs                 = log                 ]
+  [oshajava: (oshajava.support.acme.util.Util)  out                  =                     ]
+  [oshajava: (oshajava.support.acme.util.Util)  err                  =                     ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) instrumentFullJDK    = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) bytecodeDump         = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) bytecodeDumpDir      = log/bytecode-dump   ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) verify               = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) preVerify            = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) frames               = false               ]
+[oshajava: 0.00600 sec]
+Java Grande Forum Thread Benchmark Suite - Version 1.0 - Section 2 - Size C
+Executing on 8 threads
+
+Section2:SparseMatmult:Kernel:SizeC	3.412 (s) 	 58.616646	 (Iterations/s)
+java -javaagent:/sampa/home/bpw/oshajava-test/oshajava/build/oshajava.jar=-noInstrument,-profileExt=-8-threads-noinst-1.py -Xbootclasspath/a:/sampa/home/bpw/oshajava-test/oshajava/build/oshajava.jar -Xmx4000M oshajava.runtime.OshaJavaMain JGFSparseMatmultBenchSizeC 8
+[oshajava: OPTIONS:]
+  [oshajava: (oshajava.runtime.Config)          javaArgs             =                     ]
+  [oshajava: (oshajava.runtime.Config)          help                 = false               ]
+  [oshajava: (oshajava.runtime.Config)          java                 = java                ]
+  [oshajava: (oshajava.runtime.Config)          arrayIndexStates     = false               ]
+  [oshajava: (oshajava.runtime.Config)          objectStates         = false               ]
+  [oshajava: (oshajava.runtime.Config)          noInstrument         = true                ]
+  [oshajava: (oshajava.runtime.Config)          profile              = false               ]
+  [oshajava: (oshajava.runtime.Config)          arrayCacheSize       = 16                  ]
+  [oshajava: (oshajava.runtime.Config)          lockCacheSize        = 4                   ]
+  [oshajava: (oshajava.runtime.Config)          fudgeExceptionStackTraces = true                ]
+  [oshajava: (oshajava.runtime.Config)          traces               = false               ]
+  [oshajava: (oshajava.runtime.Config)          fail                 = false               ]
+  [oshajava: (oshajava.runtime.Config)          record               = false               ]
+  [oshajava: (oshajava.runtime.Config)          profileExt           = -8-threads-noinst-1.py]
+  [oshajava: (oshajava.runtime.Config)          create               = false               ]
+  [oshajava: (oshajava.runtime.Config)          args                 = []                  ]
+  [oshajava: (oshajava.support.acme.util.Util)  quiet                = false               ]
+  [oshajava: (oshajava.support.acme.util.Util)  d                    = []                  ]
+  [oshajava: (oshajava.support.acme.util.Util)  logs                 = log                 ]
+  [oshajava: (oshajava.support.acme.util.Util)  out                  =                     ]
+  [oshajava: (oshajava.support.acme.util.Util)  err                  =                     ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) instrumentFullJDK    = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) bytecodeDump         = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) bytecodeDumpDir      = log/bytecode-dump   ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) verify               = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) preVerify            = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) frames               = false               ]
+[oshajava: 0.00500 sec]
+Java Grande Forum Thread Benchmark Suite - Version 1.0 - Section 2 - Size C
+Executing on 8 threads
+
+Section2:SparseMatmult:Kernel:SizeC	3.266 (s) 	 61.236988	 (Iterations/s)
+java -javaagent:/sampa/home/bpw/oshajava-test/oshajava/build/oshajava.jar=-noInstrument,-profileExt=-8-threads-noinst-2.py -Xbootclasspath/a:/sampa/home/bpw/oshajava-test/oshajava/build/oshajava.jar -Xmx4000M oshajava.runtime.OshaJavaMain JGFSparseMatmultBenchSizeC 8
+[oshajava: OPTIONS:]
+  [oshajava: (oshajava.runtime.Config)          javaArgs             =                     ]
+  [oshajava: (oshajava.runtime.Config)          help                 = false               ]
+  [oshajava: (oshajava.runtime.Config)          java                 = java                ]
+  [oshajava: (oshajava.runtime.Config)          arrayIndexStates     = false               ]
+  [oshajava: (oshajava.runtime.Config)          objectStates         = false               ]
+  [oshajava: (oshajava.runtime.Config)          noInstrument         = true                ]
+  [oshajava: (oshajava.runtime.Config)          profile              = false               ]
+  [oshajava: (oshajava.runtime.Config)          arrayCacheSize       = 16                  ]
+  [oshajava: (oshajava.runtime.Config)          lockCacheSize        = 4                   ]
+  [oshajava: (oshajava.runtime.Config)          fudgeExceptionStackTraces = true                ]
+  [oshajava: (oshajava.runtime.Config)          traces               = false               ]
+  [oshajava: (oshajava.runtime.Config)          fail                 = false               ]
+  [oshajava: (oshajava.runtime.Config)          record               = false               ]
+  [oshajava: (oshajava.runtime.Config)          profileExt           = -8-threads-noinst-2.py]
+  [oshajava: (oshajava.runtime.Config)          create               = false               ]
+  [oshajava: (oshajava.runtime.Config)          args                 = []                  ]
+  [oshajava: (oshajava.support.acme.util.Util)  quiet                = false               ]
+  [oshajava: (oshajava.support.acme.util.Util)  d                    = []                  ]
+  [oshajava: (oshajava.support.acme.util.Util)  logs                 = log                 ]
+  [oshajava: (oshajava.support.acme.util.Util)  out                  =                     ]
+  [oshajava: (oshajava.support.acme.util.Util)  err                  =                     ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) instrumentFullJDK    = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) bytecodeDump         = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) bytecodeDumpDir      = log/bytecode-dump   ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) verify               = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) preVerify            = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) frames               = false               ]
+[oshajava: 0.00600 sec]
+Java Grande Forum Thread Benchmark Suite - Version 1.0 - Section 2 - Size C
+Executing on 8 threads
+
+Section2:SparseMatmult:Kernel:SizeC	3.316 (s) 	 60.31363	 (Iterations/s)
+java -javaagent:/sampa/home/bpw/oshajava-test/oshajava/build/oshajava.jar=-noInstrument,-profileExt=-8-threads-noinst-3.py -Xbootclasspath/a:/sampa/home/bpw/oshajava-test/oshajava/build/oshajava.jar -Xmx4000M oshajava.runtime.OshaJavaMain JGFSparseMatmultBenchSizeC 8
+[oshajava: OPTIONS:]
+  [oshajava: (oshajava.runtime.Config)          javaArgs             =                     ]
+  [oshajava: (oshajava.runtime.Config)          help                 = false               ]
+  [oshajava: (oshajava.runtime.Config)          java                 = java                ]
+  [oshajava: (oshajava.runtime.Config)          arrayIndexStates     = false               ]
+  [oshajava: (oshajava.runtime.Config)          objectStates         = false               ]
+  [oshajava: (oshajava.runtime.Config)          noInstrument         = true                ]
+  [oshajava: (oshajava.runtime.Config)          profile              = false               ]
+  [oshajava: (oshajava.runtime.Config)          arrayCacheSize       = 16                  ]
+  [oshajava: (oshajava.runtime.Config)          lockCacheSize        = 4                   ]
+  [oshajava: (oshajava.runtime.Config)          fudgeExceptionStackTraces = true                ]
+  [oshajava: (oshajava.runtime.Config)          traces               = false               ]
+  [oshajava: (oshajava.runtime.Config)          fail                 = false               ]
+  [oshajava: (oshajava.runtime.Config)          record               = false               ]
+  [oshajava: (oshajava.runtime.Config)          profileExt           = -8-threads-noinst-3.py]
+  [oshajava: (oshajava.runtime.Config)          create               = false               ]
+  [oshajava: (oshajava.runtime.Config)          args                 = []                  ]
+  [oshajava: (oshajava.support.acme.util.Util)  quiet                = false               ]
+  [oshajava: (oshajava.support.acme.util.Util)  d                    = []                  ]
+  [oshajava: (oshajava.support.acme.util.Util)  logs                 = log                 ]
+  [oshajava: (oshajava.support.acme.util.Util)  out                  =                     ]
+  [oshajava: (oshajava.support.acme.util.Util)  err                  =                     ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) instrumentFullJDK    = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) bytecodeDump         = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) bytecodeDumpDir      = log/bytecode-dump   ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) verify               = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) preVerify            = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) frames               = false               ]
+[oshajava: 0.00600 sec]
+Java Grande Forum Thread Benchmark Suite - Version 1.0 - Section 2 - Size C
+Executing on 8 threads
+
+Section2:SparseMatmult:Kernel:SizeC	3.308 (s) 	 60.45949	 (Iterations/s)
+java -javaagent:/sampa/home/bpw/oshajava-test/oshajava/build/oshajava.jar=-noInstrument,-profileExt=-8-threads-noinst-4.py -Xbootclasspath/a:/sampa/home/bpw/oshajava-test/oshajava/build/oshajava.jar -Xmx4000M oshajava.runtime.OshaJavaMain JGFSparseMatmultBenchSizeC 8
+[oshajava: OPTIONS:]
+  [oshajava: (oshajava.runtime.Config)          javaArgs             =                     ]
+  [oshajava: (oshajava.runtime.Config)          help                 = false               ]
+  [oshajava: (oshajava.runtime.Config)          java                 = java                ]
+  [oshajava: (oshajava.runtime.Config)          arrayIndexStates     = false               ]
+  [oshajava: (oshajava.runtime.Config)          objectStates         = false               ]
+  [oshajava: (oshajava.runtime.Config)          noInstrument         = true                ]
+  [oshajava: (oshajava.runtime.Config)          profile              = false               ]
+  [oshajava: (oshajava.runtime.Config)          arrayCacheSize       = 16                  ]
+  [oshajava: (oshajava.runtime.Config)          lockCacheSize        = 4                   ]
+  [oshajava: (oshajava.runtime.Config)          fudgeExceptionStackTraces = true                ]
+  [oshajava: (oshajava.runtime.Config)          traces               = false               ]
+  [oshajava: (oshajava.runtime.Config)          fail                 = false               ]
+  [oshajava: (oshajava.runtime.Config)          record               = false               ]
+  [oshajava: (oshajava.runtime.Config)          profileExt           = -8-threads-noinst-4.py]
+  [oshajava: (oshajava.runtime.Config)          create               = false               ]
+  [oshajava: (oshajava.runtime.Config)          args                 = []                  ]
+  [oshajava: (oshajava.support.acme.util.Util)  quiet                = false               ]
+  [oshajava: (oshajava.support.acme.util.Util)  d                    = []                  ]
+  [oshajava: (oshajava.support.acme.util.Util)  logs                 = log                 ]
+  [oshajava: (oshajava.support.acme.util.Util)  out                  =                     ]
+  [oshajava: (oshajava.support.acme.util.Util)  err                  =                     ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) instrumentFullJDK    = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) bytecodeDump         = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) bytecodeDumpDir      = log/bytecode-dump   ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) verify               = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) preVerify            = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) frames               = false               ]
+[oshajava: 0.00500 sec]
+Java Grande Forum Thread Benchmark Suite - Version 1.0 - Section 2 - Size C
+Executing on 8 threads
+
+Section2:SparseMatmult:Kernel:SizeC	3.197 (s) 	 62.558647	 (Iterations/s)
+java -javaagent:/sampa/home/bpw/oshajava-test/oshajava/build/oshajava.jar=-noInstrument,-profileExt=-8-threads-noinst-5.py -Xbootclasspath/a:/sampa/home/bpw/oshajava-test/oshajava/build/oshajava.jar -Xmx4000M oshajava.runtime.OshaJavaMain JGFSparseMatmultBenchSizeC 8
+[oshajava: OPTIONS:]
+  [oshajava: (oshajava.runtime.Config)          javaArgs             =                     ]
+  [oshajava: (oshajava.runtime.Config)          help                 = false               ]
+  [oshajava: (oshajava.runtime.Config)          java                 = java                ]
+  [oshajava: (oshajava.runtime.Config)          arrayIndexStates     = false               ]
+  [oshajava: (oshajava.runtime.Config)          objectStates         = false               ]
+  [oshajava: (oshajava.runtime.Config)          noInstrument         = true                ]
+  [oshajava: (oshajava.runtime.Config)          profile              = false               ]
+  [oshajava: (oshajava.runtime.Config)          arrayCacheSize       = 16                  ]
+  [oshajava: (oshajava.runtime.Config)          lockCacheSize        = 4                   ]
+  [oshajava: (oshajava.runtime.Config)          fudgeExceptionStackTraces = true                ]
+  [oshajava: (oshajava.runtime.Config)          traces               = false               ]
+  [oshajava: (oshajava.runtime.Config)          fail                 = false               ]
+  [oshajava: (oshajava.runtime.Config)          record               = false               ]
+  [oshajava: (oshajava.runtime.Config)          profileExt           = -8-threads-noinst-5.py]
+  [oshajava: (oshajava.runtime.Config)          create               = false               ]
+  [oshajava: (oshajava.runtime.Config)          args                 = []                  ]
+  [oshajava: (oshajava.support.acme.util.Util)  quiet                = false               ]
+  [oshajava: (oshajava.support.acme.util.Util)  d                    = []                  ]
+  [oshajava: (oshajava.support.acme.util.Util)  logs                 = log                 ]
+  [oshajava: (oshajava.support.acme.util.Util)  out                  =                     ]
+  [oshajava: (oshajava.support.acme.util.Util)  err                  =                     ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) instrumentFullJDK    = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) bytecodeDump         = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) bytecodeDumpDir      = log/bytecode-dump   ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) verify               = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) preVerify            = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) frames               = false               ]
+[oshajava: 0.00600 sec]
+Java Grande Forum Thread Benchmark Suite - Version 1.0 - Section 2 - Size C
+Executing on 8 threads
+
+Section2:SparseMatmult:Kernel:SizeC	3.336 (s) 	 59.952038	 (Iterations/s)
+java -javaagent:/sampa/home/bpw/oshajava-test/oshajava/build/oshajava.jar=-noInstrument,-profileExt=-8-threads-noinst-6.py -Xbootclasspath/a:/sampa/home/bpw/oshajava-test/oshajava/build/oshajava.jar -Xmx4000M oshajava.runtime.OshaJavaMain JGFSparseMatmultBenchSizeC 8
+[oshajava: OPTIONS:]
+  [oshajava: (oshajava.runtime.Config)          javaArgs             =                     ]
+  [oshajava: (oshajava.runtime.Config)          help                 = false               ]
+  [oshajava: (oshajava.runtime.Config)          java                 = java                ]
+  [oshajava: (oshajava.runtime.Config)          arrayIndexStates     = false               ]
+  [oshajava: (oshajava.runtime.Config)          objectStates         = false               ]
+  [oshajava: (oshajava.runtime.Config)          noInstrument         = true                ]
+  [oshajava: (oshajava.runtime.Config)          profile              = false               ]
+  [oshajava: (oshajava.runtime.Config)          arrayCacheSize       = 16                  ]
+  [oshajava: (oshajava.runtime.Config)          lockCacheSize        = 4                   ]
+  [oshajava: (oshajava.runtime.Config)          fudgeExceptionStackTraces = true                ]
+  [oshajava: (oshajava.runtime.Config)          traces               = false               ]
+  [oshajava: (oshajava.runtime.Config)          fail                 = false               ]
+  [oshajava: (oshajava.runtime.Config)          record               = false               ]
+  [oshajava: (oshajava.runtime.Config)          profileExt           = -8-threads-noinst-6.py]
+  [oshajava: (oshajava.runtime.Config)          create               = false               ]
+  [oshajava: (oshajava.runtime.Config)          args                 = []                  ]
+  [oshajava: (oshajava.support.acme.util.Util)  quiet                = false               ]
+  [oshajava: (oshajava.support.acme.util.Util)  d                    = []                  ]
+  [oshajava: (oshajava.support.acme.util.Util)  logs                 = log                 ]
+  [oshajava: (oshajava.support.acme.util.Util)  out                  =                     ]
+  [oshajava: (oshajava.support.acme.util.Util)  err                  =                     ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) instrumentFullJDK    = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) bytecodeDump         = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) bytecodeDumpDir      = log/bytecode-dump   ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) verify               = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) preVerify            = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) frames               = false               ]
+[oshajava: 0.00600 sec]
+Java Grande Forum Thread Benchmark Suite - Version 1.0 - Section 2 - Size C
+Executing on 8 threads
+
+Section2:SparseMatmult:Kernel:SizeC	3.246 (s) 	 61.614296	 (Iterations/s)
+java -javaagent:/sampa/home/bpw/oshajava-test/oshajava/build/oshajava.jar=-noInstrument,-profileExt=-8-threads-noinst-7.py -Xbootclasspath/a:/sampa/home/bpw/oshajava-test/oshajava/build/oshajava.jar -Xmx4000M oshajava.runtime.OshaJavaMain JGFSparseMatmultBenchSizeC 8
+[oshajava: OPTIONS:]
+  [oshajava: (oshajava.runtime.Config)          javaArgs             =                     ]
+  [oshajava: (oshajava.runtime.Config)          help                 = false               ]
+  [oshajava: (oshajava.runtime.Config)          java                 = java                ]
+  [oshajava: (oshajava.runtime.Config)          arrayIndexStates     = false               ]
+  [oshajava: (oshajava.runtime.Config)          objectStates         = false               ]
+  [oshajava: (oshajava.runtime.Config)          noInstrument         = true                ]
+  [oshajava: (oshajava.runtime.Config)          profile              = false               ]
+  [oshajava: (oshajava.runtime.Config)          arrayCacheSize       = 16                  ]
+  [oshajava: (oshajava.runtime.Config)          lockCacheSize        = 4                   ]
+  [oshajava: (oshajava.runtime.Config)          fudgeExceptionStackTraces = true                ]
+  [oshajava: (oshajava.runtime.Config)          traces               = false               ]
+  [oshajava: (oshajava.runtime.Config)          fail                 = false               ]
+  [oshajava: (oshajava.runtime.Config)          record               = false               ]
+  [oshajava: (oshajava.runtime.Config)          profileExt           = -8-threads-noinst-7.py]
+  [oshajava: (oshajava.runtime.Config)          create               = false               ]
+  [oshajava: (oshajava.runtime.Config)          args                 = []                  ]
+  [oshajava: (oshajava.support.acme.util.Util)  quiet                = false               ]
+  [oshajava: (oshajava.support.acme.util.Util)  d                    = []                  ]
+  [oshajava: (oshajava.support.acme.util.Util)  logs                 = log                 ]
+  [oshajava: (oshajava.support.acme.util.Util)  out                  =                     ]
+  [oshajava: (oshajava.support.acme.util.Util)  err                  =                     ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) instrumentFullJDK    = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) bytecodeDump         = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) bytecodeDumpDir      = log/bytecode-dump   ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) verify               = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) preVerify            = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) frames               = false               ]
+[oshajava: 0.00500 sec]
+Java Grande Forum Thread Benchmark Suite - Version 1.0 - Section 2 - Size C
+Executing on 8 threads
+
+Section2:SparseMatmult:Kernel:SizeC	3.257 (s) 	 61.4062	 (Iterations/s)
+java -javaagent:/sampa/home/bpw/oshajava-test/oshajava/build/oshajava.jar=-noInstrument,-profileExt=-8-threads-noinst-8.py -Xbootclasspath/a:/sampa/home/bpw/oshajava-test/oshajava/build/oshajava.jar -Xmx4000M oshajava.runtime.OshaJavaMain JGFSparseMatmultBenchSizeC 8
+[oshajava: OPTIONS:]
+  [oshajava: (oshajava.runtime.Config)          javaArgs             =                     ]
+  [oshajava: (oshajava.runtime.Config)          help                 = false               ]
+  [oshajava: (oshajava.runtime.Config)          java                 = java                ]
+  [oshajava: (oshajava.runtime.Config)          arrayIndexStates     = false               ]
+  [oshajava: (oshajava.runtime.Config)          objectStates         = false               ]
+  [oshajava: (oshajava.runtime.Config)          noInstrument         = true                ]
+  [oshajava: (oshajava.runtime.Config)          profile              = false               ]
+  [oshajava: (oshajava.runtime.Config)          arrayCacheSize       = 16                  ]
+  [oshajava: (oshajava.runtime.Config)          lockCacheSize        = 4                   ]
+  [oshajava: (oshajava.runtime.Config)          fudgeExceptionStackTraces = true                ]
+  [oshajava: (oshajava.runtime.Config)          traces               = false               ]
+  [oshajava: (oshajava.runtime.Config)          fail                 = false               ]
+  [oshajava: (oshajava.runtime.Config)          record               = false               ]
+  [oshajava: (oshajava.runtime.Config)          profileExt           = -8-threads-noinst-8.py]
+  [oshajava: (oshajava.runtime.Config)          create               = false               ]
+  [oshajava: (oshajava.runtime.Config)          args                 = []                  ]
+  [oshajava: (oshajava.support.acme.util.Util)  quiet                = false               ]
+  [oshajava: (oshajava.support.acme.util.Util)  d                    = []                  ]
+  [oshajava: (oshajava.support.acme.util.Util)  logs                 = log                 ]
+  [oshajava: (oshajava.support.acme.util.Util)  out                  =                     ]
+  [oshajava: (oshajava.support.acme.util.Util)  err                  =                     ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) instrumentFullJDK    = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) bytecodeDump         = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) bytecodeDumpDir      = log/bytecode-dump   ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) verify               = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) preVerify            = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) frames               = false               ]
+[oshajava: 0.00600 sec]
+Java Grande Forum Thread Benchmark Suite - Version 1.0 - Section 2 - Size C
+Executing on 8 threads
+
+Section2:SparseMatmult:Kernel:SizeC	3.352 (s) 	 59.66587	 (Iterations/s)
+java -javaagent:/sampa/home/bpw/oshajava-test/oshajava/build/oshajava.jar=-noInstrument,-profileExt=-8-threads-noinst-9.py -Xbootclasspath/a:/sampa/home/bpw/oshajava-test/oshajava/build/oshajava.jar -Xmx4000M oshajava.runtime.OshaJavaMain JGFSparseMatmultBenchSizeC 8
+[oshajava: OPTIONS:]
+  [oshajava: (oshajava.runtime.Config)          javaArgs             =                     ]
+  [oshajava: (oshajava.runtime.Config)          help                 = false               ]
+  [oshajava: (oshajava.runtime.Config)          java                 = java                ]
+  [oshajava: (oshajava.runtime.Config)          arrayIndexStates     = false               ]
+  [oshajava: (oshajava.runtime.Config)          objectStates         = false               ]
+  [oshajava: (oshajava.runtime.Config)          noInstrument         = true                ]
+  [oshajava: (oshajava.runtime.Config)          profile              = false               ]
+  [oshajava: (oshajava.runtime.Config)          arrayCacheSize       = 16                  ]
+  [oshajava: (oshajava.runtime.Config)          lockCacheSize        = 4                   ]
+  [oshajava: (oshajava.runtime.Config)          fudgeExceptionStackTraces = true                ]
+  [oshajava: (oshajava.runtime.Config)          traces               = false               ]
+  [oshajava: (oshajava.runtime.Config)          fail                 = false               ]
+  [oshajava: (oshajava.runtime.Config)          record               = false               ]
+  [oshajava: (oshajava.runtime.Config)          profileExt           = -8-threads-noinst-9.py]
+  [oshajava: (oshajava.runtime.Config)          create               = false               ]
+  [oshajava: (oshajava.runtime.Config)          args                 = []                  ]
+  [oshajava: (oshajava.support.acme.util.Util)  quiet                = false               ]
+  [oshajava: (oshajava.support.acme.util.Util)  d                    = []                  ]
+  [oshajava: (oshajava.support.acme.util.Util)  logs                 = log                 ]
+  [oshajava: (oshajava.support.acme.util.Util)  out                  =                     ]
+  [oshajava: (oshajava.support.acme.util.Util)  err                  =                     ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) instrumentFullJDK    = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) bytecodeDump         = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) bytecodeDumpDir      = log/bytecode-dump   ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) verify               = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) preVerify            = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) frames               = false               ]
+[oshajava: 0.00600 sec]
+Java Grande Forum Thread Benchmark Suite - Version 1.0 - Section 2 - Size C
+Executing on 8 threads
+
+Section2:SparseMatmult:Kernel:SizeC	3.303 (s) 	 60.551014	 (Iterations/s)
+java -javaagent:/sampa/home/bpw/oshajava-test/oshajava/build/oshajava.jar=-profileExt=-8-threads-fast-warmup.py -Xbootclasspath/a:/sampa/home/bpw/oshajava-test/oshajava/build/oshajava.jar -Xmx4000M oshajava.runtime.OshaJavaMain JGFSparseMatmultBenchSizeC 8
+[oshajava: OPTIONS:]
+  [oshajava: (oshajava.runtime.Config)          javaArgs             =                     ]
+  [oshajava: (oshajava.runtime.Config)          help                 = false               ]
+  [oshajava: (oshajava.runtime.Config)          java                 = java                ]
+  [oshajava: (oshajava.runtime.Config)          arrayIndexStates     = false               ]
+  [oshajava: (oshajava.runtime.Config)          objectStates         = false               ]
+  [oshajava: (oshajava.runtime.Config)          noInstrument         = false               ]
+  [oshajava: (oshajava.runtime.Config)          profile              = false               ]
+  [oshajava: (oshajava.runtime.Config)          arrayCacheSize       = 16                  ]
+  [oshajava: (oshajava.runtime.Config)          lockCacheSize        = 4                   ]
+  [oshajava: (oshajava.runtime.Config)          fudgeExceptionStackTraces = true                ]
+  [oshajava: (oshajava.runtime.Config)          traces               = false               ]
+  [oshajava: (oshajava.runtime.Config)          fail                 = false               ]
+  [oshajava: (oshajava.runtime.Config)          record               = false               ]
+  [oshajava: (oshajava.runtime.Config)          profileExt           = -8-threads-fast-warmup.py]
+  [oshajava: (oshajava.runtime.Config)          create               = false               ]
+  [oshajava: (oshajava.runtime.Config)          args                 = []                  ]
+  [oshajava: (oshajava.support.acme.util.Util)  quiet                = false               ]
+  [oshajava: (oshajava.support.acme.util.Util)  d                    = []                  ]
+  [oshajava: (oshajava.support.acme.util.Util)  logs                 = log                 ]
+  [oshajava: (oshajava.support.acme.util.Util)  out                  =                     ]
+  [oshajava: (oshajava.support.acme.util.Util)  err                  =                     ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) instrumentFullJDK    = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) bytecodeDump         = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) bytecodeDumpDir      = log/bytecode-dump   ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) verify               = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) preVerify            = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) frames               = false               ]
+[oshajava: 0.00600 sec]
+Java Grande Forum Thread Benchmark Suite - Version 1.0 - Section 2 - Size C
+Executing on 8 threads
+
+Section2:SparseMatmult:Kernel:SizeC	98.046 (s) 	 2.0398588	 (Iterations/s)
+java -javaagent:/sampa/home/bpw/oshajava-test/oshajava/build/oshajava.jar=-profileExt=-8-threads-fast-0.py -Xbootclasspath/a:/sampa/home/bpw/oshajava-test/oshajava/build/oshajava.jar -Xmx4000M oshajava.runtime.OshaJavaMain JGFSparseMatmultBenchSizeC 8
+[oshajava: OPTIONS:]
+  [oshajava: (oshajava.runtime.Config)          javaArgs             =                     ]
+  [oshajava: (oshajava.runtime.Config)          help                 = false               ]
+  [oshajava: (oshajava.runtime.Config)          java                 = java                ]
+  [oshajava: (oshajava.runtime.Config)          arrayIndexStates     = false               ]
+  [oshajava: (oshajava.runtime.Config)          objectStates         = false               ]
+  [oshajava: (oshajava.runtime.Config)          noInstrument         = false               ]
+  [oshajava: (oshajava.runtime.Config)          profile              = false               ]
+  [oshajava: (oshajava.runtime.Config)          arrayCacheSize       = 16                  ]
+  [oshajava: (oshajava.runtime.Config)          lockCacheSize        = 4                   ]
+  [oshajava: (oshajava.runtime.Config)          fudgeExceptionStackTraces = true                ]
+  [oshajava: (oshajava.runtime.Config)          traces               = false               ]
+  [oshajava: (oshajava.runtime.Config)          fail                 = false               ]
+  [oshajava: (oshajava.runtime.Config)          record               = false               ]
+  [oshajava: (oshajava.runtime.Config)          profileExt           = -8-threads-fast-0.py]
+  [oshajava: (oshajava.runtime.Config)          create               = false               ]
+  [oshajava: (oshajava.runtime.Config)          args                 = []                  ]
+  [oshajava: (oshajava.support.acme.util.Util)  quiet                = false               ]
+  [oshajava: (oshajava.support.acme.util.Util)  d                    = []                  ]
+  [oshajava: (oshajava.support.acme.util.Util)  logs                 = log                 ]
+  [oshajava: (oshajava.support.acme.util.Util)  out                  =                     ]
+  [oshajava: (oshajava.support.acme.util.Util)  err                  =                     ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) instrumentFullJDK    = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) bytecodeDump         = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) bytecodeDumpDir      = log/bytecode-dump   ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) verify               = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) preVerify            = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) frames               = false               ]
+[oshajava: 0.00600 sec]
+Java Grande Forum Thread Benchmark Suite - Version 1.0 - Section 2 - Size C
+Executing on 8 threads
+
+Section2:SparseMatmult:Kernel:SizeC	95.566 (s) 	 2.0927944	 (Iterations/s)
+java -javaagent:/sampa/home/bpw/oshajava-test/oshajava/build/oshajava.jar=-profileExt=-8-threads-fast-1.py -Xbootclasspath/a:/sampa/home/bpw/oshajava-test/oshajava/build/oshajava.jar -Xmx4000M oshajava.runtime.OshaJavaMain JGFSparseMatmultBenchSizeC 8
+[oshajava: OPTIONS:]
+  [oshajava: (oshajava.runtime.Config)          javaArgs             =                     ]
+  [oshajava: (oshajava.runtime.Config)          help                 = false               ]
+  [oshajava: (oshajava.runtime.Config)          java                 = java                ]
+  [oshajava: (oshajava.runtime.Config)          arrayIndexStates     = false               ]
+  [oshajava: (oshajava.runtime.Config)          objectStates         = false               ]
+  [oshajava: (oshajava.runtime.Config)          noInstrument         = false               ]
+  [oshajava: (oshajava.runtime.Config)          profile              = false               ]
+  [oshajava: (oshajava.runtime.Config)          arrayCacheSize       = 16                  ]
+  [oshajava: (oshajava.runtime.Config)          lockCacheSize        = 4                   ]
+  [oshajava: (oshajava.runtime.Config)          fudgeExceptionStackTraces = true                ]
+  [oshajava: (oshajava.runtime.Config)          traces               = false               ]
+  [oshajava: (oshajava.runtime.Config)          fail                 = false               ]
+  [oshajava: (oshajava.runtime.Config)          record               = false               ]
+  [oshajava: (oshajava.runtime.Config)          profileExt           = -8-threads-fast-1.py]
+  [oshajava: (oshajava.runtime.Config)          create               = false               ]
+  [oshajava: (oshajava.runtime.Config)          args                 = []                  ]
+  [oshajava: (oshajava.support.acme.util.Util)  quiet                = false               ]
+  [oshajava: (oshajava.support.acme.util.Util)  d                    = []                  ]
+  [oshajava: (oshajava.support.acme.util.Util)  logs                 = log                 ]
+  [oshajava: (oshajava.support.acme.util.Util)  out                  =                     ]
+  [oshajava: (oshajava.support.acme.util.Util)  err                  =                     ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) instrumentFullJDK    = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) bytecodeDump         = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) bytecodeDumpDir      = log/bytecode-dump   ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) verify               = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) preVerify            = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) frames               = false               ]
+[oshajava: 0.00500 sec]
+Java Grande Forum Thread Benchmark Suite - Version 1.0 - Section 2 - Size C
+Executing on 8 threads
+
+Section2:SparseMatmult:Kernel:SizeC	96.792 (s) 	 2.0662866	 (Iterations/s)
+java -javaagent:/sampa/home/bpw/oshajava-test/oshajava/build/oshajava.jar=-profileExt=-8-threads-fast-2.py -Xbootclasspath/a:/sampa/home/bpw/oshajava-test/oshajava/build/oshajava.jar -Xmx4000M oshajava.runtime.OshaJavaMain JGFSparseMatmultBenchSizeC 8
+[oshajava: OPTIONS:]
+  [oshajava: (oshajava.runtime.Config)          javaArgs             =                     ]
+  [oshajava: (oshajava.runtime.Config)          help                 = false               ]
+  [oshajava: (oshajava.runtime.Config)          java                 = java                ]
+  [oshajava: (oshajava.runtime.Config)          arrayIndexStates     = false               ]
+  [oshajava: (oshajava.runtime.Config)          objectStates         = false               ]
+  [oshajava: (oshajava.runtime.Config)          noInstrument         = false               ]
+  [oshajava: (oshajava.runtime.Config)          profile              = false               ]
+  [oshajava: (oshajava.runtime.Config)          arrayCacheSize       = 16                  ]
+  [oshajava: (oshajava.runtime.Config)          lockCacheSize        = 4                   ]
+  [oshajava: (oshajava.runtime.Config)          fudgeExceptionStackTraces = true                ]
+  [oshajava: (oshajava.runtime.Config)          traces               = false               ]
+  [oshajava: (oshajava.runtime.Config)          fail                 = false               ]
+  [oshajava: (oshajava.runtime.Config)          record               = false               ]
+  [oshajava: (oshajava.runtime.Config)          profileExt           = -8-threads-fast-2.py]
+  [oshajava: (oshajava.runtime.Config)          create               = false               ]
+  [oshajava: (oshajava.runtime.Config)          args                 = []                  ]
+  [oshajava: (oshajava.support.acme.util.Util)  quiet                = false               ]
+  [oshajava: (oshajava.support.acme.util.Util)  d                    = []                  ]
+  [oshajava: (oshajava.support.acme.util.Util)  logs                 = log                 ]
+  [oshajava: (oshajava.support.acme.util.Util)  out                  =                     ]
+  [oshajava: (oshajava.support.acme.util.Util)  err                  =                     ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) instrumentFullJDK    = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) bytecodeDump         = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) bytecodeDumpDir      = log/bytecode-dump   ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) verify               = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) preVerify            = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) frames               = false               ]
+[oshajava: 0.00600 sec]
+Java Grande Forum Thread Benchmark Suite - Version 1.0 - Section 2 - Size C
+Executing on 8 threads
+
+Section2:SparseMatmult:Kernel:SizeC	97.57 (s) 	 2.0498104	 (Iterations/s)
+java -javaagent:/sampa/home/bpw/oshajava-test/oshajava/build/oshajava.jar=-profileExt=-8-threads-fast-3.py -Xbootclasspath/a:/sampa/home/bpw/oshajava-test/oshajava/build/oshajava.jar -Xmx4000M oshajava.runtime.OshaJavaMain JGFSparseMatmultBenchSizeC 8
+[oshajava: OPTIONS:]
+  [oshajava: (oshajava.runtime.Config)          javaArgs             =                     ]
+  [oshajava: (oshajava.runtime.Config)          help                 = false               ]
+  [oshajava: (oshajava.runtime.Config)          java                 = java                ]
+  [oshajava: (oshajava.runtime.Config)          arrayIndexStates     = false               ]
+  [oshajava: (oshajava.runtime.Config)          objectStates         = false               ]
+  [oshajava: (oshajava.runtime.Config)          noInstrument         = false               ]
+  [oshajava: (oshajava.runtime.Config)          profile              = false               ]
+  [oshajava: (oshajava.runtime.Config)          arrayCacheSize       = 16                  ]
+  [oshajava: (oshajava.runtime.Config)          lockCacheSize        = 4                   ]
+  [oshajava: (oshajava.runtime.Config)          fudgeExceptionStackTraces = true                ]
+  [oshajava: (oshajava.runtime.Config)          traces               = false               ]
+  [oshajava: (oshajava.runtime.Config)          fail                 = false               ]
+  [oshajava: (oshajava.runtime.Config)          record               = false               ]
+  [oshajava: (oshajava.runtime.Config)          profileExt           = -8-threads-fast-3.py]
+  [oshajava: (oshajava.runtime.Config)          create               = false               ]
+  [oshajava: (oshajava.runtime.Config)          args                 = []                  ]
+  [oshajava: (oshajava.support.acme.util.Util)  quiet                = false               ]
+  [oshajava: (oshajava.support.acme.util.Util)  d                    = []                  ]
+  [oshajava: (oshajava.support.acme.util.Util)  logs                 = log                 ]
+  [oshajava: (oshajava.support.acme.util.Util)  out                  =                     ]
+  [oshajava: (oshajava.support.acme.util.Util)  err                  =                     ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) instrumentFullJDK    = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) bytecodeDump         = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) bytecodeDumpDir      = log/bytecode-dump   ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) verify               = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) preVerify            = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) frames               = false               ]
+[oshajava: 0.00600 sec]
+Java Grande Forum Thread Benchmark Suite - Version 1.0 - Section 2 - Size C
+Executing on 8 threads
+
+Section2:SparseMatmult:Kernel:SizeC	94.276 (s) 	 2.1214306	 (Iterations/s)
+java -javaagent:/sampa/home/bpw/oshajava-test/oshajava/build/oshajava.jar=-profileExt=-8-threads-fast-4.py -Xbootclasspath/a:/sampa/home/bpw/oshajava-test/oshajava/build/oshajava.jar -Xmx4000M oshajava.runtime.OshaJavaMain JGFSparseMatmultBenchSizeC 8
+[oshajava: OPTIONS:]
+  [oshajava: (oshajava.runtime.Config)          javaArgs             =                     ]
+  [oshajava: (oshajava.runtime.Config)          help                 = false               ]
+  [oshajava: (oshajava.runtime.Config)          java                 = java                ]
+  [oshajava: (oshajava.runtime.Config)          arrayIndexStates     = false               ]
+  [oshajava: (oshajava.runtime.Config)          objectStates         = false               ]
+  [oshajava: (oshajava.runtime.Config)          noInstrument         = false               ]
+  [oshajava: (oshajava.runtime.Config)          profile              = false               ]
+  [oshajava: (oshajava.runtime.Config)          arrayCacheSize       = 16                  ]
+  [oshajava: (oshajava.runtime.Config)          lockCacheSize        = 4                   ]
+  [oshajava: (oshajava.runtime.Config)          fudgeExceptionStackTraces = true                ]
+  [oshajava: (oshajava.runtime.Config)          traces               = false               ]
+  [oshajava: (oshajava.runtime.Config)          fail                 = false               ]
+  [oshajava: (oshajava.runtime.Config)          record               = false               ]
+  [oshajava: (oshajava.runtime.Config)          profileExt           = -8-threads-fast-4.py]
+  [oshajava: (oshajava.runtime.Config)          create               = false               ]
+  [oshajava: (oshajava.runtime.Config)          args                 = []                  ]
+  [oshajava: (oshajava.support.acme.util.Util)  quiet                = false               ]
+  [oshajava: (oshajava.support.acme.util.Util)  d                    = []                  ]
+  [oshajava: (oshajava.support.acme.util.Util)  logs                 = log                 ]
+  [oshajava: (oshajava.support.acme.util.Util)  out                  =                     ]
+  [oshajava: (oshajava.support.acme.util.Util)  err                  =                     ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) instrumentFullJDK    = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) bytecodeDump         = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) bytecodeDumpDir      = log/bytecode-dump   ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) verify               = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) preVerify            = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) frames               = false               ]
+[oshajava: 0.00600 sec]
+Java Grande Forum Thread Benchmark Suite - Version 1.0 - Section 2 - Size C
+Executing on 8 threads
+
+Section2:SparseMatmult:Kernel:SizeC	93.734 (s) 	 2.1336975	 (Iterations/s)
+java -javaagent:/sampa/home/bpw/oshajava-test/oshajava/build/oshajava.jar=-profileExt=-8-threads-fast-5.py -Xbootclasspath/a:/sampa/home/bpw/oshajava-test/oshajava/build/oshajava.jar -Xmx4000M oshajava.runtime.OshaJavaMain JGFSparseMatmultBenchSizeC 8
+[oshajava: OPTIONS:]
+  [oshajava: (oshajava.runtime.Config)          javaArgs             =                     ]
+  [oshajava: (oshajava.runtime.Config)          help                 = false               ]
+  [oshajava: (oshajava.runtime.Config)          java                 = java                ]
+  [oshajava: (oshajava.runtime.Config)          arrayIndexStates     = false               ]
+  [oshajava: (oshajava.runtime.Config)          objectStates         = false               ]
+  [oshajava: (oshajava.runtime.Config)          noInstrument         = false               ]
+  [oshajava: (oshajava.runtime.Config)          profile              = false               ]
+  [oshajava: (oshajava.runtime.Config)          arrayCacheSize       = 16                  ]
+  [oshajava: (oshajava.runtime.Config)          lockCacheSize        = 4                   ]
+  [oshajava: (oshajava.runtime.Config)          fudgeExceptionStackTraces = true                ]
+  [oshajava: (oshajava.runtime.Config)          traces               = false               ]
+  [oshajava: (oshajava.runtime.Config)          fail                 = false               ]
+  [oshajava: (oshajava.runtime.Config)          record               = false               ]
+  [oshajava: (oshajava.runtime.Config)          profileExt           = -8-threads-fast-5.py]
+  [oshajava: (oshajava.runtime.Config)          create               = false               ]
+  [oshajava: (oshajava.runtime.Config)          args                 = []                  ]
+  [oshajava: (oshajava.support.acme.util.Util)  quiet                = false               ]
+  [oshajava: (oshajava.support.acme.util.Util)  d                    = []                  ]
+  [oshajava: (oshajava.support.acme.util.Util)  logs                 = log                 ]
+  [oshajava: (oshajava.support.acme.util.Util)  out                  =                     ]
+  [oshajava: (oshajava.support.acme.util.Util)  err                  =                     ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) instrumentFullJDK    = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) bytecodeDump         = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) bytecodeDumpDir      = log/bytecode-dump   ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) verify               = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) preVerify            = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) frames               = false               ]
+[oshajava: 0.00500 sec]
+Java Grande Forum Thread Benchmark Suite - Version 1.0 - Section 2 - Size C
+Executing on 8 threads
+
+Section2:SparseMatmult:Kernel:SizeC	58.557 (s) 	 3.4154756	 (Iterations/s)
+java -javaagent:/sampa/home/bpw/oshajava-test/oshajava/build/oshajava.jar=-profileExt=-8-threads-fast-6.py -Xbootclasspath/a:/sampa/home/bpw/oshajava-test/oshajava/build/oshajava.jar -Xmx4000M oshajava.runtime.OshaJavaMain JGFSparseMatmultBenchSizeC 8
+[oshajava: OPTIONS:]
+  [oshajava: (oshajava.runtime.Config)          javaArgs             =                     ]
+  [oshajava: (oshajava.runtime.Config)          help                 = false               ]
+  [oshajava: (oshajava.runtime.Config)          java                 = java                ]
+  [oshajava: (oshajava.runtime.Config)          arrayIndexStates     = false               ]
+  [oshajava: (oshajava.runtime.Config)          objectStates         = false               ]
+  [oshajava: (oshajava.runtime.Config)          noInstrument         = false               ]
+  [oshajava: (oshajava.runtime.Config)          profile              = false               ]
+  [oshajava: (oshajava.runtime.Config)          arrayCacheSize       = 16                  ]
+  [oshajava: (oshajava.runtime.Config)          lockCacheSize        = 4                   ]
+  [oshajava: (oshajava.runtime.Config)          fudgeExceptionStackTraces = true                ]
+  [oshajava: (oshajava.runtime.Config)          traces               = false               ]
+  [oshajava: (oshajava.runtime.Config)          fail                 = false               ]
+  [oshajava: (oshajava.runtime.Config)          record               = false               ]
+  [oshajava: (oshajava.runtime.Config)          profileExt           = -8-threads-fast-6.py]
+  [oshajava: (oshajava.runtime.Config)          create               = false               ]
+  [oshajava: (oshajava.runtime.Config)          args                 = []                  ]
+  [oshajava: (oshajava.support.acme.util.Util)  quiet                = false               ]
+  [oshajava: (oshajava.support.acme.util.Util)  d                    = []                  ]
+  [oshajava: (oshajava.support.acme.util.Util)  logs                 = log                 ]
+  [oshajava: (oshajava.support.acme.util.Util)  out                  =                     ]
+  [oshajava: (oshajava.support.acme.util.Util)  err                  =                     ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) instrumentFullJDK    = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) bytecodeDump         = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) bytecodeDumpDir      = log/bytecode-dump   ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) verify               = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) preVerify            = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) frames               = false               ]
+[oshajava: 0.00600 sec]
+Java Grande Forum Thread Benchmark Suite - Version 1.0 - Section 2 - Size C
+Executing on 8 threads
+
+Section2:SparseMatmult:Kernel:SizeC	95.105 (s) 	 2.102939	 (Iterations/s)
+java -javaagent:/sampa/home/bpw/oshajava-test/oshajava/build/oshajava.jar=-profileExt=-8-threads-fast-7.py -Xbootclasspath/a:/sampa/home/bpw/oshajava-test/oshajava/build/oshajava.jar -Xmx4000M oshajava.runtime.OshaJavaMain JGFSparseMatmultBenchSizeC 8
+[oshajava: OPTIONS:]
+  [oshajava: (oshajava.runtime.Config)          javaArgs             =                     ]
+  [oshajava: (oshajava.runtime.Config)          help                 = false               ]
+  [oshajava: (oshajava.runtime.Config)          java                 = java                ]
+  [oshajava: (oshajava.runtime.Config)          arrayIndexStates     = false               ]
+  [oshajava: (oshajava.runtime.Config)          objectStates         = false               ]
+  [oshajava: (oshajava.runtime.Config)          noInstrument         = false               ]
+  [oshajava: (oshajava.runtime.Config)          profile              = false               ]
+  [oshajava: (oshajava.runtime.Config)          arrayCacheSize       = 16                  ]
+  [oshajava: (oshajava.runtime.Config)          lockCacheSize        = 4                   ]
+  [oshajava: (oshajava.runtime.Config)          fudgeExceptionStackTraces = true                ]
+  [oshajava: (oshajava.runtime.Config)          traces               = false               ]
+  [oshajava: (oshajava.runtime.Config)          fail                 = false               ]
+  [oshajava: (oshajava.runtime.Config)          record               = false               ]
+  [oshajava: (oshajava.runtime.Config)          profileExt           = -8-threads-fast-7.py]
+  [oshajava: (oshajava.runtime.Config)          create               = false               ]
+  [oshajava: (oshajava.runtime.Config)          args                 = []                  ]
+  [oshajava: (oshajava.support.acme.util.Util)  quiet                = false               ]
+  [oshajava: (oshajava.support.acme.util.Util)  d                    = []                  ]
+  [oshajava: (oshajava.support.acme.util.Util)  logs                 = log                 ]
+  [oshajava: (oshajava.support.acme.util.Util)  out                  =                     ]
+  [oshajava: (oshajava.support.acme.util.Util)  err                  =                     ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) instrumentFullJDK    = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) bytecodeDump         = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) bytecodeDumpDir      = log/bytecode-dump   ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) verify               = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) preVerify            = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) frames               = false               ]
+[oshajava: 0.00500 sec]
+Java Grande Forum Thread Benchmark Suite - Version 1.0 - Section 2 - Size C
+Executing on 8 threads
+
+Section2:SparseMatmult:Kernel:SizeC	98.951 (s) 	 2.0212023	 (Iterations/s)
+java -javaagent:/sampa/home/bpw/oshajava-test/oshajava/build/oshajava.jar=-profileExt=-8-threads-fast-8.py -Xbootclasspath/a:/sampa/home/bpw/oshajava-test/oshajava/build/oshajava.jar -Xmx4000M oshajava.runtime.OshaJavaMain JGFSparseMatmultBenchSizeC 8
+[oshajava: OPTIONS:]
+  [oshajava: (oshajava.runtime.Config)          javaArgs             =                     ]
+  [oshajava: (oshajava.runtime.Config)          help                 = false               ]
+  [oshajava: (oshajava.runtime.Config)          java                 = java                ]
+  [oshajava: (oshajava.runtime.Config)          arrayIndexStates     = false               ]
+  [oshajava: (oshajava.runtime.Config)          objectStates         = false               ]
+  [oshajava: (oshajava.runtime.Config)          noInstrument         = false               ]
+  [oshajava: (oshajava.runtime.Config)          profile              = false               ]
+  [oshajava: (oshajava.runtime.Config)          arrayCacheSize       = 16                  ]
+  [oshajava: (oshajava.runtime.Config)          lockCacheSize        = 4                   ]
+  [oshajava: (oshajava.runtime.Config)          fudgeExceptionStackTraces = true                ]
+  [oshajava: (oshajava.runtime.Config)          traces               = false               ]
+  [oshajava: (oshajava.runtime.Config)          fail                 = false               ]
+  [oshajava: (oshajava.runtime.Config)          record               = false               ]
+  [oshajava: (oshajava.runtime.Config)          profileExt           = -8-threads-fast-8.py]
+  [oshajava: (oshajava.runtime.Config)          create               = false               ]
+  [oshajava: (oshajava.runtime.Config)          args                 = []                  ]
+  [oshajava: (oshajava.support.acme.util.Util)  quiet                = false               ]
+  [oshajava: (oshajava.support.acme.util.Util)  d                    = []                  ]
+  [oshajava: (oshajava.support.acme.util.Util)  logs                 = log                 ]
+  [oshajava: (oshajava.support.acme.util.Util)  out                  =                     ]
+  [oshajava: (oshajava.support.acme.util.Util)  err                  =                     ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) instrumentFullJDK    = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) bytecodeDump         = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) bytecodeDumpDir      = log/bytecode-dump   ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) verify               = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) preVerify            = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) frames               = false               ]
+[oshajava: 0.00600 sec]
+Java Grande Forum Thread Benchmark Suite - Version 1.0 - Section 2 - Size C
+Executing on 8 threads
+
+Section2:SparseMatmult:Kernel:SizeC	97.838 (s) 	 2.0441954	 (Iterations/s)
+java -javaagent:/sampa/home/bpw/oshajava-test/oshajava/build/oshajava.jar=-profileExt=-8-threads-fast-9.py -Xbootclasspath/a:/sampa/home/bpw/oshajava-test/oshajava/build/oshajava.jar -Xmx4000M oshajava.runtime.OshaJavaMain JGFSparseMatmultBenchSizeC 8
+[oshajava: OPTIONS:]
+  [oshajava: (oshajava.runtime.Config)          javaArgs             =                     ]
+  [oshajava: (oshajava.runtime.Config)          help                 = false               ]
+  [oshajava: (oshajava.runtime.Config)          java                 = java                ]
+  [oshajava: (oshajava.runtime.Config)          arrayIndexStates     = false               ]
+  [oshajava: (oshajava.runtime.Config)          objectStates         = false               ]
+  [oshajava: (oshajava.runtime.Config)          noInstrument         = false               ]
+  [oshajava: (oshajava.runtime.Config)          profile              = false               ]
+  [oshajava: (oshajava.runtime.Config)          arrayCacheSize       = 16                  ]
+  [oshajava: (oshajava.runtime.Config)          lockCacheSize        = 4                   ]
+  [oshajava: (oshajava.runtime.Config)          fudgeExceptionStackTraces = true                ]
+  [oshajava: (oshajava.runtime.Config)          traces               = false               ]
+  [oshajava: (oshajava.runtime.Config)          fail                 = false               ]
+  [oshajava: (oshajava.runtime.Config)          record               = false               ]
+  [oshajava: (oshajava.runtime.Config)          profileExt           = -8-threads-fast-9.py]
+  [oshajava: (oshajava.runtime.Config)          create               = false               ]
+  [oshajava: (oshajava.runtime.Config)          args                 = []                  ]
+  [oshajava: (oshajava.support.acme.util.Util)  quiet                = false               ]
+  [oshajava: (oshajava.support.acme.util.Util)  d                    = []                  ]
+  [oshajava: (oshajava.support.acme.util.Util)  logs                 = log                 ]
+  [oshajava: (oshajava.support.acme.util.Util)  out                  =                     ]
+  [oshajava: (oshajava.support.acme.util.Util)  err                  =                     ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) instrumentFullJDK    = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) bytecodeDump         = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) bytecodeDumpDir      = log/bytecode-dump   ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) verify               = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) preVerify            = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) frames               = false               ]
+[oshajava: 0.00600 sec]
+Java Grande Forum Thread Benchmark Suite - Version 1.0 - Section 2 - Size C
+Executing on 8 threads
+
+Section2:SparseMatmult:Kernel:SizeC	91.77 (s) 	 2.1793613	 (Iterations/s)
+java -javaagent:/sampa/home/bpw/oshajava-test/oshajava/build/oshajava.jar=-record,-profile,-profileExt=-8-threads-prof-0.py -Xbootclasspath/a:/sampa/home/bpw/oshajava-test/oshajava/build/oshajava.jar -Xmx4000M oshajava.runtime.OshaJavaMain JGFSparseMatmultBenchSizeC 8
+[oshajava: OPTIONS:]
+  [oshajava: (oshajava.runtime.Config)          javaArgs             =                     ]
+  [oshajava: (oshajava.runtime.Config)          help                 = false               ]
+  [oshajava: (oshajava.runtime.Config)          java                 = java                ]
+  [oshajava: (oshajava.runtime.Config)          arrayIndexStates     = false               ]
+  [oshajava: (oshajava.runtime.Config)          objectStates         = false               ]
+  [oshajava: (oshajava.runtime.Config)          noInstrument         = false               ]
+  [oshajava: (oshajava.runtime.Config)          profile              = true                ]
+  [oshajava: (oshajava.runtime.Config)          arrayCacheSize       = 16                  ]
+  [oshajava: (oshajava.runtime.Config)          lockCacheSize        = 4                   ]
+  [oshajava: (oshajava.runtime.Config)          fudgeExceptionStackTraces = true                ]
+  [oshajava: (oshajava.runtime.Config)          traces               = false               ]
+  [oshajava: (oshajava.runtime.Config)          fail                 = false               ]
+  [oshajava: (oshajava.runtime.Config)          record               = true                ]
+  [oshajava: (oshajava.runtime.Config)          profileExt           = -8-threads-prof-0.py]
+  [oshajava: (oshajava.runtime.Config)          create               = false               ]
+  [oshajava: (oshajava.runtime.Config)          args                 = []                  ]
+  [oshajava: (oshajava.support.acme.util.Util)  quiet                = false               ]
+  [oshajava: (oshajava.support.acme.util.Util)  d                    = []                  ]
+  [oshajava: (oshajava.support.acme.util.Util)  logs                 = log                 ]
+  [oshajava: (oshajava.support.acme.util.Util)  out                  =                     ]
+  [oshajava: (oshajava.support.acme.util.Util)  err                  =                     ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) instrumentFullJDK    = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) bytecodeDump         = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) bytecodeDumpDir      = log/bytecode-dump   ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) verify               = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) preVerify            = false               ]
+  [oshajava: (oshajava.instrument.InstrumentationAgent) frames               = false               ]
+[oshajava: 0.00600 sec]
+Java Grande Forum Thread Benchmark Suite - Version 1.0 - Section 2 - Size C
+Executing on 8 threads
+
+Section2:SparseMatmult:Kernel:SizeC	2250.75 (s) 	 0.08885927	 (Iterations/s)
+[Thread-0: ---- Profile info ------------------------------------]
+[Thread-0: Thread-local field reads:    16.841732%]
+[Thread-0: Comm. fast path field reads: 83.158267%]
+[Thread-0: Comm. slow path field reads: 0.000000%]
+[Thread-0: ]
+[Thread-0: Thread-local array reads:    19.558117%]
+[Thread-0: Comm. fast path array reads: 80.441879%]
+[Thread-0: Comm. slow path array reads: 0.000004%]
+[Thread-0: ]
+[Thread-0: Thread-local lock acquires:    100.000000%]
+[Thread-0: Comm. fast path lock acquires: 0.000000%]
+[Thread-0: Comm. slow path lock acquires: 0.000000%]
+[Thread-0: Array accesses: 3700495615]
+[Thread-0:     cache hits: 3675492335]
+[Thread-0:   cache misses: 25003280]
+[Thread-0:       hit rate: 99.324327%]
+[Thread-0:     cache size: 16]
+[Thread-0:  Lock accesses: 12]
+[Thread-0:     cache hits: 11]
+[Thread-0:   cache misses: 1]
+[Thread-0:       hit rate: 91.666667%]
+[Thread-0:     cache size: 4]
+oshajava -noInstrument -profileExt="-8-threads-noinst-warmup.py" -javaOptions -Xmx4000M -- JGFSparseMatmultBenchSizeC 8
+Results for JGFSparseMatmultBenchSizeC-8-threads-noinst-warmup.py
+
+{"options" : {"javaArgs" : "", "help" : "false", "java" : "java", "arrayIndexStates" : "false", "objectStates" : "false", "noInstrument" : "true", "profile" : "false", "arrayCacheSize" : "16", "lockCacheSize" : "4", "fudgeExceptionStackTraces" : "true", "traces" : "false", "fail" : "false", "record" : "false", "profileExt" : "-8-threads-noinst-warmup.py", "create" : "false", "args" : "[]", "quiet" : "false", "d" : "[]", "logs" : "log", "out" : "", "err" : "", "instrumentFullJDK" : "false", "bytecodeDump" : "false", "bytecodeDumpDir" : "log/bytecode-dump", "verify" : "false", "preVerify" : "false", "frames" : "false"}, "threads" : 0, "frequently communicating stacks" : 0, "Premain time" : 12, "Premain to fini time" : 3984, "Instrumentation time" : 0, "Main time" : 3981, "All field reads" : 0, "Communicating field reads" : 0, "Communicating field read slow path" : 0, "All array reads" : 0, "Communicating array reads" : 0, "Communicating array read slow path" : 0, "All acquires" : 0, "Communicating acquires" : 0, "Communicating acquire slow path" : 0, "Array hits" : 0, "Array misses" : 0, "Lock hits" : 0, "Lock misses" : 0, "Distinct stacks created" : 0, "Communicating stack depths" : {}, "Reader stack depths (per comm. pair)" : {}, "Writer stack depths (per comm. pair)" : {}, "Writer stack depth - reader stack depth (per comm. pair)" : {}, "Length in methods of stack segments" : {}, "Set size in methods of stack segments (writers only for now)" : {}, "Segments on a communicating stack" : {}, "Modules used" : 0, "Full stack walks" : 0, "Level 2 memo hits" : 0, "Max BitVectorIntSet slots" : -2147483648, "Memory peak" : 93937440, "Memory used" : 48768976, "Memory max" : 3728277504, "Compile time" : 111, "GC time" : 11}
+
+oshajava -noInstrument -profileExt="-8-threads-noinst-0.py" -javaOptions -Xmx4000M -- JGFSparseMatmultBenchSizeC 8
+Results for JGFSparseMatmultBenchSizeC-8-threads-noinst-0.py
+
+{"options" : {"javaArgs" : "", "help" : "false", "java" : "java", "arrayIndexStates" : "false", "objectStates" : "false", "noInstrument" : "true", "profile" : "false", "arrayCacheSize" : "16", "lockCacheSize" : "4", "fudgeExceptionStackTraces" : "true", "traces" : "false", "fail" : "false", "record" : "false", "profileExt" : "-8-threads-noinst-0.py", "create" : "false", "args" : "[]", "quiet" : "false", "d" : "[]", "logs" : "log", "out" : "", "err" : "", "instrumentFullJDK" : "false", "bytecodeDump" : "false", "bytecodeDumpDir" : "log/bytecode-dump", "verify" : "false", "preVerify" : "false", "frames" : "false"}, "threads" : 0, "frequently communicating stacks" : 0, "Premain time" : 12, "Premain to fini time" : 4146, "Instrumentation time" : 0, "Main time" : 4143, "All field reads" : 0, "Communicating field reads" : 0, "Communicating field read slow path" : 0, "All array reads" : 0, "Communicating array reads" : 0, "Communicating array read slow path" : 0, "All acquires" : 0, "Communicating acquires" : 0, "Communicating acquire slow path" : 0, "Array hits" : 0, "Array misses" : 0, "Lock hits" : 0, "Lock misses" : 0, "Distinct stacks created" : 0, "Communicating stack depths" : {}, "Reader stack depths (per comm. pair)" : {}, "Writer stack depths (per comm. pair)" : {}, "Writer stack depth - reader stack depth (per comm. pair)" : {}, "Length in methods of stack segments" : {}, "Set size in methods of stack segments (writers only for now)" : {}, "Segments on a communicating stack" : {}, "Modules used" : 0, "Full stack walks" : 0, "Level 2 memo hits" : 0, "Max BitVectorIntSet slots" : -2147483648, "Memory peak" : 93937248, "Memory used" : 48768904, "Memory max" : 3728277504, "Compile time" : 110, "GC time" : 41}
+
+oshajava -noInstrument -profileExt="-8-threads-noinst-1.py" -javaOptions -Xmx4000M -- JGFSparseMatmultBenchSizeC 8
+Results for JGFSparseMatmultBenchSizeC-8-threads-noinst-1.py
+
+{"options" : {"javaArgs" : "", "help" : "false", "java" : "java", "arrayIndexStates" : "false", "objectStates" : "false", "noInstrument" : "true", "profile" : "false", "arrayCacheSize" : "16", "lockCacheSize" : "4", "fudgeExceptionStackTraces" : "true", "traces" : "false", "fail" : "false", "record" : "false", "profileExt" : "-8-threads-noinst-1.py", "create" : "false", "args" : "[]", "quiet" : "false", "d" : "[]", "logs" : "log", "out" : "", "err" : "", "instrumentFullJDK" : "false", "bytecodeDump" : "false", "bytecodeDumpDir" : "log/bytecode-dump", "verify" : "false", "preVerify" : "false", "frames" : "false"}, "threads" : 0, "frequently communicating stacks" : 0, "Premain time" : 12, "Premain to fini time" : 3991, "Instrumentation time" : 0, "Main time" : 3989, "All field reads" : 0, "Communicating field reads" : 0, "Communicating field read slow path" : 0, "All array reads" : 0, "Communicating array reads" : 0, "Communicating array read slow path" : 0, "All acquires" : 0, "Communicating acquires" : 0, "Communicating acquire slow path" : 0, "Array hits" : 0, "Array misses" : 0, "Lock hits" : 0, "Lock misses" : 0, "Distinct stacks created" : 0, "Communicating stack depths" : {}, "Reader stack depths (per comm. pair)" : {}, "Writer stack depths (per comm. pair)" : {}, "Writer stack depth - reader stack depth (per comm. pair)" : {}, "Length in methods of stack segments" : {}, "Set size in methods of stack segments (writers only for now)" : {}, "Segments on a communicating stack" : {}, "Modules used" : 0, "Full stack walks" : 0, "Level 2 memo hits" : 0, "Max BitVectorIntSet slots" : -2147483648, "Memory peak" : 93970160, "Memory used" : 48768904, "Memory max" : 3728277504, "Compile time" : 100, "GC time" : 12}
+
+oshajava -noInstrument -profileExt="-8-threads-noinst-2.py" -javaOptions -Xmx4000M -- JGFSparseMatmultBenchSizeC 8
+Results for JGFSparseMatmultBenchSizeC-8-threads-noinst-2.py
+
+{"options" : {"javaArgs" : "", "help" : "false", "java" : "java", "arrayIndexStates" : "false", "objectStates" : "false", "noInstrument" : "true", "profile" : "false", "arrayCacheSize" : "16", "lockCacheSize" : "4", "fudgeExceptionStackTraces" : "true", "traces" : "false", "fail" : "false", "record" : "false", "profileExt" : "-8-threads-noinst-2.py", "create" : "false", "args" : "[]", "quiet" : "false", "d" : "[]", "logs" : "log", "out" : "", "err" : "", "instrumentFullJDK" : "false", "bytecodeDump" : "false", "bytecodeDumpDir" : "log/bytecode-dump", "verify" : "false", "preVerify" : "false", "frames" : "false"}, "threads" : 0, "frequently communicating stacks" : 0, "Premain time" : 12, "Premain to fini time" : 4011, "Instrumentation time" : 0, "Main time" : 4008, "All field reads" : 0, "Communicating field reads" : 0, "Communicating field read slow path" : 0, "All array reads" : 0, "Communicating array reads" : 0, "Communicating array read slow path" : 0, "All acquires" : 0, "Communicating acquires" : 0, "Communicating acquire slow path" : 0, "Array hits" : 0, "Array misses" : 0, "Lock hits" : 0, "Lock misses" : 0, "Distinct stacks created" : 0, "Communicating stack depths" : {}, "Reader stack depths (per comm. pair)" : {}, "Writer stack depths (per comm. pair)" : {}, "Writer stack depth - reader stack depth (per comm. pair)" : {}, "Length in methods of stack segments" : {}, "Set size in methods of stack segments (writers only for now)" : {}, "Segments on a communicating stack" : {}, "Modules used" : 0, "Full stack walks" : 0, "Level 2 memo hits" : 0, "Max BitVectorIntSet slots" : -2147483648, "Memory peak" : 93937440, "Memory used" : 48768904, "Memory max" : 3728277504, "Compile time" : 110, "GC time" : 8}
+
+oshajava -noInstrument -profileExt="-8-threads-noinst-3.py" -javaOptions -Xmx4000M -- JGFSparseMatmultBenchSizeC 8
+Results for JGFSparseMatmultBenchSizeC-8-threads-noinst-3.py
+
+{"options" : {"javaArgs" : "", "help" : "false", "java" : "java", "arrayIndexStates" : "false", "objectStates" : "false", "noInstrument" : "true", "profile" : "false", "arrayCacheSize" : "16", "lockCacheSize" : "4", "fudgeExceptionStackTraces" : "true", "traces" : "false", "fail" : "false", "record" : "false", "profileExt" : "-8-threads-noinst-3.py", "create" : "false", "args" : "[]", "quiet" : "false", "d" : "[]", "logs" : "log", "out" : "", "err" : "", "instrumentFullJDK" : "false", "bytecodeDump" : "false", "bytecodeDumpDir" : "log/bytecode-dump", "verify" : "false", "preVerify" : "false", "frames" : "false"}, "threads" : 0, "frequently communicating stacks" : 0, "Premain time" : 12, "Premain to fini time" : 4004, "Instrumentation time" : 0, "Main time" : 4001, "All field reads" : 0, "Communicating field reads" : 0, "Communicating field read slow path" : 0, "All array reads" : 0, "Communicating array reads" : 0, "Communicating array read slow path" : 0, "All acquires" : 0, "Communicating acquires" : 0, "Communicating acquire slow path" : 0, "Array hits" : 0, "Array misses" : 0, "Lock hits" : 0, "Lock misses" : 0, "Distinct stacks created" : 0, "Communicating stack depths" : {}, "Reader stack depths (per comm. pair)" : {}, "Writer stack depths (per comm. pair)" : {}, "Writer stack depth - reader stack depth (per comm. pair)" : {}, "Length in methods of stack segments" : {}, "Set size in methods of stack segments (writers only for now)" : {}, "Segments on a communicating stack" : {}, "Modules used" : 0, "Full stack walks" : 0, "Level 2 memo hits" : 0, "Max BitVectorIntSet slots" : -2147483648, "Memory peak" : 93937184, "Memory used" : 48768904, "Memory max" : 3728277504, "Compile time" : 108, "GC time" : 11}
+
+oshajava -noInstrument -profileExt="-8-threads-noinst-4.py" -javaOptions -Xmx4000M -- JGFSparseMatmultBenchSizeC 8
+Results for JGFSparseMatmultBenchSizeC-8-threads-noinst-4.py
+
+{"options" : {"javaArgs" : "", "help" : "false", "java" : "java", "arrayIndexStates" : "false", "objectStates" : "false", "noInstrument" : "true", "profile" : "false", "arrayCacheSize" : "16", "lockCacheSize" : "4", "fudgeExceptionStackTraces" : "true", "traces" : "false", "fail" : "false", "record" : "false", "profileExt" : "-8-threads-noinst-4.py", "create" : "false", "args" : "[]", "quiet" : "false", "d" : "[]", "logs" : "log", "out" : "", "err" : "", "instrumentFullJDK" : "false", "bytecodeDump" : "false", "bytecodeDumpDir" : "log/bytecode-dump", "verify" : "false", "preVerify" : "false", "frames" : "false"}, "threads" : 0, "frequently communicating stacks" : 0, "Premain time" : 12, "Premain to fini time" : 3883, "Instrumentation time" : 0, "Main time" : 3880, "All field reads" : 0, "Communicating field reads" : 0, "Communicating field read slow path" : 0, "All array reads" : 0, "Communicating array reads" : 0, "Communicating array read slow path" : 0, "All acquires" : 0, "Communicating acquires" : 0, "Communicating acquire slow path" : 0, "Array hits" : 0, "Array misses" : 0, "Lock hits" : 0, "Lock misses" : 0, "Distinct stacks created" : 0, "Communicating stack depths" : {}, "Reader stack depths (per comm. pair)" : {}, "Writer stack depths (per comm. pair)" : {}, "Writer stack depth - reader stack depth (per comm. pair)" : {}, "Length in methods of stack segments" : {}, "Set size in methods of stack segments (writers only for now)" : {}, "Segments on a communicating stack" : {}, "Modules used" : 0, "Full stack walks" : 0, "Level 2 memo hits" : 0, "Max BitVectorIntSet slots" : -2147483648, "Memory peak" : 93937184, "Memory used" : 48768904, "Memory max" : 3728277504, "Compile time" : 100, "GC time" : 9}
+
+oshajava -noInstrument -profileExt="-8-threads-noinst-5.py" -javaOptions -Xmx4000M -- JGFSparseMatmultBenchSizeC 8
+Results for JGFSparseMatmultBenchSizeC-8-threads-noinst-5.py
+
+{"options" : {"javaArgs" : "", "help" : "false", "java" : "java", "arrayIndexStates" : "false", "objectStates" : "false", "noInstrument" : "true", "profile" : "false", "arrayCacheSize" : "16", "lockCacheSize" : "4", "fudgeExceptionStackTraces" : "true", "traces" : "false", "fail" : "false", "record" : "false", "profileExt" : "-8-threads-noinst-5.py", "create" : "false", "args" : "[]", "quiet" : "false", "d" : "[]", "logs" : "log", "out" : "", "err" : "", "instrumentFullJDK" : "false", "bytecodeDump" : "false", "bytecodeDumpDir" : "log/bytecode-dump", "verify" : "false", "preVerify" : "false", "frames" : "false"}, "threads" : 0, "frequently communicating stacks" : 0, "Premain time" : 12, "Premain to fini time" : 4047, "Instrumentation time" : 0, "Main time" : 4045, "All field reads" : 0, "Communicating field reads" : 0, "Communicating field read slow path" : 0, "All array reads" : 0, "Communicating array reads" : 0, "Communicating array read slow path" : 0, "All acquires" : 0, "Communicating acquires" : 0, "Communicating acquire slow path" : 0, "Array hits" : 0, "Array misses" : 0, "Lock hits" : 0, "Lock misses" : 0, "Distinct stacks created" : 0, "Communicating stack depths" : {}, "Reader stack depths (per comm. pair)" : {}, "Writer stack depths (per comm. pair)" : {}, "Writer stack depth - reader stack depth (per comm. pair)" : {}, "Length in methods of stack segments" : {}, "Set size in methods of stack segments (writers only for now)" : {}, "Segments on a communicating stack" : {}, "Modules used" : 0, "Full stack walks" : 0, "Level 2 memo hits" : 0, "Max BitVectorIntSet slots" : -2147483648, "Memory peak" : 93937376, "Memory used" : 48768904, "Memory max" : 3728277504, "Compile time" : 110, "GC time" : 19}
+
+oshajava -noInstrument -profileExt="-8-threads-noinst-6.py" -javaOptions -Xmx4000M -- JGFSparseMatmultBenchSizeC 8
+Results for JGFSparseMatmultBenchSizeC-8-threads-noinst-6.py
+
+{"options" : {"javaArgs" : "", "help" : "false", "java" : "java", "arrayIndexStates" : "false", "objectStates" : "false", "noInstrument" : "true", "profile" : "false", "arrayCacheSize" : "16", "lockCacheSize" : "4", "fudgeExceptionStackTraces" : "true", "traces" : "false", "fail" : "false", "record" : "false", "profileExt" : "-8-threads-noinst-6.py", "create" : "false", "args" : "[]", "quiet" : "false", "d" : "[]", "logs" : "log", "out" : "", "err" : "", "instrumentFullJDK" : "false", "bytecodeDump" : "false", "bytecodeDumpDir" : "log/bytecode-dump", "verify" : "false", "preVerify" : "false", "frames" : "false"}, "threads" : 0, "frequently communicating stacks" : 0, "Premain time" : 12, "Premain to fini time" : 3943, "Instrumentation time" : 0, "Main time" : 3941, "All field reads" : 0, "Communicating field reads" : 0, "Communicating field read slow path" : 0, "All array reads" : 0, "Communicating array reads" : 0, "Communicating array read slow path" : 0, "All acquires" : 0, "Communicating acquires" : 0, "Communicating acquire slow path" : 0, "Array hits" : 0, "Array misses" : 0, "Lock hits" : 0, "Lock misses" : 0, "Distinct stacks created" : 0, "Communicating stack depths" : {}, "Reader stack depths (per comm. pair)" : {}, "Writer stack depths (per comm. pair)" : {}, "Writer stack depth - reader stack depth (per comm. pair)" : {}, "Length in methods of stack segments" : {}, "Set size in methods of stack segments (writers only for now)" : {}, "Segments on a communicating stack" : {}, "Modules used" : 0, "Full stack walks" : 0, "Level 2 memo hits" : 0, "Max BitVectorIntSet slots" : -2147483648, "Memory peak" : 93937184, "Memory used" : 48768904, "Memory max" : 3728277504, "Compile time" : 104, "GC time" : 15}
+
+oshajava -noInstrument -profileExt="-8-threads-noinst-7.py" -javaOptions -Xmx4000M -- JGFSparseMatmultBenchSizeC 8
+Results for JGFSparseMatmultBenchSizeC-8-threads-noinst-7.py
+
+{"options" : {"javaArgs" : "", "help" : "false", "java" : "java", "arrayIndexStates" : "false", "objectStates" : "false", "noInstrument" : "true", "profile" : "false", "arrayCacheSize" : "16", "lockCacheSize" : "4", "fudgeExceptionStackTraces" : "true", "traces" : "false", "fail" : "false", "record" : "false", "profileExt" : "-8-threads-noinst-7.py", "create" : "false", "args" : "[]", "quiet" : "false", "d" : "[]", "logs" : "log", "out" : "", "err" : "", "instrumentFullJDK" : "false", "bytecodeDump" : "false", "bytecodeDumpDir" : "log/bytecode-dump", "verify" : "false", "preVerify" : "false", "frames" : "false"}, "threads" : 0, "frequently communicating stacks" : 0, "Premain time" : 12, "Premain to fini time" : 3951, "Instrumentation time" : 0, "Main time" : 3948, "All field reads" : 0, "Communicating field reads" : 0, "Communicating field read slow path" : 0, "All array reads" : 0, "Communicating array reads" : 0, "Communicating array read slow path" : 0, "All acquires" : 0, "Communicating acquires" : 0, "Communicating acquire slow path" : 0, "Array hits" : 0, "Array misses" : 0, "Lock hits" : 0, "Lock misses" : 0, "Distinct stacks created" : 0, "Communicating stack depths" : {}, "Reader stack depths (per comm. pair)" : {}, "Writer stack depths (per comm. pair)" : {}, "Writer stack depth - reader stack depth (per comm. pair)" : {}, "Length in methods of stack segments" : {}, "Set size in methods of stack segments (writers only for now)" : {}, "Segments on a communicating stack" : {}, "Modules used" : 0, "Full stack walks" : 0, "Level 2 memo hits" : 0, "Max BitVectorIntSet slots" : -2147483648, "Memory peak" : 93937248, "Memory used" : 48768904, "Memory max" : 3728277504, "Compile time" : 106, "GC time" : 11}
+
+oshajava -noInstrument -profileExt="-8-threads-noinst-8.py" -javaOptions -Xmx4000M -- JGFSparseMatmultBenchSizeC 8
+Results for JGFSparseMatmultBenchSizeC-8-threads-noinst-8.py
+
+{"options" : {"javaArgs" : "", "help" : "false", "java" : "java", "arrayIndexStates" : "false", "objectStates" : "false", "noInstrument" : "true", "profile" : "false", "arrayCacheSize" : "16", "lockCacheSize" : "4", "fudgeExceptionStackTraces" : "true", "traces" : "false", "fail" : "false", "record" : "false", "profileExt" : "-8-threads-noinst-8.py", "create" : "false", "args" : "[]", "quiet" : "false", "d" : "[]", "logs" : "log", "out" : "", "err" : "", "instrumentFullJDK" : "false", "bytecodeDump" : "false", "bytecodeDumpDir" : "log/bytecode-dump", "verify" : "false", "preVerify" : "false", "frames" : "false"}, "threads" : 0, "frequently communicating stacks" : 0, "Premain time" : 12, "Premain to fini time" : 4047, "Instrumentation time" : 0, "Main time" : 4043, "All field reads" : 0, "Communicating field reads" : 0, "Communicating field read slow path" : 0, "All array reads" : 0, "Communicating array reads" : 0, "Communicating array read slow path" : 0, "All acquires" : 0, "Communicating acquires" : 0, "Communicating acquire slow path" : 0, "Array hits" : 0, "Array misses" : 0, "Lock hits" : 0, "Lock misses" : 0, "Distinct stacks created" : 0, "Communicating stack depths" : {}, "Reader stack depths (per comm. pair)" : {}, "Writer stack depths (per comm. pair)" : {}, "Writer stack depth - reader stack depth (per comm. pair)" : {}, "Length in methods of stack segments" : {}, "Set size in methods of stack segments (writers only for now)" : {}, "Segments on a communicating stack" : {}, "Modules used" : 0, "Full stack walks" : 0, "Level 2 memo hits" : 0, "Max BitVectorIntSet slots" : -2147483648, "Memory peak" : 93953544, "Memory used" : 48768904, "Memory max" : 3728277504, "Compile time" : 110, "GC time" : 10}
+
+oshajava -noInstrument -profileExt="-8-threads-noinst-9.py" -javaOptions -Xmx4000M -- JGFSparseMatmultBenchSizeC 8
+Results for JGFSparseMatmultBenchSizeC-8-threads-noinst-9.py
+
+{"options" : {"javaArgs" : "", "help" : "false", "java" : "java", "arrayIndexStates" : "false", "objectStates" : "false", "noInstrument" : "true", "profile" : "false", "arrayCacheSize" : "16", "lockCacheSize" : "4", "fudgeExceptionStackTraces" : "true", "traces" : "false", "fail" : "false", "record" : "false", "profileExt" : "-8-threads-noinst-9.py", "create" : "false", "args" : "[]", "quiet" : "false", "d" : "[]", "logs" : "log", "out" : "", "err" : "", "instrumentFullJDK" : "false", "bytecodeDump" : "false", "bytecodeDumpDir" : "log/bytecode-dump", "verify" : "false", "preVerify" : "false", "frames" : "false"}, "threads" : 0, "frequently communicating stacks" : 0, "Premain time" : 12, "Premain to fini time" : 3993, "Instrumentation time" : 0, "Main time" : 3990, "All field reads" : 0, "Communicating field reads" : 0, "Communicating field read slow path" : 0, "All array reads" : 0, "Communicating array reads" : 0, "Communicating array read slow path" : 0, "All acquires" : 0, "Communicating acquires" : 0, "Communicating acquire slow path" : 0, "Array hits" : 0, "Array misses" : 0, "Lock hits" : 0, "Lock misses" : 0, "Distinct stacks created" : 0, "Communicating stack depths" : {}, "Reader stack depths (per comm. pair)" : {}, "Writer stack depths (per comm. pair)" : {}, "Writer stack depth - reader stack depth (per comm. pair)" : {}, "Length in methods of stack segments" : {}, "Set size in methods of stack segments (writers only for now)" : {}, "Segments on a communicating stack" : {}, "Modules used" : 0, "Full stack walks" : 0, "Level 2 memo hits" : 0, "Max BitVectorIntSet slots" : -2147483648, "Memory peak" : 93937440, "Memory used" : 48768904, "Memory max" : 3728277504, "Compile time" : 100, "GC time" : 11}
+
+oshajava  -profileExt="-8-threads-fast-warmup.py" -javaOptions -Xmx4000M -- JGFSparseMatmultBenchSizeC 8
+Results for JGFSparseMatmultBenchSizeC-8-threads-fast-warmup.py
+
+{"options" : {"javaArgs" : "", "help" : "false", "java" : "java", "arrayIndexStates" : "false", "objectStates" : "false", "noInstrument" : "false", "profile" : "false", "arrayCacheSize" : "16", "lockCacheSize" : "4", "fudgeExceptionStackTraces" : "true", "traces" : "false", "fail" : "false", "record" : "false", "profileExt" : "-8-threads-fast-warmup.py", "create" : "false", "args" : "[]", "quiet" : "false", "d" : "[]", "logs" : "log", "out" : "", "err" : "", "instrumentFullJDK" : "false", "bytecodeDump" : "false", "bytecodeDumpDir" : "log/bytecode-dump", "verify" : "false", "preVerify" : "false", "frames" : "false"}, "threads" : 8, "frequently communicating stacks" : 10, "Premain time" : 19, "Premain to fini time" : 102022, "Instrumentation time" : 83, "Main time" : 102020, "Max comm. methods per module" : -2147483648, "Max interface methods per module" : -2147483648, "Max total methods per module" : -2147483648, "All field reads" : 0, "Communicating field reads" : 0, "Communicating field read slow path" : 0, "All array reads" : 0, "Communicating array reads" : 0, "Communicating array read slow path" : 0, "All acquires" : 6, "Communicating acquires" : 0, "Communicating acquire slow path" : 0, "Max BitVectorIntSet slots" : -2147483648, "Array hits" : 0, "Array misses" : 0, "Lock hits" : 0, "Lock misses" : 0, "States" : 0, "Distinct stacks created" : 0, "Communicating stack depths" : {}, "Reader stack depths (per comm. pair)" : {}, "Writer stack depths (per comm. pair)" : {}, "Writer stack depth - reader stack depth (per comm. pair)" : {}, "Length in methods of stack segments" : {}, "Set size in methods of stack segments (writers only for now)" : {}, "Segments on a communicating stack" : {}, "Modules used" : 0, "Full stack walks" : 0, "Level 2 memo hits" : 0, "Memory peak" : 97811304, "Memory used" : 79113192, "Memory max" : 3728277504, "Compile time" : 297, "GC time" : 38}
+
+oshajava  -profileExt="-8-threads-fast-0.py" -javaOptions -Xmx4000M -- JGFSparseMatmultBenchSizeC 8
+Results for JGFSparseMatmultBenchSizeC-8-threads-fast-0.py
+
+{"options" : {"javaArgs" : "", "help" : "false", "java" : "java", "arrayIndexStates" : "false", "objectStates" : "false", "noInstrument" : "false", "profile" : "false", "arrayCacheSize" : "16", "lockCacheSize" : "4", "fudgeExceptionStackTraces" : "true", "traces" : "false", "fail" : "false", "record" : "false", "profileExt" : "-8-threads-fast-0.py", "create" : "false", "args" : "[]", "quiet" : "false", "d" : "[]", "logs" : "log", "out" : "", "err" : "", "instrumentFullJDK" : "false", "bytecodeDump" : "false", "bytecodeDumpDir" : "log/bytecode-dump", "verify" : "false", "preVerify" : "false", "frames" : "false"}, "threads" : 8, "frequently communicating stacks" : 10, "Premain time" : 19, "Premain to fini time" : 100478, "Instrumentation time" : 107, "Main time" : 100475, "Max comm. methods per module" : -2147483648, "Max interface methods per module" : -2147483648, "Max total methods per module" : -2147483648, "All field reads" : 0, "Communicating field reads" : 0, "Communicating field read slow path" : 0, "All array reads" : 0, "Communicating array reads" : 0, "Communicating array read slow path" : 0, "All acquires" : 6, "Communicating acquires" : 0, "Communicating acquire slow path" : 0, "Max BitVectorIntSet slots" : -2147483648, "Array hits" : 0, "Array misses" : 0, "Lock hits" : 0, "Lock misses" : 0, "States" : 0, "Distinct stacks created" : 0, "Communicating stack depths" : {}, "Reader stack depths (per comm. pair)" : {}, "Writer stack depths (per comm. pair)" : {}, "Writer stack depth - reader stack depth (per comm. pair)" : {}, "Length in methods of stack segments" : {}, "Set size in methods of stack segments (writers only for now)" : {}, "Segments on a communicating stack" : {}, "Modules used" : 0, "Full stack walks" : 0, "Level 2 memo hits" : 0, "Memory peak" : 97753488, "Memory used" : 59276160, "Memory max" : 3728277504, "Compile time" : 392, "GC time" : 49}
+
+oshajava  -profileExt="-8-threads-fast-1.py" -javaOptions -Xmx4000M -- JGFSparseMatmultBenchSizeC 8
+Results for JGFSparseMatmultBenchSizeC-8-threads-fast-1.py
+
+{"options" : {"javaArgs" : "", "help" : "false", "java" : "java", "arrayIndexStates" : "false", "objectStates" : "false", "noInstrument" : "false", "profile" : "false", "arrayCacheSize" : "16", "lockCacheSize" : "4", "fudgeExceptionStackTraces" : "true", "traces" : "false", "fail" : "false", "record" : "false", "profileExt" : "-8-threads-fast-1.py", "create" : "false", "args" : "[]", "quiet" : "false", "d" : "[]", "logs" : "log", "out" : "", "err" : "", "instrumentFullJDK" : "false", "bytecodeDump" : "false", "bytecodeDumpDir" : "log/bytecode-dump", "verify" : "false", "preVerify" : "false", "frames" : "false"}, "threads" : 8, "frequently communicating stacks" : 10, "Premain time" : 19, "Premain to fini time" : 100796, "Instrumentation time" : 91, "Main time" : 100794, "Max comm. methods per module" : -2147483648, "Max interface methods per module" : -2147483648, "Max total methods per module" : -2147483648, "All field reads" : 0, "Communicating field reads" : 0, "Communicating field read slow path" : 0, "All array reads" : 0, "Communicating array reads" : 0, "Communicating array read slow path" : 0, "All acquires" : 6, "Communicating acquires" : 0, "Communicating acquire slow path" : 0, "Max BitVectorIntSet slots" : -2147483648, "Array hits" : 0, "Array misses" : 0, "Lock hits" : 0, "Lock misses" : 0, "States" : 0, "Distinct stacks created" : 0, "Communicating stack depths" : {}, "Reader stack depths (per comm. pair)" : {}, "Writer stack depths (per comm. pair)" : {}, "Writer stack depth - reader stack depth (per comm. pair)" : {}, "Length in methods of stack segments" : {}, "Set size in methods of stack segments (writers only for now)" : {}, "Segments on a communicating stack" : {}, "Modules used" : 0, "Full stack walks" : 0, "Level 2 memo hits" : 0, "Memory peak" : 97702688, "Memory used" : 78898952, "Memory max" : 3728277504, "Compile time" : 469, "GC time" : 39}
+
+oshajava  -profileExt="-8-threads-fast-2.py" -javaOptions -Xmx4000M -- JGFSparseMatmultBenchSizeC 8
+Results for JGFSparseMatmultBenchSizeC-8-threads-fast-2.py
+
+{"options" : {"javaArgs" : "", "help" : "false", "java" : "java", "arrayIndexStates" : "false", "objectStates" : "false", "noInstrument" : "false", "profile" : "false", "arrayCacheSize" : "16", "lockCacheSize" : "4", "fudgeExceptionStackTraces" : "true", "traces" : "false", "fail" : "false", "record" : "false", "profileExt" : "-8-threads-fast-2.py", "create" : "false", "args" : "[]", "quiet" : "false", "d" : "[]", "logs" : "log", "out" : "", "err" : "", "instrumentFullJDK" : "false", "bytecodeDump" : "false", "bytecodeDumpDir" : "log/bytecode-dump", "verify" : "false", "preVerify" : "false", "frames" : "false"}, "threads" : 8, "frequently communicating stacks" : 10, "Premain time" : 20, "Premain to fini time" : 101842, "Instrumentation time" : 85, "Main time" : 101840, "Max comm. methods per module" : -2147483648, "Max interface methods per module" : -2147483648, "Max total methods per module" : -2147483648, "All field reads" : 0, "Communicating field reads" : 0, "Communicating field read slow path" : 0, "All array reads" : 0, "Communicating array reads" : 0, "Communicating array read slow path" : 0, "All acquires" : 6, "Communicating acquires" : 0, "Communicating acquire slow path" : 0, "Max BitVectorIntSet slots" : -2147483648, "Array hits" : 0, "Array misses" : 0, "Lock hits" : 0, "Lock misses" : 0, "States" : 0, "Distinct stacks created" : 0, "Communicating stack depths" : {}, "Reader stack depths (per comm. pair)" : {}, "Writer stack depths (per comm. pair)" : {}, "Writer stack depth - reader stack depth (per comm. pair)" : {}, "Length in methods of stack segments" : {}, "Set size in methods of stack segments (writers only for now)" : {}, "Segments on a communicating stack" : {}, "Modules used" : 0, "Full stack walks" : 0, "Level 2 memo hits" : 0, "Memory peak" : 97802472, "Memory used" : 69030120, "Memory max" : 3728277504, "Compile time" : 417, "GC time" : 38}
+
+oshajava  -profileExt="-8-threads-fast-3.py" -javaOptions -Xmx4000M -- JGFSparseMatmultBenchSizeC 8
+Results for JGFSparseMatmultBenchSizeC-8-threads-fast-3.py
+
+{"options" : {"javaArgs" : "", "help" : "false", "java" : "java", "arrayIndexStates" : "false", "objectStates" : "false", "noInstrument" : "false", "profile" : "false", "arrayCacheSize" : "16", "lockCacheSize" : "4", "fudgeExceptionStackTraces" : "true", "traces" : "false", "fail" : "false", "record" : "false", "profileExt" : "-8-threads-fast-3.py", "create" : "false", "args" : "[]", "quiet" : "false", "d" : "[]", "logs" : "log", "out" : "", "err" : "", "instrumentFullJDK" : "false", "bytecodeDump" : "false", "bytecodeDumpDir" : "log/bytecode-dump", "verify" : "false", "preVerify" : "false", "frames" : "false"}, "threads" : 8, "frequently communicating stacks" : 10, "Premain time" : 20, "Premain to fini time" : 99181, "Instrumentation time" : 87, "Main time" : 99179, "Max comm. methods per module" : -2147483648, "Max interface methods per module" : -2147483648, "Max total methods per module" : -2147483648, "All field reads" : 0, "Communicating field reads" : 0, "Communicating field read slow path" : 0, "All array reads" : 0, "Communicating array reads" : 0, "Communicating array read slow path" : 0, "All acquires" : 6, "Communicating acquires" : 0, "Communicating acquire slow path" : 0, "Max BitVectorIntSet slots" : -2147483648, "Array hits" : 0, "Array misses" : 0, "Lock hits" : 0, "Lock misses" : 0, "States" : 0, "Distinct stacks created" : 0, "Communicating stack depths" : {}, "Reader stack depths (per comm. pair)" : {}, "Writer stack depths (per comm. pair)" : {}, "Writer stack depth - reader stack depth (per comm. pair)" : {}, "Length in methods of stack segments" : {}, "Set size in methods of stack segments (writers only for now)" : {}, "Segments on a communicating stack" : {}, "Modules used" : 0, "Full stack walks" : 0, "Level 2 memo hits" : 0, "Memory peak" : 97723144, "Memory used" : 59271792, "Memory max" : 3728277504, "Compile time" : 315, "GC time" : 29}
+
+oshajava  -profileExt="-8-threads-fast-4.py" -javaOptions -Xmx4000M -- JGFSparseMatmultBenchSizeC 8
+Results for JGFSparseMatmultBenchSizeC-8-threads-fast-4.py
+
+{"options" : {"javaArgs" : "", "help" : "false", "java" : "java", "arrayIndexStates" : "false", "objectStates" : "false", "noInstrument" : "false", "profile" : "false", "arrayCacheSize" : "16", "lockCacheSize" : "4", "fudgeExceptionStackTraces" : "true", "traces" : "false", "fail" : "false", "record" : "false", "profileExt" : "-8-threads-fast-4.py", "create" : "false", "args" : "[]", "quiet" : "false", "d" : "[]", "logs" : "log", "out" : "", "err" : "", "instrumentFullJDK" : "false", "bytecodeDump" : "false", "bytecodeDumpDir" : "log/bytecode-dump", "verify" : "false", "preVerify" : "false", "frames" : "false"}, "threads" : 8, "frequently communicating stacks" : 10, "Premain time" : 19, "Premain to fini time" : 98646, "Instrumentation time" : 82, "Main time" : 98643, "Max comm. methods per module" : -2147483648, "Max interface methods per module" : -2147483648, "Max total methods per module" : -2147483648, "All field reads" : 0, "Communicating field reads" : 0, "Communicating field read slow path" : 0, "All array reads" : 0, "Communicating array reads" : 0, "Communicating array read slow path" : 0, "All acquires" : 6, "Communicating acquires" : 0, "Communicating acquire slow path" : 0, "Max BitVectorIntSet slots" : -2147483648, "Array hits" : 0, "Array misses" : 0, "Lock hits" : 0, "Lock misses" : 0, "States" : 0, "Distinct stacks created" : 0, "Communicating stack depths" : {}, "Reader stack depths (per comm. pair)" : {}, "Writer stack depths (per comm. pair)" : {}, "Writer stack depth - reader stack depth (per comm. pair)" : {}, "Length in methods of stack segments" : {}, "Set size in methods of stack segments (writers only for now)" : {}, "Segments on a communicating stack" : {}, "Modules used" : 0, "Full stack walks" : 0, "Level 2 memo hits" : 0, "Memory peak" : 97770520, "Memory used" : 59271800, "Memory max" : 3728277504, "Compile time" : 439, "GC time" : 31}
+
+oshajava  -profileExt="-8-threads-fast-5.py" -javaOptions -Xmx4000M -- JGFSparseMatmultBenchSizeC 8
+Results for JGFSparseMatmultBenchSizeC-8-threads-fast-5.py
+
+{"options" : {"javaArgs" : "", "help" : "false", "java" : "java", "arrayIndexStates" : "false", "objectStates" : "false", "noInstrument" : "false", "profile" : "false", "arrayCacheSize" : "16", "lockCacheSize" : "4", "fudgeExceptionStackTraces" : "true", "traces" : "false", "fail" : "false", "record" : "false", "profileExt" : "-8-threads-fast-5.py", "create" : "false", "args" : "[]", "quiet" : "false", "d" : "[]", "logs" : "log", "out" : "", "err" : "", "instrumentFullJDK" : "false", "bytecodeDump" : "false", "bytecodeDumpDir" : "log/bytecode-dump", "verify" : "false", "preVerify" : "false", "frames" : "false"}, "threads" : 8, "frequently communicating stacks" : 10, "Premain time" : 20, "Premain to fini time" : 63540, "Instrumentation time" : 104, "Main time" : 63538, "Max comm. methods per module" : -2147483648, "Max interface methods per module" : -2147483648, "Max total methods per module" : -2147483648, "All field reads" : 0, "Communicating field reads" : 0, "Communicating field read slow path" : 0, "All array reads" : 0, "Communicating array reads" : 0, "Communicating array read slow path" : 0, "All acquires" : 6, "Communicating acquires" : 0, "Communicating acquire slow path" : 0, "Max BitVectorIntSet slots" : -2147483648, "Array hits" : 0, "Array misses" : 0, "Lock hits" : 0, "Lock misses" : 0, "States" : 0, "Distinct stacks created" : 0, "Communicating stack depths" : {}, "Reader stack depths (per comm. pair)" : {}, "Writer stack depths (per comm. pair)" : {}, "Writer stack depth - reader stack depth (per comm. pair)" : {}, "Length in methods of stack segments" : {}, "Set size in methods of stack segments (writers only for now)" : {}, "Segments on a communicating stack" : {}, "Modules used" : 0, "Full stack walks" : 0, "Level 2 memo hits" : 0, "Memory peak" : 97757272, "Memory used" : 59271688, "Memory max" : 3728277504, "Compile time" : 385, "GC time" : 51}
+
+oshajava  -profileExt="-8-threads-fast-6.py" -javaOptions -Xmx4000M -- JGFSparseMatmultBenchSizeC 8
+Results for JGFSparseMatmultBenchSizeC-8-threads-fast-6.py
+
+{"options" : {"javaArgs" : "", "help" : "false", "java" : "java", "arrayIndexStates" : "false", "objectStates" : "false", "noInstrument" : "false", "profile" : "false", "arrayCacheSize" : "16", "lockCacheSize" : "4", "fudgeExceptionStackTraces" : "true", "traces" : "false", "fail" : "false", "record" : "false", "profileExt" : "-8-threads-fast-6.py", "create" : "false", "args" : "[]", "quiet" : "false", "d" : "[]", "logs" : "log", "out" : "", "err" : "", "instrumentFullJDK" : "false", "bytecodeDump" : "false", "bytecodeDumpDir" : "log/bytecode-dump", "verify" : "false", "preVerify" : "false", "frames" : "false"}, "threads" : 8, "frequently communicating stacks" : 10, "Premain time" : 19, "Premain to fini time" : 99080, "Instrumentation time" : 81, "Main time" : 99078, "Max comm. methods per module" : -2147483648, "Max interface methods per module" : -2147483648, "Max total methods per module" : -2147483648, "All field reads" : 0, "Communicating field reads" : 0, "Communicating field read slow path" : 0, "All array reads" : 0, "Communicating array reads" : 0, "Communicating array read slow path" : 0, "All acquires" : 6, "Communicating acquires" : 0, "Communicating acquire slow path" : 0, "Max BitVectorIntSet slots" : -2147483648, "Array hits" : 0, "Array misses" : 0, "Lock hits" : 0, "Lock misses" : 0, "States" : 0, "Distinct stacks created" : 0, "Communicating stack depths" : {}, "Reader stack depths (per comm. pair)" : {}, "Writer stack depths (per comm. pair)" : {}, "Writer stack depth - reader stack depth (per comm. pair)" : {}, "Length in methods of stack segments" : {}, "Set size in methods of stack segments (writers only for now)" : {}, "Segments on a communicating stack" : {}, "Modules used" : 0, "Full stack walks" : 0, "Level 2 memo hits" : 0, "Memory peak" : 97840048, "Memory used" : 79084800, "Memory max" : 3728277504, "Compile time" : 447, "GC time" : 35}
+
+oshajava  -profileExt="-8-threads-fast-7.py" -javaOptions -Xmx4000M -- JGFSparseMatmultBenchSizeC 8
+Results for JGFSparseMatmultBenchSizeC-8-threads-fast-7.py
+
+{"options" : {"javaArgs" : "", "help" : "false", "java" : "java", "arrayIndexStates" : "false", "objectStates" : "false", "noInstrument" : "false", "profile" : "false", "arrayCacheSize" : "16", "lockCacheSize" : "4", "fudgeExceptionStackTraces" : "true", "traces" : "false", "fail" : "false", "record" : "false", "profileExt" : "-8-threads-fast-7.py", "create" : "false", "args" : "[]", "quiet" : "false", "d" : "[]", "logs" : "log", "out" : "", "err" : "", "instrumentFullJDK" : "false", "bytecodeDump" : "false", "bytecodeDumpDir" : "log/bytecode-dump", "verify" : "false", "preVerify" : "false", "frames" : "false"}, "threads" : 8, "frequently communicating stacks" : 10, "Premain time" : 19, "Premain to fini time" : 102919, "Instrumentation time" : 83, "Main time" : 102918, "Max comm. methods per module" : -2147483648, "Max interface methods per module" : -2147483648, "Max total methods per module" : -2147483648, "All field reads" : 0, "Communicating field reads" : 0, "Communicating field read slow path" : 0, "All array reads" : 0, "Communicating array reads" : 0, "Communicating array read slow path" : 0, "All acquires" : 6, "Communicating acquires" : 0, "Communicating acquire slow path" : 0, "Max BitVectorIntSet slots" : -2147483648, "Array hits" : 0, "Array misses" : 0, "Lock hits" : 0, "Lock misses" : 0, "States" : 0, "Distinct stacks created" : 0, "Communicating stack depths" : {}, "Reader stack depths (per comm. pair)" : {}, "Writer stack depths (per comm. pair)" : {}, "Writer stack depth - reader stack depth (per comm. pair)" : {}, "Length in methods of stack segments" : {}, "Set size in methods of stack segments (writers only for now)" : {}, "Segments on a communicating stack" : {}, "Modules used" : 0, "Full stack walks" : 0, "Level 2 memo hits" : 0, "Memory peak" : 97738232, "Memory used" : 79042360, "Memory max" : 3728277504, "Compile time" : 532, "GC time" : 31}
+
+oshajava  -profileExt="-8-threads-fast-8.py" -javaOptions -Xmx4000M -- JGFSparseMatmultBenchSizeC 8
+Results for JGFSparseMatmultBenchSizeC-8-threads-fast-8.py
+
+{"options" : {"javaArgs" : "", "help" : "false", "java" : "java", "arrayIndexStates" : "false", "objectStates" : "false", "noInstrument" : "false", "profile" : "false", "arrayCacheSize" : "16", "lockCacheSize" : "4", "fudgeExceptionStackTraces" : "true", "traces" : "false", "fail" : "false", "record" : "false", "profileExt" : "-8-threads-fast-8.py", "create" : "false", "args" : "[]", "quiet" : "false", "d" : "[]", "logs" : "log", "out" : "", "err" : "", "instrumentFullJDK" : "false", "bytecodeDump" : "false", "bytecodeDumpDir" : "log/bytecode-dump", "verify" : "false", "preVerify" : "false", "frames" : "false"}, "threads" : 8, "frequently communicating stacks" : 10, "Premain time" : 19, "Premain to fini time" : 102025, "Instrumentation time" : 83, "Main time" : 102023, "Max comm. methods per module" : -2147483648, "Max interface methods per module" : -2147483648, "Max total methods per module" : -2147483648, "All field reads" : 0, "Communicating field reads" : 0, "Communicating field read slow path" : 0, "All array reads" : 0, "Communicating array reads" : 0, "Communicating array read slow path" : 0, "All acquires" : 6, "Communicating acquires" : 0, "Communicating acquire slow path" : 0, "Max BitVectorIntSet slots" : -2147483648, "Array hits" : 0, "Array misses" : 0, "Lock hits" : 0, "Lock misses" : 0, "States" : 0, "Distinct stacks created" : 0, "Communicating stack depths" : {}, "Reader stack depths (per comm. pair)" : {}, "Writer stack depths (per comm. pair)" : {}, "Writer stack depth - reader stack depth (per comm. pair)" : {}, "Length in methods of stack segments" : {}, "Set size in methods of stack segments (writers only for now)" : {}, "Segments on a communicating stack" : {}, "Modules used" : 0, "Full stack walks" : 0, "Level 2 memo hits" : 0, "Memory peak" : 97874440, "Memory used" : 69087432, "Memory max" : 3728277504, "Compile time" : 435, "GC time" : 37}
+
+oshajava  -profileExt="-8-threads-fast-9.py" -javaOptions -Xmx4000M -- JGFSparseMatmultBenchSizeC 8
+Results for JGFSparseMatmultBenchSizeC-8-threads-fast-9.py
+
+{"options" : {"javaArgs" : "", "help" : "false", "java" : "java", "arrayIndexStates" : "false", "objectStates" : "false", "noInstrument" : "false", "profile" : "false", "arrayCacheSize" : "16", "lockCacheSize" : "4", "fudgeExceptionStackTraces" : "true", "traces" : "false", "fail" : "false", "record" : "false", "profileExt" : "-8-threads-fast-9.py", "create" : "false", "args" : "[]", "quiet" : "false", "d" : "[]", "logs" : "log", "out" : "", "err" : "", "instrumentFullJDK" : "false", "bytecodeDump" : "false", "bytecodeDumpDir" : "log/bytecode-dump", "verify" : "false", "preVerify" : "false", "frames" : "false"}, "threads" : 8, "frequently communicating stacks" : 10, "Premain time" : 20, "Premain to fini time" : 96612, "Instrumentation time" : 91, "Main time" : 96610, "Max comm. methods per module" : -2147483648, "Max interface methods per module" : -2147483648, "Max total methods per module" : -2147483648, "All field reads" : 0, "Communicating field reads" : 0, "Communicating field read slow path" : 0, "All array reads" : 0, "Communicating array reads" : 0, "Communicating array read slow path" : 0, "All acquires" : 6, "Communicating acquires" : 0, "Communicating acquire slow path" : 0, "Max BitVectorIntSet slots" : -2147483648, "Array hits" : 0, "Array misses" : 0, "Lock hits" : 0, "Lock misses" : 0, "States" : 0, "Distinct stacks created" : 0, "Communicating stack depths" : {}, "Reader stack depths (per comm. pair)" : {}, "Writer stack depths (per comm. pair)" : {}, "Writer stack depth - reader stack depth (per comm. pair)" : {}, "Length in methods of stack segments" : {}, "Set size in methods of stack segments (writers only for now)" : {}, "Segments on a communicating stack" : {}, "Modules used" : 0, "Full stack walks" : 0, "Level 2 memo hits" : 0, "Memory peak" : 97779160, "Memory used" : 59271792, "Memory max" : 3728277504, "Compile time" : 448, "GC time" : 29}
+
+oshajava -record -profile -profileExt="-8-threads-prof-0.py" -javaOptions -Xmx4000M -- JGFSparseMatmultBenchSizeC 8
+Results for JGFSparseMatmultBenchSizeC-8-threads-prof-0.py
+
+{"options" : {"javaArgs" : "", "help" : "false", "java" : "java", "arrayIndexStates" : "false", "objectStates" : "false", "noInstrument" : "false", "profile" : "true", "arrayCacheSize" : "16", "lockCacheSize" : "4", "fudgeExceptionStackTraces" : "true", "traces" : "false", "fail" : "false", "record" : "true", "profileExt" : "-8-threads-prof-0.py", "create" : "false", "args" : "[]", "quiet" : "false", "d" : "[]", "logs" : "log", "out" : "", "err" : "", "instrumentFullJDK" : "false", "bytecodeDump" : "false", "bytecodeDumpDir" : "log/bytecode-dump", "verify" : "false", "preVerify" : "false", "frames" : "false"}, "threads" : 8, "frequently communicating stacks" : 10, "Premain time" : 20, "Premain to fini time" : 2273572, "Instrumentation time" : 117, "Main time" : 2273570, "Max comm. methods per module" : -2147483648, "Max interface methods per module" : -2147483648, "Max total methods per module" : -2147483648, "All field reads" : 3682504328, "Communicating field reads" : 3062306807, "Communicating field read slow path" : 15, "All array reads" : 3172495509, "Communicating array reads" : 2552015134, "Communicating array read slow path" : 136, "All acquires" : 6, "Communicating acquires" : 0, "Communicating acquire slow path" : 0, "Max BitVectorIntSet slots" : 1, "Array hits" : 3675492335, "Array misses" : 25003280, "Lock hits" : 11, "Lock misses" : 1, "States" : 23, "Distinct stacks created" : 13, "Communicating stack depths" : {1 : 128, 2 : 14}, "Reader stack depths (per comm. pair)" : {1 : 64, 2 : 7}, "Writer stack depths (per comm. pair)" : {1 : 64, 2 : 7}, "Writer stack depth - reader stack depth (per comm. pair)" : {0 : 57, 1 : 14}, "Length in methods of stack segments" : {1 : 128, 2 : 14}, "Set size in methods of stack segments (writers only for now)" : {1 : 71, 2 : 7}, "Segments on a communicating stack" : {1 : 71}, "Modules used" : 1, "Full stack walks" : 71, "Level 2 memo hits" : 151, "Total comm nodes in used specs" : 4, "Total comm edges in used specs" : 7, "Total interface nodes in used specs" : 4, "Total interface edges in used specs" : 0, "Total comm nodes in run" : 3, "Total comm edges in run" : 4, "Total interface nodes in run" : 0, "Total interface edges in run" : 0, "Memory peak" : 97782952, "Memory used" : 79397144, "Memory max" : 3728277504, "Compile time" : 307, "GC time" : 74}
+
