@@ -47,6 +47,7 @@ canvas = area.T(x_coord = category_coord.T(sd, 0),
                 x_axis=axis.X(label="Benchmarks", format="/a90%s"),
                 y_axis=axis.Y(label="OshaJava Memory Overhead (x)", tic_interval=ystep),
                 y_grid_interval=ystep,
+                y_range=(0,None),
                 legend=None)
 
 canvas.add_plot(bar_plot.T(label="mem", data=sd))
