@@ -311,6 +311,7 @@ public class SpecProcessor extends AbstractProcessor implements TaskListener {
         	} else {
         		module = getModule(pkgName + modName);
         	}
+        	module.totalAnnotations++;
         } else {
             // Default membership.
             module = getModule(pkgName + ModuleSpec.DEFAULT_NAME);
@@ -360,12 +361,14 @@ public class SpecProcessor extends AbstractProcessor implements TaskListener {
         if (readerAnn != null) {
             for (String groupId : readerAnn.value()) {
                 module.addReader(groupId, sig);
+                module.totalAnnotations++;
             }
             nonEmptyGroups = readerAnn.value() != null && readerAnn.value().length > 0;
         }
         if (writerAnn != null) {
             for (String groupId : writerAnn.value()) {
                 module.addWriter(groupId, sig);
+                module.totalAnnotations++;
             }
             nonEmptyGroups = nonEmptyGroups || (writerAnn.value() != null && writerAnn.value().length > 0);
         }
@@ -373,12 +376,18 @@ public class SpecProcessor extends AbstractProcessor implements TaskListener {
         // Non-comm
         if (((writerAnn != null || readerAnn != null) && !nonEmptyGroups) || nonCommAnn != null) {
         	module.addNonComm(sig);
+            module.totalAnnotations++;
         }
         
         // Inlining (default).
         if (readerAnn == null && writerAnn == null && nonCommAnn == null) {
             module.inlineMethod(sig);
             changed.add(module);
+        }
+        
+        // Count inline annotations.
+        if (inlineAnn != null) {
+            module.totalAnnotations++;
         }
     }
     
@@ -389,6 +398,8 @@ public class SpecProcessor extends AbstractProcessor implements TaskListener {
         if (ann == null) {
             return;
         }
+        
+        mod.totalAnnotations++;
         
         if (ann instanceof Group) {
             Group groupAnn = (Group)ann;

@@ -12,6 +12,7 @@ import java.util.Vector;
 import oshajava.util.ColdStorage;
 import oshajava.util.intset.BitVectorIntSet;
 import oshajava.support.acme.util.Util;
+import oshajava.util.count.DistributionCounter;
 
 public class ModuleSpecBuilder implements Serializable {
 	
@@ -26,6 +27,9 @@ public class ModuleSpecBuilder implements Serializable {
 	protected Vector<String> inlinedMethods = new Vector<String>();
 	protected Vector<GroupMembership> memberships = new Vector<GroupMembership>();
 	protected Vector<String> nonCommMethods = new Vector<String>();
+	
+	// For conciseness measurement.
+	protected int totalAnnotations = 0;
 	
 	public ModuleSpecBuilder(String qualifiedName, URI uri) {
 		this.qualifiedName = qualifiedName;

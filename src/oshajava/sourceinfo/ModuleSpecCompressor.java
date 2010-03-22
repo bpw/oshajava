@@ -21,6 +21,8 @@ public class ModuleSpecCompressor {
 	    DistributionCounter inlinedMethods = new DistributionCounter("Inlined methods");
 	    DistributionCounter communicationGroups = new DistributionCounter("Communication groups");
 	    DistributionCounter interfaceGroups = new DistributionCounter("Interface groups");
+	    DistributionCounter memberships = new DistributionCounter("Total group memberships");
+	    DistributionCounter totalAnnotations = new DistributionCounter("Source annotations");
 	    
 		for (final String s : args) {
 			if (!s.endsWith(ModuleSpecBuilder.EXT)) {
@@ -43,9 +45,11 @@ public class ModuleSpecCompressor {
 			        else
 			            cg++;
 			    }
-			    
 			    communicationGroups.add(cg);
 			    interfaceGroups.add(ig);
+			    
+			    memberships.add(msb.memberships.size());
+			    totalAnnotations.add(msb.totalAnnotations);
 			}
 
 			System.out.println("Compressing " + msb.getName());
@@ -61,6 +65,8 @@ public class ModuleSpecCompressor {
 			writer.writeCounterAsMapPair(inlinedMethods);
 			writer.writeCounterAsMapPair(communicationGroups);
 			writer.writeCounterAsMapPair(interfaceGroups);
+			writer.writeCounterAsMapPair(memberships);
+			writer.writeCounterAsMapPair(totalAnnotations);
 		    writer.endMap();
 		    writer.close();
 		}
