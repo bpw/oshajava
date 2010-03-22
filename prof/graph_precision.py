@@ -14,19 +14,9 @@ prof.configPychart(name="precision", color=False)
 nthreads = 8
 
 options = {
-    "arrayIndexStates" : "false", 
-    "objectStates" : "false", 
     "profile" : "true", 
-    "arrayCacheSize" : "16", 
-    "lockCacheSize" : "4", 
     "traces" : "false", 
     "record" : "true", 
-    "create" : "false", 
-    "instrumentFullJDK" : "false", 
-    "bytecodeDump" : "false", 
-    "verify" : "false", 
-    "preVerify" : "false", 
-    "frames" : "false"
 }
 
 def jgfName(name):
@@ -36,7 +26,7 @@ def jgfName(name):
 profs = prof.loadAll(sys.argv[1:], 
                      filename_filter=(lambda fn: not fn.endswith("warmup.py")),
                      prof_filter=(lambda p: prof.matchOptions(options, p) and
-                                            p['threads'] == 4))
+                                            p['threads'] in (4,7)))
 
 precision = []
 for p in profs:
