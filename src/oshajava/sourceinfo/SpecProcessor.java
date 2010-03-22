@@ -311,7 +311,7 @@ public class SpecProcessor extends AbstractProcessor implements TaskListener {
         	} else {
         		module = getModule(pkgName + modName);
         	}
-        	module.totalAnnotations++;
+        	module.ctrModuleMembership++;
         } else {
             // Default membership.
             module = getModule(pkgName + ModuleSpec.DEFAULT_NAME);
@@ -361,14 +361,14 @@ public class SpecProcessor extends AbstractProcessor implements TaskListener {
         if (readerAnn != null) {
             for (String groupId : readerAnn.value()) {
                 module.addReader(groupId, sig);
-                module.totalAnnotations++;
+                module.ctrGroupMembership++;
             }
             nonEmptyGroups = readerAnn.value() != null && readerAnn.value().length > 0;
         }
         if (writerAnn != null) {
             for (String groupId : writerAnn.value()) {
                 module.addWriter(groupId, sig);
-                module.totalAnnotations++;
+                module.ctrGroupMembership++;
             }
             nonEmptyGroups = nonEmptyGroups || (writerAnn.value() != null && writerAnn.value().length > 0);
         }
@@ -376,7 +376,7 @@ public class SpecProcessor extends AbstractProcessor implements TaskListener {
         // Non-comm
         if (((writerAnn != null || readerAnn != null) && !nonEmptyGroups) || nonCommAnn != null) {
         	module.addNonComm(sig);
-            module.totalAnnotations++;
+            module.ctrNonComm++;
         }
         
         // Inlining (default).
@@ -387,7 +387,7 @@ public class SpecProcessor extends AbstractProcessor implements TaskListener {
         
         // Count inline annotations.
         if (inlineAnn != null) {
-            module.totalAnnotations++;
+            module.ctrInline++;
         }
     }
     
@@ -399,7 +399,7 @@ public class SpecProcessor extends AbstractProcessor implements TaskListener {
             return;
         }
         
-        mod.totalAnnotations++;
+        mod.ctrGroupDeclaration++;
         
         if (ann instanceof Group) {
             Group groupAnn = (Group)ann;
