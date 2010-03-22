@@ -166,7 +166,7 @@ $$JVM -javaagent:${basedir}/${agent.jar}=$$OSHA_ARGS -Xbootclasspath/a:${basedir
 classpath = ENV['CLASSPATH']
 args = ""
 if ARGV.first == "-stats"
-  args = ARGV.pop
+  args = ARGV.shift
 end
 if ARGV.first == "-cp" or ARGV.first == "-classpath"
 	classpath = ARGV[1]
