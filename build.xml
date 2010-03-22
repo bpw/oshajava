@@ -184,8 +184,8 @@ if ARGV.first == "-cp" or ARGV.first == "-classpath"
 end
 classpath ||= "."
 classpath.split(":").each do |d|
-	system "find #{d} -name '*.oshamodulebuilder' -delete"
-	system "find #{d} -name '*.oshamodule' -delete"
+	system "find #{d} -name '*.omb -delete"
+	system "find #{d} -name '*.omg -delete"
 end
 		</echo>	
 		
