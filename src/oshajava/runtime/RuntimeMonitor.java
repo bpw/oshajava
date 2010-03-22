@@ -539,7 +539,7 @@ public class RuntimeMonitor {
 
 		// dump profile
 		try {
-			final PyWriter py = new PyWriter(Config.profileOutputOption.get(), true);
+			final PyWriter py = new PyWriter(mainClass + Config.profileExtOption.get(), true);
 			try {
 				py.startMap();
 				py.writeMapKey("options");
