@@ -9,7 +9,6 @@ prof.configPychart(name="slowdown", color=False)
 nthreads = 8
 
 options = {
-    "arrayIndexStates" : "false", 
     "objectStates" : "false", 
     "profile" : "false", 
     "arrayCacheSize" : "16", 
@@ -35,23 +34,34 @@ thread_profs = prof.partition(lambda p: int(p["options"]["profileExt"].split("-"
 
 def slowdown((name, profiles)):
     oshajava, java = prof.bisect(lambda p: prof.matchOptions({"noInstrument" : "false"}, p), profiles)
-    ojtimes = map(prof.getRuntime, oshajava)
-    jtimes = map(prof.getRuntime, java)
-    return (name, float(sum(ojtimes)) / float(sum(jtimes)))
+    array, index = prof.bisect(lambda p: prof.matchOptions({"arrayIndexStates" : "false"}, p), oshajava)
+    ojasum = float(sum(map(prof.getRuntime, array)))
+    ojisum = float(sum(map(prof.getRuntime, index)))
+    jsum = float(sum(map(prof.getRuntime, java)))
+    return (name, ojasum / jsum, ojisum / jsum)  if len(index) > 0 else (name, ojasum / jsum)
 
-made_canvas = False
+canvas = None
+
+cluster_size = len(thread_profs) + 1
+
+index_data,index_threads = None,None
 
 i = 0
 for t,profs in thread_profs:
     sd = sorted(map(slowdown, prof.partition(lambda p: jgfName(p["mainClass"]), profs)))
-    if not made_canvas:
+    print t, sd
+    if canvas == None:
         canvas = area.T(x_coord = category_coord.T(sd, 0),
-                x_axis=axis.X(label="Benchmarks", format="/a60%s"),
-                y_axis=axis.Y(label="Slowdown (x)", tic_interval=5),
-                y_grid_interval=5,
-                size=(240,110))
-        made_canvas = True
-    canvas.add_plot(bar_plot.T(label=str(t), data=sd, cluster=(i,len(thread_profs))))
+                        x_axis=axis.X(label="Benchmarks", format="/a60%s"),
+                        y_axis=axis.Y(label="Slowdown (x)", tic_interval=5),
+                        y_grid_interval=2.5,
+                        y_range=(0,None),
+                        size=(300,110))
+    canvas.add_plot(bar_plot.T(label=str(t) + ' Array', data=sd, cluster=(i,cluster_size)))
     i += 1
-
+    if len(sd[0]) == 3:
+        index_data,index_threads = sd,t
+        
+if index_data != None:
+    canvas.add_plot(bar_plot.T(label=str(index_threads) + ' Index', data=index_data, cluster=(i,cluster_size), hcol=2))
 canvas.draw()

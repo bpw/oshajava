@@ -274,7 +274,9 @@ public class RuntimeMonitor {
 	 */
 	public static void acquire(final Object lock, final ThreadState holder, final State holderState) {
 		try {
-			lockCounter.inc();
+			if (PROFILE) {
+                lockCounter.inc();
+            }
 			// get the lock state
 			final LockState lockState = holder.lockStateCache.get(lock);
 			if (lockState == null) {
