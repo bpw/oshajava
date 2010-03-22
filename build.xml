@@ -70,21 +70,20 @@ Agent-Class: ${agent.class}
 		
 		<!-- Generate the javac wrapper script -->
 		<echo file="${compiler.bin}">#!/bin/sh
-			version() {
-				echo -n "osha"
-				javac -version				
-			}
-			case "$1" in
-			-version)
-				version
-				exit
-				;;
-			*)
-				javac -Xbootclasspath/a:${basedir}/${annotation.jar} -processorpath ${basedir}/${annotation.jar} $$@
-				exit
-				;;
-			esac
-		</echo>
+JAVAC=javac
+case "$1" in
+-version)
+    version
+    exit
+    ;;
+-javac=*)
+    JAVAC=`echo "$1" | sed -e "s+-javac=++"`
+    shift
+    ;;	  
+esac
+echo $JAVAC -Xbootclasspath/a:${basedir}/${annotation.jar} -processorpath ${basedir}/${annotation.jar} $$@
+$JAVAC -Xbootclasspath/a:${basedir}/${annotation.jar} -processorpath ${basedir}/${annotation.jar} $$@
+</echo>
 		
 		<!-- Generate the java wrapper script -->
 		<echo file="${runtime.bin}">#!/bin/sh
