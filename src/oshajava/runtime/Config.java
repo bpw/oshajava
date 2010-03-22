@@ -74,8 +74,8 @@ public class Config {
     public static final CommandLineOption<Boolean> recordOption =
     		CommandLine.makeBoolean("record", false, "Record exercised graph.");
     
-    public static final CommandLineOption<String> profileExtOption =
-    	CommandLine.makeString("profileExt", "-oshajava-profile.py", "Extension on profile file (prefixed by main class)");
+    public static final CommandLineOption<String> profileOutputOption =
+    	CommandLine.makeString("profileDump", "oshajava-profile.py", "Profile file");
     
     public static final CommandLineOption<Boolean> createOption =
     		CommandLine.makeBoolean("create", false, "Create a full execution graph.");
@@ -95,7 +95,7 @@ public class Config {
 		cl.add(lockCacheSizeOption);
 		cl.add(stackTracesOption);
 		cl.add(failStopOption);
-		cl.add(profileExtOption);
+		cl.add(profileOutputOption);
 		cl.add(createOption);
 
 		cl.addGroup("Instrumentation");
