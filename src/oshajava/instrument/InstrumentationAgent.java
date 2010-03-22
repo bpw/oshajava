@@ -168,7 +168,7 @@ public class InstrumentationAgent implements ClassFileTransformer {
 	public static void setMainClass(String cl) {
 		Util.debugf(DEBUG_KEY, "Setting main application class to %s.", cl);
 		mainClassInternalName = internalName(cl);
-		mainClassOption.set(mainClassInternalName);
+		mainClassOption.set(sourceName(cl));
 	}
 	public static void stopInstrumentation() {
 		Util.debug(DEBUG_KEY, "Turning off instrumentation");
