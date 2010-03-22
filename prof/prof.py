@@ -67,6 +67,12 @@ def distAverage(*dists):
         return 0
     return float(total) / count
 
+def distTotal(*dists):
+    total = 0
+    for dist in dists:
+        for t, c in dist.items():
+            total += t*c
+    return total
 
 
 ## accessors
