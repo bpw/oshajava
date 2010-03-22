@@ -20,8 +20,17 @@ def getCGroups(stats):
 def getIGroups(stats):
     return stats['Interface groups']
 
-def getMemberships(stats):
-    return stats['Total group memberships']
+def getGroupMemberAnns(stats):
+    return stats['Group membership annotations']
 
-def getAnnotations(stats):
-    return stats['Source annotations']
+def getGroupDeclAnns(stats):
+    return stats['Group declaration annotations']
+
+def getNonCommAnns(stats):
+    return stats['Non-communicator annotations']
+    
+def getInlineAnns(stats):
+    return stats['Inline annotations']
+    
+def getModMemberAnns(stats):
+    return stats['Module membership annotations']

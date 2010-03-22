@@ -21,8 +21,12 @@ public class ModuleSpecCompressor {
 	    DistributionCounter inlinedMethods = new DistributionCounter("Inlined methods");
 	    DistributionCounter communicationGroups = new DistributionCounter("Communication groups");
 	    DistributionCounter interfaceGroups = new DistributionCounter("Interface groups");
-	    DistributionCounter memberships = new DistributionCounter("Total group memberships");
-	    DistributionCounter totalAnnotations = new DistributionCounter("Source annotations");
+	    
+	    DistributionCounter annGroupMembership = new DistributionCounter("Group membership annotations");
+    	DistributionCounter annGroupDeclaration = new DistributionCounter("Group declaration annotations");
+    	DistributionCounter annNonComm = new DistributionCounter("Non-communicator annotations");
+    	DistributionCounter annInline = new DistributionCounter("Inline annotations");
+    	DistributionCounter annModuleMembership = new DistributionCounter("Module membership annotations");
 	    
 		for (final String s : args) {
 			if (!s.endsWith(ModuleSpecBuilder.EXT)) {
@@ -48,8 +52,11 @@ public class ModuleSpecCompressor {
 			    communicationGroups.add(cg);
 			    interfaceGroups.add(ig);
 			    
-			    memberships.add(msb.memberships.size());
-			    totalAnnotations.add(msb.totalAnnotations);
+			    annGroupMembership.add(msb.ctrGroupMembership);
+			    annGroupDeclaration.add(msb.ctrGroupDeclaration);
+			    annNonComm.add(msb.ctrNonComm);
+			    annInline.add(msb.ctrInline);
+			    annModuleMembership.add(msb.ctrModuleMembership);
 			}
 
 			System.out.println("Compressing " + msb.getName());
@@ -65,8 +72,11 @@ public class ModuleSpecCompressor {
 			writer.writeCounterAsMapPair(inlinedMethods);
 			writer.writeCounterAsMapPair(communicationGroups);
 			writer.writeCounterAsMapPair(interfaceGroups);
-			writer.writeCounterAsMapPair(memberships);
-			writer.writeCounterAsMapPair(totalAnnotations);
+			writer.writeCounterAsMapPair(annGroupMembership);
+			writer.writeCounterAsMapPair(annGroupDeclaration);
+			writer.writeCounterAsMapPair(annNonComm);
+			writer.writeCounterAsMapPair(annInline);
+			writer.writeCounterAsMapPair(annModuleMembership);
 		    writer.endMap();
 		    writer.close();
 		}
