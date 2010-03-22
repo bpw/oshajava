@@ -361,19 +361,21 @@ public class ClassInstrumentor extends ClassAdapter {
 		if ((access & Opcodes.ACC_NATIVE) == 0) {
 		    MethodVisitor chain = super.visitMethod(access, name, desc, signature, exceptions);
 		    if (!name.equals("<clinit>")) {
-		    	// (Not instrumenting class initializers avoids balooning the size
-		    	//  of large literal table constructions. It also makes sense, I
-		    	//  think, because no "communication" should occur (semantically)
-		    	//  from class loading.) FIXME
-			    chain = new HandlerSorterAdapter(chain, access, name, desc, signature, exceptions);
-//			    Util.log(name);
-		    	try {
-		    		chain = new MethodInstrumentor(chain, access, name, desc, this, getModule());
-		    	} catch (ModuleSpecNotFoundException e) {
-		    		throw e.wrap();
+		    	if ((classAccess & Opcodes.ACC_INTERFACE) == 0) {
+		    		// (Not instrumenting class initializers avoids balooning the size
+		    		//  of large literal table constructions. It also makes sense, I
+		    		//  think, because no "communication" should occur (semantically)
+		    		//  from class loading.) FIXME
+		    		chain = new HandlerSorterAdapter(chain, access, name, desc, signature, exceptions);
+		    		//			    Util.log(name);
+		    		try {
+		    			chain = new MethodInstrumentor(chain, access, name, desc, this, getModule());
+		    		} catch (ModuleSpecNotFoundException e) {
+		    			throw e.wrap();
+		    		}
+		    		chain = new JSRInlinerAdapter(chain, access, name, desc, signature, exceptions);
+		    		return chain;
 		    	}
-			    chain = new JSRInlinerAdapter(chain, access, name, desc, signature, exceptions);
-			    return chain;
 			} else if (name.equals("<clinit>") && (classAccess & Opcodes.ACC_INTERFACE) != 0) {
 			    // Class initializer for an interface. Inline the
 			    // initialization.
@@ -383,9 +385,8 @@ public class ClassInstrumentor extends ClassAdapter {
 		    	visitedClinit = true;
 		    	return new StaticShadowInitInserter(chain, access, name, desc, classType, null);
 		    }
-		} else {
-			return super.visitMethod(access, name, desc, signature, exceptions);
 		}
+		return super.visitMethod(access, name, desc, signature, exceptions);
 	}
 
 	/**
