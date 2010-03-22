@@ -374,19 +374,22 @@ public class ClassInstrumentor extends ClassAdapter {
 		    			throw e.wrap();
 		    		}
 		    		chain = new JSRInlinerAdapter(chain, access, name, desc, signature, exceptions);
-		    		return chain;
 		    	}
+	    		return chain;
 			} else if (name.equals("<clinit>") && (classAccess & Opcodes.ACC_INTERFACE) != 0) {
 			    // Class initializer for an interface. Inline the
 			    // initialization.
 			    visitedClinit = true;
+			    Util.debugf("clinit", "instrumenting clinit in %s.%s", packageName, className);
 			    return new StaticShadowInitInserter(chain, access, name, desc, classType, staticShadowedFields);
-		    } else {
+		    } else { // <clinit> for class
 		    	visitedClinit = true;
+			    Util.debugf("clinit", "instrumenting clinit in %s.%s", packageName, className);
 		    	return new StaticShadowInitInserter(chain, access, name, desc, classType, null);
 		    }
+		} else {
+			return super.visitMethod(access, name, desc, signature, exceptions);
 		}
-		return super.visitMethod(access, name, desc, signature, exceptions);
 	}
 
 	/**
