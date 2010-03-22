@@ -164,12 +164,16 @@ $$JVM -javaagent:${basedir}/${agent.jar}=$$OSHA_ARGS -Xbootclasspath/a:${basedir
 		<!-- Generate the module compressor script -->
 		<echo file="${module.compressor.bin}">#!/usr/bin/env ruby
 classpath = ENV['CLASSPATH']
+args = ""
+if ARGV.first == "-stats"
+  args = ARGV.pop
+end
 if ARGV.first == "-cp" or ARGV.first == "-classpath"
 	classpath = ARGV[1]
 end
 classpath ||= "."
 classpath.split(":").each do |d|
-	system "find #{d} -name '*.omb' | xargs java -cp ${basedir}/${agent.jar} oshajava.sourceinfo.ModuleSpecCompressor"
+	system "find #{d} -name '*.omb' | xargs java -cp ${basedir}/${agent.jar} oshajava.sourceinfo.ModuleSpecCompressor #{args}"
 end
 		</echo>	
 		

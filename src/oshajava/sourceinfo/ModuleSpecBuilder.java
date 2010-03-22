@@ -179,7 +179,7 @@ public class ModuleSpecBuilder implements Serializable {
 	/**
 	 * Represents a communication or interface group.
 	 */
-	private class Group implements Serializable {
+	protected class Group implements Serializable {
 	    public String id;
 	    public Set<String> delegates = new HashSet<String>();
 	    public Set<String> merges = new HashSet<String>();
@@ -208,7 +208,7 @@ public class ModuleSpecBuilder implements Serializable {
 	/**
 	 * Represents that a method is part of a group.
 	 */
-	private class GroupMembership implements Serializable {
+	protected class GroupMembership implements Serializable {
 	    public int methodId;
 	    public String groupId;
 	    public boolean reader; // otherwise writer
