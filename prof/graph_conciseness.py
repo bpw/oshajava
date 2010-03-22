@@ -11,12 +11,16 @@ if not hasattr(pychart, 'area'):
     import pychart.area
     import pychart.bar_plot
     import pychart.axis
+    import pychart.fill_style
+
+DACAPO = ('avrora', 'batik', 'xalan')
 
 prof.configPychart(name="conciseness", color=False)
 
 statses = static.load_all(sys.argv[1:])
 
-conciseness = []
+jgf_conciseness = []
+dc_conciseness = []
 all_size = 0
 all_methods = 0
 for name, stats in statses:
@@ -28,35 +32,57 @@ for name, stats in statses:
     
     methods = float(prof.distTotal(static.getMethods(stats)))
     
-    conciseness.append((static.BENCH_NAMES[name],
-                        groupmember / methods,
-                        groupdecl / methods,
-                        noncomm / methods,
-                        inline / methods,
-                        modmember / methods,
-    ))
+    vals = (
+        static.BENCH_NAMES[name],
+        groupmember / methods,
+        groupdecl / methods,
+        noncomm / methods,
+        inline / methods,
+        modmember / methods,
+    )
+    if name in DACAPO:
+        dc_conciseness.append(vals)
+    else:
+        jgf_conciseness.append(vals)
     
     all_size += groupmember + groupdecl + noncomm + inline + modmember
     all_methods += methods
 
-print 'Conciseness:', conciseness
+print 'Conciseness:', jgf_conciseness + dc_conciseness
 print 'Overall:', float(all_size) / all_methods
 
-ystep = 0.2
-canvas = pychart.area.T(x_coord = pychart.category_coord.T(conciseness, 0),
-                        x_axis = pychart.axis.X(label="Benchmarks",
-                                                format="/a90%s"),
-                        y_axis = pychart.axis.Y(label="Annotations per method",
-                                                tic_interval=ystep),
-                        y_grid_interval = ystep)
-groupmember_t = pychart.bar_plot.T(label="Group membership", data=conciseness)                        
-groupdecl_t = pychart.bar_plot.T(label="Group declaration", data=conciseness,
-                                        hcol=2, stack_on=groupmember_t)
-noncomm_t = pychart.bar_plot.T(label="Non-communicator", data=conciseness,
-                                        hcol=3, stack_on=groupdecl_t)
-inline_t = pychart.bar_plot.T(label="Inline", data=conciseness,
-                                        hcol=4, stack_on=noncomm_t)
-modmember_t = pychart.bar_plot.T(label="Module membership", data=conciseness,
-                                        hcol=5, stack_on=inline_t)
-canvas.add_plot(groupmember_t, groupdecl_t, noncomm_t, inline_t, modmember_t)
-canvas.draw()
+def doplot(conciseness, ystep, offset, legend, width, bmlabel, ylabel):
+    args = {
+        'x_coord': pychart.category_coord.T(conciseness, 0),
+        'x_axis': pychart.axis.X(label=bmlabel,
+                               format="/a90%s"),
+        'y_axis': pychart.axis.Y(label=ylabel,
+                               tic_interval=ystep),
+        'y_grid_interval': ystep,
+        'loc': (offset, 0),
+    }
+    if not legend:
+        args['legend'] = None
+    if width:
+        args['size'] = (width, 110)
+    canvas = pychart.area.T(**args)
+    groupmember_t = pychart.bar_plot.T(label="Group membership", data=conciseness,
+                                       fill_style=pychart.fill_style.black)                        
+    groupdecl_t = pychart.bar_plot.T(label="Group declaration", data=conciseness,
+                                            hcol=2, stack_on=groupmember_t,
+                                       fill_style=pychart.fill_style.gray70)
+    noncomm_t = pychart.bar_plot.T(label="Non-communicator", data=conciseness,
+                                            hcol=3, stack_on=groupdecl_t,
+                                       fill_style=pychart.fill_style.diag)
+    inline_t = pychart.bar_plot.T(label="Inline", data=conciseness,
+                                            hcol=4, stack_on=noncomm_t,
+                                       fill_style=pychart.fill_style.diag2)
+    modmember_t = pychart.bar_plot.T(label="Module membership", data=conciseness,
+                                            hcol=5, stack_on=inline_t,
+                                       fill_style=pychart.fill_style.white)
+    canvas.add_plot(groupmember_t, groupdecl_t, noncomm_t, inline_t, modmember_t)
+    canvas.draw()
+
+doplot(jgf_conciseness, 0.2, 0, False, None, "Java Grande benchmarks", "Annotations per method")
+doplot(dc_conciseness, 0.005, 155, True, 60, "DaCapo benchmarks", None)
+
