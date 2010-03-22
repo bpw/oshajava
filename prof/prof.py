@@ -56,11 +56,14 @@ def partition(mapper, list):
             parts[key] = [i]
     return sorted(parts.items())
 
-def distAverage(*dists):
+def distAverage(*dists, **kwargs):
+    drop_zero = ('drop_zero' in kwargs)
     total = 0
     count = 0
     for dist in dists:
         for t, c in dist.items():
+            if drop_zero and t == 0:
+                continue
             total += t*c
             count += c
     if not count:

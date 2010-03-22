@@ -1,5 +1,19 @@
 import os
 
+BENCH_NAMES = {
+    'crypt': 'Crypt',
+    'lufact': 'LUFact',
+    'moldyn': 'MolDyn',
+    'montecarlo': 'MonteCarlo',
+    'raytracer': 'RayTracer',
+    'sor': 'SOR',
+    'series': 'Series',
+    'sparsematmult': 'SparseMatmult',
+    'avrora': 'Avrora',
+    'xalan': 'Xalan',
+    'batik': 'Batik',
+}
+
 def load_all(paths):
     statses = []
     for path in paths:

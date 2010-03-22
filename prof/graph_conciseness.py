@@ -12,17 +12,6 @@ if not hasattr(pychart, 'area'):
     import pychart.bar_plot
     import pychart.axis
 
-JGF_NAMES = {
-    'crypt': 'Crypt',
-    'lufact': 'LUFact',
-    'moldyn': 'MolDyn',
-    'montecarlo': 'MonteCarlo',
-    'raytracer': 'RayTracer',
-    'sor': 'SOR',
-    'series': 'Series',
-    'sparsematmult': 'SparseMatmult',
-}
-
 prof.configPychart(name="conciseness", color=False)
 
 statses = static.load_all(sys.argv[1:])
@@ -39,7 +28,7 @@ for name, stats in statses:
     
     methods = float(prof.distTotal(static.getMethods(stats)))
     
-    conciseness.append((JGF_NAMES[name],
+    conciseness.append((static.BENCH_NAMES[name],
                         groupmember / methods,
                         groupdecl / methods,
                         noncomm / methods,
