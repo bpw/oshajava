@@ -45,7 +45,8 @@ canvas = pychart.area.T(x_coord = pychart.category_coord.T(conciseness, 0),
                                                 format="/a90%s"),
                         y_axis = pychart.axis.Y(label="Annotations per method",
                                                 tic_interval=ystep),
-                        y_grid_interval = ystep)
+                        y_grid_interval = ystep,
+                        legend = None)
 conciseness_t = pychart.bar_plot.T(label="Conciseness", data=conciseness)
 canvas.add_plot(conciseness_t)
 canvas.draw()

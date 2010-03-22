@@ -140,6 +140,18 @@ def getStackSegmentCountDist(prof): # (half)
 def getCommunicatingModules(prof):
     return prof['Modules used']
 
+def getSpecNodes(prof):
+    return prof['Total comm nodes in used specs']
+
+def getSpecEdges(prof):
+    return prof['Total comm edges in used specs']
+
+def getRunNodes(prof):
+    return prof['Total comm nodes in run']
+
+def getRunEdges(prof):
+    return prof['Total comm edges in run']
+
 
 ######### Graph config ########
 

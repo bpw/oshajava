@@ -50,7 +50,8 @@ canvas = pychart.area.T(x_coord = pychart.category_coord.T(segsizes, 0),
                                                 format="/a90%s"),
                         y_axis = pychart.axis.Y(label="Methods",
                                                 tic_interval=ystep),
-                        y_grid_interval = ystep)
+                        y_grid_interval = ystep,
+                        legend = None)
 segsize_t = pychart.bar_plot.T(label="Mean stack segment size", data=segsizes)
 canvas.add_plot(segsize_t)
 canvas.draw()
