@@ -1,0 +1,1 @@
+{"Total methods" : {4 : 1, 11 : 1, 62 : 1}, "Inlined methods" : {2 : 1, 3 : 1, 57 : 1}, "Communication groups" : {1 : 1, 2 : 1, 3 : 1}, "Interface groups" : {0 : 2, 1 : 1}, "Total group memberships" : {5 : 1, 10 : 1, 13 : 1}, "Source annotations" : {16 : 1, 8 : 1, 13 : 1}}
