@@ -56,6 +56,17 @@ def partition(mapper, list):
             parts[key] = [i]
     return sorted(parts.items())
 
+def distAverage(*dists):
+    total = 0
+    count = 0
+    for dist in dists:
+        for t, c in dist.items():
+            total += t*c
+            count += c
+    if not count:
+        return 0
+    return float(total) / count
+
 
 
 ## accessors
@@ -111,6 +122,17 @@ def getSlowMemoHitRate(prof):
 def getStackWalkRate(prof):
     return float(getStackWalks(prof)) / float(getChecks(prof))
 
+def getStackDepthDist(prof):
+    return prof['Communicating stack depths']
+
+def getStackSegmentLengthDist(prof):
+    return prof['Length in methods of stack segments']
+
+def getStackSegmentCountDist(prof): # (half)
+    return prof['Segments on a communicating stack']
+
+def getCommunicatingModules(prof):
+    return prof['Modules used']
 
 
 ######### Graph config ########
@@ -118,6 +140,9 @@ def getStackWalkRate(prof):
 def configPychart(name=None,color=True):
     assert name != None
     import pychart
+    if not hasattr(pychart, 'theme'):
+        # Required by my version of pychart --ALDS
+        import pychart.theme
     pychart.theme.get_options()
     pychart.theme.use_color = color
     pychart.theme.output_file = name + ".pdf"
