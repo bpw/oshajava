@@ -230,7 +230,9 @@ public class Stack {
 				if (RECORD) {
 					synchronized (interfaceGraphs) {
 						if (!interfaceGraphs.containsKey(layerModule)) {
-							interfaceGraphs.put(layerModule, new Graph(layerModule.numInterfaceMethods()));
+						    Graph g = new Graph(layerModule.numInterfaceMethods());
+						    g.fill();
+							interfaceGraphs.put(layerModule, g);
 						}
 						interfaceGraphs.get(layerModule).addEdge(Spec.getMethodID(writerLayerTop.methodUID), Spec.getMethodID(readerLayerTop.methodUID));
 					}
