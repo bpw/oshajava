@@ -49,21 +49,24 @@ public class MethodInstrumentor extends AdviceAdapter {
 		// the method.
 		methodUID = module.getMethodUID(fullNameAndDesc);
 		if (methodUID == -1 && (access & Opcodes.ACC_SYNTHETIC) != 0) {
-            policy = CommunicationKind.INLINE;
-        // Such is also the case with methods inside anonymous classes.
-        } else if (methodUID == -1 &&
-                   inst.className.matches(".*\\$\\d.*")) {
-            policy = CommunicationKind.INLINE;
-        // Raise an error for other methods that are not found.
-        } else if (methodUID == -1) {
-            module.describe();
-            Util.fail("in module " + module.getName() + ", " + fullNameAndDesc + " not found");
-            policy = CommunicationKind.INLINE; // avoid warning
-        // Set policy appropriately if method is found.
-        } else {
-    		policy = module.getCommunicationKind(methodUID);
+			policy = CommunicationKind.INLINE;
+			// Such is also the case with methods inside anonymous classes.
+		} else if (methodUID == -1 &&
+				   inst.className.matches(".*\\$\\d.*")) {
+			policy = CommunicationKind.INLINE;
+			// Raise an error for other methods that are not found.
+		} else if (methodUID == -1) {
+			module.describe();
+			if (InstrumentationAgent.ignoreMissingMethodsOption.get()) {
+				Util.log("IGNORED and INLINED: in module " + module.getName() + ", " + fullNameAndDesc + " not found");
+			} else {
+				Util.fail("in module " + module.getName() + ", " + fullNameAndDesc + " not found");
+			}
+			policy = CommunicationKind.INLINE; // avoid warning
+			// Set policy appropriately if method is found.
+		} else {
+			policy = module.getCommunicationKind(methodUID);
 		}
-		
 		
 //		readHook = ClassInstrumentor.HOOK_READ; //RuntimeMonitor.RECORD ? ClassInstrumentor.HOOK_RECORD_READ : ClassInstrumentor.HOOK_READ;
 	}

@@ -103,6 +103,9 @@ public class InstrumentationAgent implements ClassFileTransformer {
 	public static final CommandLineOption<Boolean> framesOption =
 		CommandLine.makeBoolean("frames", false, "Handle frames intelligently.");
 	
+	public static final CommandLineOption<Boolean> ignoreMissingMethodsOption =
+		CommandLine.makeBoolean("ignoreMissingMethods", false, "Ignore and inline methods missing from their modules.");
+	
 	private static final ConcurrentTimer insTimer = new ConcurrentTimer("Instrumentation time");
 		
 	public byte[] instrument(String className, byte[] bytecode, ClassLoader loader) throws ModuleSpecNotFoundException {
