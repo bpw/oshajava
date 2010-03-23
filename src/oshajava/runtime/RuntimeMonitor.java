@@ -494,7 +494,7 @@ public class RuntimeMonitor {
 	        return "?";
 	    }
 	    for (StackTraceElement frame : trace) {
-	        if (!frame.getClassName().contains("Thread") && !frame.getClassName().contains("RuntimeMonitor")) {
+	        if (!frame.getClassName().equals("java.lang.Thread") && !frame.getClassName().contains("oshajava.runtime.RuntimeMonitor")) {
 	            return frame.getClassName() + "." + frame.getMethodName();
 	        }
 	    }

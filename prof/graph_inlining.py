@@ -12,17 +12,6 @@ if not hasattr(pychart, 'area'):
     import pychart.bar_plot
     import pychart.axis
 
-JGF_NAMES = {
-    'crypt': 'Crypt',
-    'lufact': 'LUFact',
-    'moldyn': 'MolDyn',
-    'montecarlo': 'MonteCarlo',
-    'raytracer': 'RayTracer',
-    'sor': 'SOR',
-    'series': 'Series',
-    'sparsematmult': 'SparseMatmult',
-}
-
 prof.configPychart(name="inlining", color=False)
 
 statses = static.load_all(sys.argv[1:])
@@ -33,7 +22,7 @@ all_total = 0
 for name, stats in statses:
     inlined = prof.distTotal(static.getInlined(stats))
     total = prof.distTotal(static.getMethods(stats))
-    inlining.append((JGF_NAMES[name], inlined, total-inlined))
+    inlining.append((static.BENCH_NAMES[name], inlined, total-inlined))
     all_inlined += inlined
     all_total += total
 print 'Inlining:', inlining
