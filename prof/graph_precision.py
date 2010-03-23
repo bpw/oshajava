@@ -1,5 +1,8 @@
 #!/usr/bin/env python
 
+# SUGGESTED:
+# python2.5 graph_precision.py jgf/*record* dacapo-new/*record*.py
+
 import prof
 import sys
 
@@ -14,7 +17,7 @@ prof.configPychart(name="precision", color=False)
 nthreads = 8
 
 options = {
-    "profile" : "true", 
+    "profile" : "false", 
     "traces" : "false", 
     "record" : "true", 
 }
@@ -28,9 +31,7 @@ def jgfName(name):
 
 profs = prof.loadAll(sys.argv[1:], 
                      filename_filter=(lambda fn: not fn.endswith("warmup.py")),
-                     prof_filter=(lambda p: prof.matchOptions(options, p) and
-                                            (p['mainClass'] == 'Harness' or
-                                            p['threads'] in (8, 15))))
+                     prof_filter=(lambda p: prof.matchOptions(options, p)))
 
 dc_seen = set()
 precision = []
