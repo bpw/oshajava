@@ -23,13 +23,16 @@ options = {
     "frames" : "false"
 }
 
-def jgfName(name):
-    # remove "JGF" from head, "BenchSize_" from end
-    return name if not name.startswith("JGF") else name[3:-10]
+def getName(p):
+    if p["mainClass"].startswith("JGF"):
+        # remove "JGF" from head, "BenchSize_" from end
+        return p["mainClass"][3:-10]
+    elif p["mainClass"] == "Harness":
+        return p["options"]["profileExt"].split('-')[1]
 
 all =  prof.loadAll(sys.argv[1:], 
                     filename_filter=(lambda fn: not fn.endswith("warmup.py")),
-                    prof_filter=(lambda p: prof.matchOptions(options, p) and p["options"]["profileExt"].startswith("-8-threads")))
+                    prof_filter=(lambda p: prof.matchOptions(options, p) and (p["options"]["profileExt"].startswith("-8-threads") or p["mainClass"] == "Harness")))
 
 def overhead((name, profiles)):
     oshajava, java = prof.bisect(lambda p: prof.matchOptions({"noInstrument" : "false"}, p), profiles)
@@ -39,17 +42,18 @@ def overhead((name, profiles)):
     jsum = float(sum(map(prof.getPeakMem, java)))
     return (name, ojasum / jsum, ojisum / jsum)
 
-sd = sorted(map(overhead, prof.partition(lambda p: jgfName(p["mainClass"]), all)))
+sd = sorted(map(overhead, prof.partition(getName, all)))
 
 print sd
 
 ystep = 1
-y_max = 6
+y_max = 11
 canvas = area.T(x_coord = category_coord.T(sd, 0),
                 x_axis=axis.X(label="Benchmarks", format="/a90%s"),
                 y_axis=axis.Y(label="Memory Overhead (x)", tic_interval=ystep),
                 y_grid_interval=float(ystep) / 2.0,
-                y_range=(0,y_max))
+                y_range=(0,y_max),
+                size=(180,110))
 
 canvas.add_plot(bar_plot.T(label="Array", data=sd, cluster=(0,2)))
 canvas.add_plot(bar_plot.T(label="Element", data=sd, cluster=(1,2), hcol=2))
