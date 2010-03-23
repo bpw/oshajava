@@ -29,14 +29,18 @@ options = {
     "frames" : "false"
 }
 
-def jgfName(name):
-    # remove "JGF" from head, "BenchSize_" from end
-    return name if not name.startswith("JGF") else name[3:-10]
+def benchName(p):
+    if p["mainClass"] == 'Harness':
+        # DaCapo
+        return p["options"]["profileExt"].split('-', 3)[1].capitalize()
+    else:
+        # JGF
+        return name if not name.startswith("JGF") else name[3:-10]
 
 profs = prof.loadAll(sys.argv[1:], 
                      filename_filter=(lambda fn: not fn.endswith("warmup.py")),
                      prof_filter=(lambda p: prof.matchOptions(options, p)))
-bench_profs = prof.partition(lambda p: jgfName(p["mainClass"]), profs)
+bench_profs = prof.partition(benchName, profs)
 
 segsizes = []
 for name, bp in bench_profs:

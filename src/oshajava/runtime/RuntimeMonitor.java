@@ -522,9 +522,9 @@ public class RuntimeMonitor {
 		// Report some stats.
 		if (PROFILE) {
 			Util.log("---- Profile info ------------------------------------");
-			if (Stack.RECORD) {
-				Stack.dumpGraphs(mainClass);
-			}
+		}    
+		if (Stack.RECORD) {
+			Stack.dumpGraphs(mainClass);
 		}
 
 		// mem and gc
