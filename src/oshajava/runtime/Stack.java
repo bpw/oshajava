@@ -3,6 +3,8 @@ package oshajava.runtime;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.HashSet;
+import java.util.Set;
 
 import oshajava.sourceinfo.Graph;
 import oshajava.sourceinfo.ModuleSpec;
@@ -380,7 +382,7 @@ public class Stack {
 				final PyWriter ifpy = new PyWriter("oshajava-interface-pairs.py", false);
 //				final PyWriter nodepy = new PyWriter("oshajava-nodes.py", false);
 				final GraphMLWriter commGraphml = new GraphMLWriter(mainClass + ".oshajava.comm.graphml");
-				final GraphMLWriter interfaceGraphml = new GraphMLWriter(mainClass + ".oshajava.comm.graphml");
+				final GraphMLWriter interfaceGraphml = new GraphMLWriter(mainClass + ".oshajava.intfc.graphml");
 				final Counter specCommNodes = new Counter("Total comm nodes in used specs");
 				final Counter specCommEdges = new Counter("Total comm edges in used specs");
 				final Counter specINodes = new Counter("Total interface nodes in used specs");
@@ -400,6 +402,7 @@ public class Stack {
 				commpy.startList();
 				ifpy.startList();
 				
+				Set<Integer> recordedNodes = new HashSet<Integer>();
 				for (Map.Entry<ModuleSpec,Graph> e : commGraphs.entrySet()) {
 					ModuleSpec mod = e.getKey();
 					Graph g = e.getValue();
@@ -412,16 +415,19 @@ public class Stack {
 							// FIXME
 							// commGraphml.writeEdge(uid + "", destID, "rw");
 							final int srcuid = Spec.makeUID(mod.getId(), i);
-							for (int j = 0; j < bv.size(); j++) {
-								if (bv.contains(j)) {
-									commpy.writeElem(Py.tuple(srcuid, Spec.makeUID(mod.getId(), j)));
-								}
+							for (int j : bv.toJavaSet()) {
+								commpy.writeElem(Py.tuple(srcuid, Spec.makeUID(mod.getId(), j)));
+								if (recordedNodes.add(Spec.makeUID(mod.getId(), j)))
+								    runCommNodes.inc();
 							}
-							runCommNodes.inc();
+							if (recordedNodes.add(srcuid))
+							    runCommNodes.inc();
 							runCommEdges.add(bv.size());
 						}
 					}
 				}
+				
+				recordedNodes = new HashSet<Integer>();
 				for (Map.Entry<ModuleSpec,Graph> e : interfaceGraphs.entrySet()) {
 					ModuleSpec mod = e.getKey();
 					Graph g = e.getValue();
@@ -432,12 +438,13 @@ public class Stack {
 							// FIXME
 							// interfaceGraphml.writeEdge(uid + "", destID, "rw");
 							final int srcuid = Spec.makeUID(mod.getId(), i);
-							for (int j = 0; j < bv.size(); j++) {
-								if (bv.contains(j)) {
-									ifpy.writeElem(Py.tuple(srcuid, Spec.makeUID(mod.getId(), j)));
-								}
+							for (int j : bv.toJavaSet()) {
+								ifpy.writeElem(Py.tuple(srcuid, Spec.makeUID(mod.getId(), j)));
+								if (recordedNodes.add(Spec.makeUID(mod.getId(), j)))
+								    runINodes.inc();
 							}
-							runINodes.inc();
+							if (recordedNodes.add(srcuid))
+							    runINodes.inc();
 							runIEdges.add(bv.size());
 						}
 					}

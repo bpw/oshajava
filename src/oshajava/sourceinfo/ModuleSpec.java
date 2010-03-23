@@ -233,10 +233,10 @@ public class ModuleSpec implements Serializable {
                 continue;
             }
             if (!dests.isEmpty()) {
-                System.out.print("    " + methodIdToSig[i] + " -> ");
+                System.out.print("    " + methodIdToSig[i] + "="+i + " -> ");
                 for (int j=0; j<methodSigToId.size(); ++j) {
                     if (dests.contains(j)) {
-                        System.out.print(methodIdToSig[j] + " ");
+                        System.out.print(methodIdToSig[j] + "="+i + " ");
                     }
                 }
                 System.out.println("");
