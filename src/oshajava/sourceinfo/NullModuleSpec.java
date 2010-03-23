@@ -59,6 +59,26 @@ public class NullModuleSpec extends ModuleSpec {
     }
     
     @Override
+	public int numCommMethods() {
+		return 0;
+	}
+	
+    @Override
+	public int numInterfaceMethods() {
+		return 0;
+	}
+	
+    @Override
+	public int numCommEdges() {
+		return 0;
+	}
+	
+    @Override
+	public int numInterfaceEdges() {
+		return 0;
+	}
+	
+    @Override
     public void describe() {
         System.out.println(name + " (null group)");
     }
