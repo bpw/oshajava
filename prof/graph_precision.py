@@ -20,6 +20,7 @@ options = {
 }
 
 def dcName(p):
+    print p["options"]["profileExt"]
     return p["options"]["profileExt"].split('-', 3)[1].capitalize()
 
 def jgfName(name):
@@ -29,8 +30,10 @@ def jgfName(name):
 profs = prof.loadAll(sys.argv[1:], 
                      filename_filter=(lambda fn: not fn.endswith("warmup.py")),
                      prof_filter=(lambda p: prof.matchOptions(options, p) and
-                                            p['threads'] in (8, 15)))
+                                            (p['mainClass'] == 'Harness' or
+                                            p['threads'] in (8, 15))))
 
+dc_seen = set()
 precision = []
 for p in profs:
     if p["mainClass"] == 'Harness':
@@ -39,6 +42,10 @@ for p in profs:
     else:
         # JGF
         name = jgfName(p["mainClass"])
+    if name in dc_seen:
+        continue
+    dc_seen.add(name)
+    
     if prof.getSpecNodes(p) == 0:
         node_prec = 0
     else:
@@ -57,7 +64,8 @@ canvas = pychart.area.T(x_coord = pychart.category_coord.T(precision, 0),
                         y_axis = pychart.axis.Y(label="Coverage",
                                                 tic_interval=ystep,
                                                 format="%i%%"),
-                        y_grid_interval = ystep)
+                        y_grid_interval = ystep,
+                        size=(200, 110))
 node_t = pychart.bar_plot.T(label="Nodes", data=precision, cluster=(0,2))                        
 edge_t = pychart.bar_plot.T(label="Edges", data=precision, cluster=(1,2),
                             hcol=2)
