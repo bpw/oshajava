@@ -56,10 +56,10 @@ public class MethodInstrumentor extends AdviceAdapter {
 			policy = CommunicationKind.INLINE;
 			// Raise an error for other methods that are not found.
 		} else if (methodUID == -1) {
-			module.describe();
 			if (InstrumentationAgent.ignoreMissingMethodsOption.get()) {
 				Util.log("IGNORED and INLINED: in module " + module.getName() + ", " + fullNameAndDesc + " not found");
 			} else {
+				module.describe();
 				Util.fail("in module " + module.getName() + ", " + fullNameAndDesc + " not found");
 			}
 			policy = CommunicationKind.INLINE; // avoid warning
