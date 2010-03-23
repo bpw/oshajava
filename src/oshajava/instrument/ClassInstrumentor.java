@@ -376,7 +376,6 @@ public class ClassInstrumentor extends ClassAdapter {
 		    		chain = new JSRInlinerAdapter(chain, access, name, desc, signature, exceptions);
 		    		return chain;
 		    	}
-		    	return chain;
 			} else if (name.equals("<clinit>") && (classAccess & Opcodes.ACC_INTERFACE) != 0) {
 			    // Class initializer for an interface. Inline the
 			    // initialization.
