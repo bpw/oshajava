@@ -20,7 +20,6 @@ options = {
 }
 
 def dcName(p):
-    print p["options"]["profileExt"]
     return p["options"]["profileExt"].split('-', 3)[1].capitalize()
 
 def jgfName(name):
@@ -54,6 +53,7 @@ for p in profs:
         edge_prec = 0
     else:
         edge_prec = float(prof.getRunEdges(p)) / prof.getSpecEdges(p) * 100
+    print '%s : %i/%i , %i/%i' % (name, prof.getRunNodes(p), prof.getSpecNodes(p), prof.getRunEdges(p), prof.getSpecEdges(p))
     precision.append((name, node_prec, edge_prec))
 print 'Node and edge precision:', precision
 
