@@ -119,7 +119,7 @@ public class Stack {
 	}
 	
 	public int getDepth() {
-		if (this == root) {
+		if (this == root || this == classInitializer) {
 			return 0;
 		} else {
 			return 1 + parent.getDepth();
