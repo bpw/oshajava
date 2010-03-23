@@ -63,5 +63,5 @@ for t,profs in thread_profs:
         index_data,index_threads = sd,t
         
 if index_data != None:
-    canvas.add_plot(bar_plot.T(label=str(index_threads) + ' Index', data=index_data, cluster=(i,cluster_size), hcol=2))
+    canvas.add_plot(bar_plot.T(label=str(index_threads) + ' Element', data=index_data, cluster=(i,cluster_size), hcol=2))
 canvas.draw()

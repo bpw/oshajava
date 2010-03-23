@@ -52,6 +52,6 @@ canvas = area.T(x_coord = category_coord.T(sd, 0),
                 y_range=(0,y_max))
 
 canvas.add_plot(bar_plot.T(label="Array", data=sd, cluster=(0,2)))
-canvas.add_plot(bar_plot.T(label="Index", data=sd, cluster=(1,2), hcol=2))
+canvas.add_plot(bar_plot.T(label="Element", data=sd, cluster=(1,2), hcol=2))
 
 canvas.draw()
