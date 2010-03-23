@@ -107,6 +107,7 @@ public class Config {
 		cl.add(InstrumentationAgent.fullJDKInstrumentationOption);
 		cl.add(InstrumentationAgent.preVerifyOption);
 		cl.add(InstrumentationAgent.verifyOption);
+		cl.add(InstrumentationAgent.ignoreMissingMethodsOption);
 
 		// end command line options -------------------------------------------------------
 			
