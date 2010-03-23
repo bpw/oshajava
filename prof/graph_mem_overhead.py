@@ -49,13 +49,22 @@ print sd
 ystep = 1
 y_max = 11
 canvas = area.T(x_coord = category_coord.T(sd, 0),
-                x_axis=axis.X(label="Benchmarks", format="/a90%s"),
+                x_axis=axis.X(label="             Java Grande                  DaCapo", format="/a90%s"),
                 y_axis=axis.Y(label="Memory Overhead (x)", tic_interval=ystep),
-                y_grid_interval=float(ystep) / 2.0,
+                y_grid_interval=float(ystep),
                 y_range=(0,y_max),
                 size=(180,110))
 
 canvas.add_plot(bar_plot.T(label="Array", data=sd, cluster=(0,2)))
 canvas.add_plot(bar_plot.T(label="Element", data=sd, cluster=(1,2), hcol=2))
+
+def assoc1(key, list):
+    for t in list:
+        if t[0] == key:
+            return t
+    return None
+crypt_elem_overhead = str(assoc1('Crypt', sd)[2])[:4]
+
+text_box.T(loc=(3,112), text='{/6(' + str(crypt_elem_overhead) + ')}', line_style=None).draw()
 
 canvas.draw()
