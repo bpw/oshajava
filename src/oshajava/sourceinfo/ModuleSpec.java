@@ -8,6 +8,7 @@ import oshajava.support.acme.util.Util;
 import oshajava.util.count.MaxRecorder;
 import oshajava.util.intset.BitVectorIntSet;
 
+import oshajava.support.acme.util.Util;
 /**
  * Module specification format for saving to disk and using at runtime.
  * @author bpw
@@ -96,8 +97,8 @@ public class ModuleSpec implements Serializable {
 		this.methodSigToId = methodSigToId;
 		if (COUNT_METHODS) {
 			maxCommMethods.add(commMethods);
-			maxInterfaceMethods.add(interfaceGraph.size());
-			maxMethods.add(methodSigToId.size());
+			maxInterfaceMethods.add(interfaceGraph == null ? 0 : interfaceGraph.size());
+			maxMethods.add(methodSigToId == null ? 0 : methodSigToId.size());
 		}
 	}
 	
