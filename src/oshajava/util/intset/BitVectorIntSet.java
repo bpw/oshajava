@@ -1,6 +1,8 @@
 package oshajava.util.intset;
 
 import java.io.Serializable;
+import java.util.Set;
+import java.util.HashSet;
 
 import oshajava.runtime.RuntimeMonitor;
 import oshajava.support.acme.util.Util;
@@ -143,6 +145,16 @@ public class BitVectorIntSet extends IntSet implements Serializable {
 			}
 		}
 		return "{" + s + "}";
+	}
+	
+	public Set<Integer> toJavaSet() {
+	    Set<Integer> out = new HashSet<Integer>();
+	    for (int i = 0; i < bits.length * SLOT_SIZE; i++) {
+			if (contains(i)) {
+				out.add(i);
+			}
+		}
+	    return out;
 	}
 	
 	/**

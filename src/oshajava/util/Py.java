@@ -15,6 +15,7 @@ public class Py {
 		for (Object t : elems) {
 			if (!first) s += (", ");
 			s += (t.toString());
+			first = false;
 		}
 		s += (")");
 		return s;
@@ -25,6 +26,7 @@ public class Py {
 		for (Object t : elems) {
 			if (!first) s += (", ");
 			s += (t.toString());
+			first = false;
 		}
 		s += ("]");
 		return s;
@@ -41,6 +43,7 @@ public class Py {
 				s += (key + " : " + o.toString());				
 				key = null;
 			}
+			first = false;
 		}		
 		s += ("}");
 		return s;
