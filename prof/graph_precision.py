@@ -19,6 +19,9 @@ options = {
     "record" : "true", 
 }
 
+def dcName(p):
+    return p["options"]["profileExt"].split('-', 3)[1].capitalize()
+
 def jgfName(name):
     # remove "JGF" from head, "BenchSize_" from end
     return name if not name.startswith("JGF") else name[3:-10]
@@ -26,17 +29,22 @@ def jgfName(name):
 profs = prof.loadAll(sys.argv[1:], 
                      filename_filter=(lambda fn: not fn.endswith("warmup.py")),
                      prof_filter=(lambda p: prof.matchOptions(options, p) and
-                                            p['threads'] in (4,7)))
+                                            p['threads'] in (8, 15)))
 
 precision = []
 for p in profs:
-    name = jgfName(p["mainClass"])
+    if p["mainClass"] == 'Harness':
+        # DaCapo
+        name = dcName(p)
+    else:
+        # JGF
+        name = jgfName(p["mainClass"])
     if prof.getSpecNodes(p) == 0:
         node_prec = 0
     else:
         node_prec = float(prof.getRunNodes(p)) / prof.getSpecNodes(p) * 100
-    if prof.getSpecNodes(p) == 0:
-        node_prec = 0
+    if prof.getSpecEdges(p) == 0:
+        edge_prec = 0
     else:
         edge_prec = float(prof.getRunEdges(p)) / prof.getSpecEdges(p) * 100
     precision.append((name, node_prec, edge_prec))
