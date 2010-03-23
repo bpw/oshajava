@@ -19,6 +19,9 @@ options = {
     "record" : "true", 
 }
 
+def dcName(p):
+    return p["options"]["profileExt"].split('-', 3)[1].capitalize()
+
 def jgfName(name):
     # remove "JGF" from head, "BenchSize_" from end
     return name if not name.startswith("JGF") else name[3:-10]
@@ -30,7 +33,12 @@ profs = prof.loadAll(sys.argv[1:],
 
 precision = []
 for p in profs:
-    name = jgfName(p["mainClass"])
+    if p["mainClass"] == 'Harness':
+        # DaCapo
+        name = dcName(p)
+    else:
+        # JGF
+        name = jgfName(p["mainClass"])
     if prof.getSpecNodes(p) == 0:
         node_prec = 0
     else:
