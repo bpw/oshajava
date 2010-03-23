@@ -445,8 +445,8 @@ public class Stack {
 
 				commGraphml.close();
 				interfaceGraphml.close();
-				commpy.startList();
-				ifpy.startList();
+				commpy.endList();
+				ifpy.endList();
 				commpy.close();
 				ifpy.close();
 			} catch (IOException e) {

@@ -56,6 +56,12 @@ def partition(mapper, list):
             parts[key] = [i]
     return sorted(parts.items())
 
+def assoc(key, list):
+    for k,v in list:
+        if k == key:
+            return v
+    raise "Not found"
+
 def distAverage(*dists, **kwargs):
     drop_zero = ('drop_zero' in kwargs)
     total = 0
