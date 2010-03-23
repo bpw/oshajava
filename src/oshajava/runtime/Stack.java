@@ -11,6 +11,8 @@ import oshajava.support.acme.util.Util;
 import oshajava.support.acme.util.identityhash.ConcurrentIdentityHashMap;
 import oshajava.support.acme.util.identityhash.IdentityHashSet;
 import oshajava.util.GraphMLWriter;
+import oshajava.util.Py;
+import oshajava.util.PyWriter;
 import oshajava.util.count.Counter;
 import oshajava.util.count.DistributionCounter;
 import oshajava.util.count.SetSizeCounter;
@@ -372,6 +374,9 @@ public class Stack {
 	public static void dumpGraphs(String mainClass) {
 		if (RECORD) {
 			try {
+				final PyWriter commpy = new PyWriter("oshajava-communication-pairs.py", false);
+				final PyWriter ifpy = new PyWriter("oshajava-interface-pairs.py", false);
+//				final PyWriter nodepy = new PyWriter("oshajava-nodes.py", false);
 				final GraphMLWriter commGraphml = new GraphMLWriter(mainClass + ".oshajava.comm.graphml");
 				final GraphMLWriter interfaceGraphml = new GraphMLWriter(mainClass + ".oshajava.comm.graphml");
 				final Counter specCommNodes = new Counter("Total comm nodes in used specs");
@@ -388,6 +393,11 @@ public class Stack {
 				final Counter runCommEdges = new Counter("Total comm edges in run");
 				final Counter runINodes = new Counter("Total interface nodes in run");
 				final Counter runIEdges = new Counter("Total interface edges in run");
+				
+//				nodepy.startList();
+				commpy.startList();
+				ifpy.startList();
+				
 				for (Map.Entry<ModuleSpec,Graph> e : commGraphs.entrySet()) {
 					ModuleSpec mod = e.getKey();
 					Graph g = e.getValue();
@@ -399,6 +409,12 @@ public class Stack {
 						if (bv != null && ! bv.isEmpty()) {
 							// FIXME
 							// commGraphml.writeEdge(uid + "", destID, "rw");
+							final int srcuid = Spec.makeUID(mod.getId(), i);
+							for (int j = 0; j < bv.size(); j++) {
+								if (bv.contains(j)) {
+									commpy.writeElem(Py.tuple(srcuid, Spec.makeUID(mod.getId(), j)));
+								}
+							}
 							runCommNodes.inc();
 							runCommEdges.add(bv.size());
 						}
@@ -413,6 +429,12 @@ public class Stack {
 						if (bv != null && ! bv.isEmpty()) {
 							// FIXME
 							// interfaceGraphml.writeEdge(uid + "", destID, "rw");
+							final int srcuid = Spec.makeUID(mod.getId(), i);
+							for (int j = 0; j < bv.size(); j++) {
+								if (bv.contains(j)) {
+									ifpy.writeElem(Py.tuple(srcuid, Spec.makeUID(mod.getId(), j)));
+								}
+							}
 							runINodes.inc();
 							runIEdges.add(bv.size());
 						}
@@ -421,6 +443,10 @@ public class Stack {
 
 				commGraphml.close();
 				interfaceGraphml.close();
+				commpy.startList();
+				ifpy.startList();
+				commpy.close();
+				ifpy.close();
 			} catch (IOException e) {
 				Util.log("Failed to dump execution graph due to IOException.");
 			}

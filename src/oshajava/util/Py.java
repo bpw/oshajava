@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.io.StringWriter;
 import java.util.Map;
 
+import oshajava.util.intset.BitVectorIntSet;
+
 
 public class Py {
 
@@ -72,11 +74,26 @@ public class Py {
 		return s.toString();
 	}
 	
-	public static <T> String list(Iterable<T> c) {
+	public static <T> String tuple(Iterable<T> c) {
 		StringWriter s = new StringWriter();
 		PyWriter py = new PyWriter(s, false);
 		try {
 			py.writeTuple(c);
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		return s.toString();
+	}
+
+	public static <T> String repr(BitVectorIntSet bv) {
+		StringWriter s = new StringWriter();
+		PyWriter py = new PyWriter(s, false);
+		try {
+			for (int i = 0; i < bv.size(); i++) {
+				if (bv.contains(i)) {
+					py.writeElem(i);
+				}
+			}
 		} catch (IOException e) {
 			throw new RuntimeException(e);
 		}
