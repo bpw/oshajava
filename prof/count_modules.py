@@ -6,28 +6,23 @@ import static
 import sys
 import os
 
-JGF_NAMES = {
-    'crypt': 'Crypt',
-    'lufact': 'LUFact',
-    'moldyn': 'MolDyn',
-    'montecarlo': 'MonteCarlo',
-    'raytracer': 'RayTracer',
-    'sor': 'SOR',
-    'series': 'Series',
-    'sparsematmult': 'SparseMatmult',
-}
-
 statses = static.load_all(sys.argv[1:])
 
 out = []
-all_methods = 0
+all_uninlined = 0
 all_modules = 0
 for name, stats in statses:
-    mdist = static.getMethods(stats)
-    modules = sum(mdist.values())
-    avgmethods = prof.distAverage(mdist)
-    out.append((JGF_NAMES[name], modules, avgmethods))
-    all_methods += prof.distTotal(mdist)
+    modules = sum(static.getMethods(stats).values())
+    inlined = prof.distTotal(static.getInlined(stats))
+    methods = prof.distTotal(static.getMethods(stats))
+    
+    withzerogroups = static.getCGroups(stats).get(0, 0)
+    modules -= withzerogroups
+    
+    avg = float(methods-inlined) / modules if modules else 0
+    
+    out.append((static.BENCH_NAMES[name], modules, avg))
+    all_uninlined += methods - inlined
     all_modules += modules
-print 'Num modules, average methods per module:', out
-print 'Overall methods per module:', float(all_methods) / all_modules
+print 'Num nonempty modules, average uninlined methods per nonempty module:', out
+print 'Overall uninlined methods per nonempty module:', float(all_uninlined) / all_modules
