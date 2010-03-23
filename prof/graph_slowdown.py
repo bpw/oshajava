@@ -59,7 +59,7 @@ index_data,index_threads = None,None
 
 jgf_bms = prof.partition(getName, jgf)
 canvas = area.T(x_coord = category_coord.T(jgf_bms, 0),
-                x_axis=axis.X(label="Java Grande Benchmarks", format="/a90%s"),
+                x_axis=axis.X(label="Java Grande", format="/a90%s"),
                 y_axis=axis.Y(label="Slowdown (x)", tic_interval=5),
                 y_grid_interval=2.5,
                 y_range=(0,30),
@@ -85,7 +85,7 @@ canvas.draw()
 cluster_size = 2
 
 canvas = area.T(x_coord = category_coord.T(prof.partition(getName,dacapo), 0),
-                x_axis=axis.X(label="DaCapo Benchmarks", format="/a90%s"),
+                x_axis=axis.X(label="DaCapo", format="/a90%s"),
                 y_axis=None, #axis.Y(label="Slowdown (x)", tic_interval=5),
                 y_grid_interval=2.5,
                 y_range=(0,30),

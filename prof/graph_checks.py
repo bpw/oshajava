@@ -22,14 +22,18 @@ options = {
     "frames" : "false"
 }
 
-def jgfName(name):
-    # remove "JGF" from head, "BenchSize_" from end
-    return name if not name.startswith("JGF") else name[3:-10]
+def getName(p):
+    if p["mainClass"].startswith("JGF"):
+        # remove "JGF" from head, "BenchSize_" from end
+        return p["mainClass"][3:-10]
+    elif p["mainClass"] == "Harness":
+        return p["options"]["profileExt"].split('-')[1]
+
 
 all = prof.loadAll(sys.argv[1:], 
                    filename_filter=(lambda fn: not fn.endswith("warmup.py")),
                    prof_filter=(lambda p: prof.matchOptions(options, p)))
-bench_profs = prof.partition(lambda p: jgfName(p["mainClass"]), all)
+bench_profs = prof.partition(getName, all)
 
 def checks((name, profiles)):
     array, index = prof.bisect(lambda p: prof.matchOptions({"arrayIndexStates" : "false"}, p), profiles)
@@ -51,19 +55,19 @@ sd = map(checks, bench_profs)
 print 'Per program:', sd
 ystep = .2
 canvas = area.T(x_coord = category_coord.T(sd, 0),
-                x_axis=axis.X(label="Benchmarks", format="/a90%s"),
+                x_axis=axis.X(label="             Java Grande                  DaCapo", format="/a90%s"),
                 y_axis=axis.Y(label="Fraction of Reads", tic_interval=ystep),
                 y_grid_interval=float(ystep) / 2.0,
                 y_range=(0,1),
                 size=(180,110))
 
-tl = bar_plot.T(label="Array: Thread-local", data=sd, cluster=(0,2))
-fast = bar_plot.T(label="Array: Fast memo",  data=sd, cluster=(0,2), hcol=2, stack_on=tl)
+tl = bar_plot.T(label="Array: Thread-local", data=sd, cluster=(0,2), fill_style=fill_style.black)
+fast = bar_plot.T(label="Array: Fast memo",  data=sd, cluster=(0,2), hcol=2, stack_on=tl, fill_style=fill_style.white)
 # slow = bar_plot.T(label="Slow memo - array",  data=sd, cluster=(0,2), hcol=3, stack_on=fast)
 # walk = bar_plot.T(label="Stack walk - array", data=sd, cluster=(0,2), hcol=4, stack_on=slow)
 
-itl = bar_plot.T(label="Element: Thread-local", data=sd, cluster=(1,2), hcol=5)
-ifast = bar_plot.T(label="Element: Fast memo",  data=sd, cluster=(1,2), hcol=6, stack_on=itl)
+itl = bar_plot.T(label="Element: Thread-local", data=sd, cluster=(1,2), hcol=5, fill_style=fill_style.gray50)
+ifast = bar_plot.T(label="Element: Fast memo",  data=sd, cluster=(1,2), hcol=6, stack_on=itl, fill_style=fill_style.gray70)
 # islow = bar_plot.T(label="Slow memo - index",  data=sd, cluster=(1,2), hcol=7, stack_on=ifast)
 # iwalk = bar_plot.T(label="Stack walk - index", data=sd, cluster=(1,2), hcol=8, stack_on=islow)
 
