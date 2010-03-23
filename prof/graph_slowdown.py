@@ -26,9 +26,9 @@ options = {
 def getName(p):
     if p["mainClass"].startswith("JGF"):
         # remove "JGF" from head, "BenchSize_" from end
-        return p["mainClass"][3:-10]
+        return p["mainClass"][3:-10].capitalize()
     elif p["mainClass"] == "Harness":
-        return p["options"]["profileExt"].split('-')[1]
+        return p["options"]["profileExt"].split('-')[1].capitalize()
 
 all = prof.loadAll(sys.argv[1:], 
                    filename_filter=(lambda fn: not fn.endswith("warmup.py")),
