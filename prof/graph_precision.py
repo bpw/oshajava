@@ -76,7 +76,7 @@ width = 140
 canvas = pychart.area.T(x_coord = pychart.category_coord.T(jgf_precision, 0),
                         x_axis = pychart.axis.X(label="Java Grande",
                                                 format="/a90%s"),
-                        y_axis = pychart.axis.Y(label="Coverage",
+                        y_axis = pychart.axis.Y(label="% of Specification Exercised",
                                                 tic_interval=ystep,
                                                 format="%i%%"),
                         y_grid_interval = ystep/2,
@@ -99,9 +99,9 @@ canvas = pychart.area.T(x_coord = pychart.category_coord.T(dc_precision, 0),
                         size=(width * 3/8, 110),
                         loc=(width, 0), y_range=(0,100),
                         legend=pychart.legend.T(loc=(width*11/8+10,3)))
-node_t = pychart.bar_plot.T(label="Nodes", data=dc_precision, cluster=(0,2),
+node_t = pychart.bar_plot.T(label="Methods", data=dc_precision, cluster=(0,2),
                             fill_style=pychart.fill_style.black)                        
-edge_t = pychart.bar_plot.T(label="Edges", data=dc_precision, cluster=(1,2),
+edge_t = pychart.bar_plot.T(label="Method pairs", data=dc_precision, cluster=(1,2),
                             hcol=2, fill_style=pychart.fill_style.gray70)
 canvas.add_plot(node_t, edge_t)
 canvas.draw()
