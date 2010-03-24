@@ -27,7 +27,10 @@ def dcName(p):
 
 def jgfName(name):
     # remove "JGF" from head, "BenchSize_" from end
-    return name if not name.startswith("JGF") else name[3:-10]
+    name = name if not name.startswith("JGF") else name[3:-10]
+    if name == 'SOR':
+        name = 'Sor' # sort order
+    return name
 
 profs = prof.loadAll(sys.argv[1:], 
                      filename_filter=(lambda fn: not fn.endswith("warmup.py")),
