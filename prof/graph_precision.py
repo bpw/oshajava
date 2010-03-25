@@ -52,6 +52,7 @@ for p in profs:
         # JGF
         name = jgfName(p["mainClass"])
         out = jgf_precision
+    name = name.lower().capitalize()
         
     if prof.getSpecNodes(p) == 0:
         node_prec = 0
