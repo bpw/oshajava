@@ -24,5 +24,7 @@ for name, stats in statses:
     out.append((static.BENCH_NAMES[name], modules, avg))
     all_uninlined += methods - inlined
     all_modules += modules
+    
+    print '%s : %i , %i / %i' % (name, modules, methods-inlined, methods)
 print 'Num nonempty modules, average uninlined methods per nonempty module:', out
 print 'Overall uninlined methods per nonempty module:', float(all_uninlined) / all_modules
