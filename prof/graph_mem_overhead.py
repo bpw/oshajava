@@ -26,7 +26,7 @@ options = {
 def getName(p):
     if p["mainClass"].startswith("JGF"):
         # remove "JGF" from head, "BenchSize_" from end
-        return p["mainClass"][3:-10].capitalize()
+        return p["mainClass"][3:-10]
     elif p["mainClass"] == "Harness":
         return p["options"]["profileExt"].split('-')[1].capitalize()
 
