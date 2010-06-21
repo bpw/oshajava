@@ -25,29 +25,6 @@ import oshajava.util.count.ConcurrentTimer;
 import oshajava.util.intset.BitVectorIntSet;
 
 /**
- * TODO Possible optimizations:
- *  
- * 2. Don't call the enter and exit hooks for non-inlined methods that:
- *    - do not contain field accesses (except private reads);
- *    - do not contain any synchronization (including being a synchronized method);
- *    - do not contain any method calls to inlined methods.
- *    
- * 9. When code is stable, customize and diversify array read/writer hooks.
- * 
- * 12. Choose array granularity on some level other than "yes or no for all."  Asin coarse for
- *     some, fine for others.
- *     
- * 13. Encode state (w/o reader set) as an int 
- *     low bits for method, high for thread... 12 bits for tid, 20 for mid. each thread
- *     has an array of reader sets... 
- *     
- *    
- * TODO Things to fix, add, or consider.
- * 
- * + Copy (partial) of java.*
- * 
- * + Graph recording as annotation inference? i.e. insert annotations in the bytecode?
- * 
  * @author bpw
  */
 public class RuntimeMonitor {
