@@ -37,6 +37,18 @@ all =  prof.loadAll(sys.argv[1:],
 def overhead((name, profiles)):
     oshajava, java = prof.bisect(lambda p: prof.matchOptions({"noInstrument" : "false"}, p), profiles)
     array,index  = prof.bisect(lambda p: prof.matchOptions({"arrayIndexStates" : "false"}, p), oshajava)
+    print name, "java " 
+    print "peak mem", map(prof.getPeakMem, java)
+    print "GC time", prof.mapToField("GC time", java)
+
+    print name, "oshajava array granularity " 
+    print "peak mem", map(prof.getPeakMem, array)
+    print "GC time", prof.mapToField("GC time", array)
+
+    print name, "oshajava elem granularity " 
+    print "peak mem", map(prof.getPeakMem, index)
+    print "GC time", prof.mapToField("GC time", index)
+
     ojasum = float(sum(map(prof.getPeakMem, array)))
     ojisum = float(sum(map(prof.getPeakMem, index)))
     jsum = float(sum(map(prof.getPeakMem, java)))
