@@ -516,7 +516,7 @@ public class RuntimeMonitor {
 
 		// dump profile
 		try {
-			final PyWriter py = new PyWriter(mainClass + Config.profileExtOption.get(), true);
+			final PyWriter py = new PyWriter(mainClass + Config.profileExtOption.get(), !Util.quietOption.get());
 			try {
 				py.startMap();
 				py.writeMapKey("options");
