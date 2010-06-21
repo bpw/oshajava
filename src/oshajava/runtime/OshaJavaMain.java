@@ -5,9 +5,7 @@ import java.lang.reflect.Method;
 
 import oshajava.instrument.InstrumentationAgent;
 import oshajava.support.acme.util.Util;
-import oshajava.util.count.Counter;
 import oshajava.util.count.SequentialTimer;
-import oshajava.util.count.ConcurrentTimer;
 
 public class OshaJavaMain {
 	
@@ -15,6 +13,9 @@ public class OshaJavaMain {
 		if (Config.helpOption.get()) {
 			Config.cl.usage();
 			return;
+		}
+		if (args.length == 0) {
+			Util.fail("No main class given.");
 		}
 		final String mainClass = args[0];
 		InstrumentationAgent.setMainClass(mainClass);
