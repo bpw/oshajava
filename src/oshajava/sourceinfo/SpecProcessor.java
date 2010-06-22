@@ -49,7 +49,7 @@ import com.sun.tools.javac.util.Context;
 @SupportedAnnotationTypes("*")
 @SupportedSourceVersion(SourceVersion.RELEASE_6)
 public class SpecProcessor extends AbstractProcessor implements TaskListener {
-    
+	    
     private Map<String, ModuleSpecBuilder> modules =
         new HashMap<String, ModuleSpecBuilder>();
     private Map<String, ModuleSpecBuilder> classToModule =
@@ -373,22 +373,22 @@ public class SpecProcessor extends AbstractProcessor implements TaskListener {
             nonEmptyGroups = nonEmptyGroups || (writerAnn.value() != null && writerAnn.value().length > 0);
         }
         
-        // Non-comm
-        if (((writerAnn != null || readerAnn != null) && !nonEmptyGroups) || nonCommAnn != null) {
+        // Explicit Non-comm
+        if (nonCommAnn != null || ((writerAnn != null || readerAnn != null) && !nonEmptyGroups)) {
         	module.addNonComm(sig);
-            module.ctrNonComm++;
         }
         
-        // Inlining (default).
-        if (readerAnn == null && writerAnn == null && nonCommAnn == null) {
-            module.inlineMethod(sig);
-            changed.add(module);
+        // Default (unannotated)
+        if (readerAnn == null && writerAnn == null && nonCommAnn == null && inlineAnn == null) {
+        	module.addUnannotatedMethod(sig);
         }
         
-        // Count inline annotations.
+        // Explicit Inline
         if (inlineAnn != null) {
-            module.ctrInline++;
+            module.inlineMethod(sig);
         }
+        changed.add(module);
+        
     }
     
     /**

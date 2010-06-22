@@ -35,6 +35,7 @@ public class RuntimeMonitor {
 	 */
 	public static final boolean PROFILE = Config.profileOption.get();
  	public static final boolean CREATE = Config.createOption.get();
+ 	public static final boolean INTRA_THREAD = Config.intraThreadOption.get();
 
 	public static final Counter fieldReadCounter = new Counter("All field reads");
 	public static final Counter fieldCommCounter = new Counter("Communicating field reads");
@@ -132,7 +133,7 @@ public class RuntimeMonitor {
 		}
 	}
 	private static void checkArrayRead(final State write, final ThreadState reader, final BitVectorIntSet wCache, final StackTraceElement[] trace) {
-		if (write.thread != reader) {
+		if (INTRA_THREAD || write.thread != reader) {
 			if (PROFILE) {
 				arrayCommCounter.inc();
 			}
@@ -282,7 +283,7 @@ public class RuntimeMonitor {
 					// increment depth to 1
 					lockState.incrementDepth();
 					// if last holder was not the same thread
-					if (lastHolderState.thread != holder) {
+					if (INTRA_THREAD || lastHolderState.thread != holder) {
 						if (PROFILE) {
 							lockCommCounter.inc();
 						}

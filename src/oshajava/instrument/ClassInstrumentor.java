@@ -226,7 +226,12 @@ public class ClassInstrumentor extends ClassAdapter {
 		        newAccess = access & ~(Opcodes.ACC_FINAL | Opcodes.ACC_VOLATILE);
 		    }
 		    
-			final FieldVisitor fv = super.visitField(
+		    // Option to make all shadows volatile.
+	        if (InstrumentationAgent.volatileShadowOption.get()) {
+	        	newAccess |= Opcodes.ACC_VOLATILE;
+	        }
+
+	        final FieldVisitor fv = super.visitField(
 					newAccess,
 					name + SHADOW_FIELD_SUFFIX, STATE_DESC, null, null
 			);

@@ -39,6 +39,9 @@ public class Config {
 	
 	public static final CommandLineOption<String> jvmOption =
 		CommandLine.makeString("java", "java", "JVM to use.");
+	
+	public static final CommandLineOption<Boolean> intraThreadOption =
+		CommandLine.makeBoolean("intraThread", false, "Track all (intra- and inter-thread) communication.");
 
 	public static final CommandLineOption<Boolean> arrayIndexStatesOption =
 		CommandLine.makeBoolean("arrayIndexStates", false, "Track individual array slots instead of whole arrays.");
@@ -97,6 +100,7 @@ public class Config {
 		cl.add(failStopOption);
 		cl.add(profileExtOption);
 		cl.add(createOption);
+		cl.add(intraThreadOption);
 
 		cl.addGroup("Instrumentation");
 		
@@ -108,6 +112,7 @@ public class Config {
 		cl.add(InstrumentationAgent.preVerifyOption);
 		cl.add(InstrumentationAgent.verifyOption);
 		cl.add(InstrumentationAgent.ignoreMissingMethodsOption);
+		cl.add(InstrumentationAgent.volatileShadowOption);
 
 		// end command line options -------------------------------------------------------
 			

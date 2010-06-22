@@ -473,12 +473,17 @@ public class MethodInstrumentor extends AdviceAdapter {
 				super.dup();
 				// Get the State for this field. stack -> obj | state
 				super.getField(ownerType, stateFieldName, ClassInstrumentor.STATE_TYPE);
-				// stack -> obj | state state
-				super.dup();
-				// stack -> obj | state writerThread
-				loadThreadFromState();
-				// stack -> obj | state writerThread currentThread -> obj | state
-				ifSameThreadGoto(homeFree); // FAST PATH if same thread we're done, else check stacks
+				
+				// IF INTER-THREAD ONLY -----------
+				if (!Config.intraThreadOption.get()) {
+					// stack -> obj | state state
+					super.dup();
+					// stack -> obj | state writerThread
+					loadThreadFromState();
+					// stack -> obj | state writerThread currentThread -> obj | state
+					ifSameThreadGoto(homeFree); // FAST PATH if same thread we're done, else check stacks
+				}
+				// END IF INTER-THREAD ONLY -------
 				
 				// Fairly Fast Path
 				
@@ -532,12 +537,18 @@ public class MethodInstrumentor extends AdviceAdapter {
 				}
 				// Get the State for this field. stack -> state
 				super.getStatic(ownerType, stateFieldName, ClassInstrumentor.STATE_TYPE);
-				// stack -> state state
-				super.dup();
-				// stack -> state writerThread
-				loadThreadFromState();
-				// stack -> state writerThread currentThread -> state
-				ifSameThreadGoto(sHomeFree); // FAST PATH if same thread we're done, else check stacks
+				
+				
+				// IF INTER-THREAD ONLY -----------
+				if (!Config.intraThreadOption.get()) {
+					// stack -> state state
+					super.dup();
+					// stack -> state writerThread
+					loadThreadFromState();
+					// stack -> state writerThread currentThread -> state
+					ifSameThreadGoto(sHomeFree); // FAST PATH if same thread we're done, else check stacks
+				}
+				// END IF INTER-THREAD ONLY -------
 				
 				// Fairly Fast Path
 				

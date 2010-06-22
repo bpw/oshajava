@@ -18,6 +18,8 @@ public class ModuleSpecBuilder implements Serializable {
 	
 	public static final String EXT = ".omb"; // for Osha Module Builder
 	
+	public static final boolean DEFAULT_INLINE = true;
+
 	protected final URI uri;
 	protected final String qualifiedName;
 	
@@ -117,13 +119,22 @@ public class ModuleSpecBuilder implements Serializable {
 	 */
 	public void addNonComm(String signature) {
 		nonCommMethods.add(signature);
+        ctrNonComm++;
 	}
 	/**
 	 * Add a method to the list of inlined methods.
 	 */
 	public void inlineMethod(String signature) {
 	    inlinedMethods.add(signature);
+	    ctrInline++;
 	}
+	
+	/**
+	 * Add an unannotated method (DEFAULT)
+	 */
+	public void addUnannotatedMethod(String signature) {
+    	(DEFAULT_INLINE ? inlinedMethods : nonCommMethods).add(signature);
+ 	}
 	
 	/**
 	 * Returns a (static) ModuleSpec object reflecting this module.
