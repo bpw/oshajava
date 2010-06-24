@@ -37,6 +37,7 @@
 		
 	<target name="clean" description="Clean build files.">
 		<delete dir="${build.dir}" />
+		<delete file="${paths.script}" />
 	</target>
 	
 	<target name="compile">
