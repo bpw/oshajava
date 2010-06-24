@@ -1,5 +1,6 @@
 package oshajava.sourceinfo;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
 import java.net.URI;
@@ -44,6 +45,8 @@ public class ModuleSpecBuilder implements Serializable {
 	
 	public void write() throws IOException {
 		ColdStorage.store(uri, this);
+		String s = uri.getPath();
+		ColdStorage.store(s.substring(0, s.length() - EXT.length()) + ModuleSpec.EXT, generateSpec());
 	}
 	
 	public String getName() {
