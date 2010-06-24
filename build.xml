@@ -81,8 +81,8 @@ case "$1" in
     shift
     ;;	  
 esac
-echo $JAVAC -Xbootclasspath/a:${basedir}/${annotation.jar} -processorpath ${basedir}/${annotation.jar} $$@
-$JAVAC -Xbootclasspath/a:${basedir}/${annotation.jar} -processorpath ${basedir}/${annotation.jar} $$@
+echo $JAVAC -Xbootclasspath/a:${basedir}/${annotation.jar} -processorpath ${basedir}/${agent.jar} -processor oshajava.sourceinfo.SpecProcessor $$@
+$JAVAC -Xbootclasspath/a:${basedir}/${annotation.jar} -processorpath ${basedir}/${agent.jar} -processor oshajava.sourceinfo.SpecProcessor $$@
 </echo>
 		
 		<!-- Generate the java wrapper script -->
