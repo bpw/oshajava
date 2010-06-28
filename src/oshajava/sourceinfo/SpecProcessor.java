@@ -11,8 +11,10 @@ import java.util.Map;
 import java.util.Set;
 
 import javax.annotation.processing.AbstractProcessor;
+import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
 import javax.annotation.processing.SupportedAnnotationTypes;
+import javax.annotation.processing.SupportedOptions;
 import javax.annotation.processing.SupportedSourceVersion;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.Element;
@@ -38,35 +40,54 @@ import oshajava.annotation.Member;
 import oshajava.annotation.NonComm;
 import oshajava.annotation.Reader;
 import oshajava.annotation.Writer;
+import oshajava.instrument.InstrumentationAgent;
 import oshajava.support.acme.util.Util;
 import oshajava.util.ColdStorage;
 
-@SupportedAnnotationTypes("*")
+@SupportedAnnotationTypes("oshajava.annotation.*")
 @SupportedSourceVersion(SourceVersion.RELEASE_6)
+@SupportedOptions({"oshajava.annotation.default"})
 public class SpecProcessor extends AbstractProcessor {
+	
+	private static final String INLINE_ANN = "inline", NONCOMM_ANN = "noncomm";
 
-	private Map<String, ModuleSpecBuilder> modules =
-		new HashMap<String, ModuleSpecBuilder>();
-	private Map<String, ModuleSpecBuilder> classToModule =
-		new HashMap<String, ModuleSpecBuilder>();
+	private Map<String, ModuleSpecBuilder> modules = new HashMap<String, ModuleSpecBuilder>();
+	private Map<String, ModuleSpecBuilder> classToModule = new HashMap<String, ModuleSpecBuilder>();
 
 	private final Set<ModuleSpecBuilder> changed = new HashSet<ModuleSpecBuilder>();
 
-	private void dump() {
+	@Override
+	public synchronized void init(ProcessingEnvironment processingEnv) {
+		super.init(processingEnv);
+		// Set the default annotation to @Inline or @NonComm.
+		final String defaultAnn = processingEnv.getOptions().get("oshajava.annotation.default");
+		if (defaultAnn == null || defaultAnn.toLowerCase().equals(INLINE_ANN)) {
+			ModuleSpecBuilder.setDefaultInline(true);
+		} else if (defaultAnn.toLowerCase().equals(NONCOMM_ANN)) {
+			ModuleSpecBuilder.setDefaultInline(false);			
+		} else {
+			throw new IllegalArgumentException("oshajava.annotation.default=" + defaultAnn);
+		}
+	}
+
+	private void dumpChanges() {
 		for (ModuleSpecBuilder mod : changed) {
 			try {
 				note("Writing " + mod.getName());
 				note("  " + mod.summary());
 				mod.write();
 			} catch (IOException e1) {
-				processingEnv.getMessager().printMessage(Diagnostic.Kind.OTHER, "Failed to write " + mod.getName() + ModuleSpecBuilder.EXT + ".");
+				processingEnv.getMessager().printMessage(Diagnostic.Kind.OTHER, "Failed to write " + mod.getName() + ModuleSpecBuilder.EXT + " or " + mod.getName() + ModuleSpec.EXT + ".");
 				e1.printStackTrace();
 			}
 		}
 		changed.clear();
 	}
 
-	// Recursively visit all classes and methods.
+	/**
+	 *  Recursively visit all classes and methods.
+	 * @param elements
+	 */
 	private void processAll(Collection<? extends Element>elements) {
 		for (Element e : elements) {
 			switch (e.getKind()) {
@@ -87,14 +108,17 @@ public class SpecProcessor extends AbstractProcessor {
 		}
 	}
 
-	// Annotation processing hook.
+	/**
+	 *  Annotation processing hook.
+	 */
+	@Override
 	public boolean process(
 			Set<? extends TypeElement> elements,
 			RoundEnvironment env
 	) {
 		// Process eveything.
 		processAll(env.getRootElements());
-		dump();
+		dumpChanges();
 		return false;
 	}
 
@@ -138,7 +162,7 @@ public class SpecProcessor extends AbstractProcessor {
 				name = name.substring(0, lt);
 			}
 
-			name = name.replace('.', '/');
+			name = InstrumentationAgent.internalName(name);
 
 			// Disable <...> appending, because ASM doesn't seem to do it?
 			/*
@@ -382,7 +406,7 @@ public class SpecProcessor extends AbstractProcessor {
 
 		if (ann instanceof Group) {
 			Group groupAnn = (Group)ann;
-			mod.addGroup(groupAnn.id(), groupAnn.delegate(), groupAnn.merge());
+			mod.addGroup(groupAnn.id());
 			changed.add(mod);
 		} else if (ann instanceof InterfaceGroup) {
 			mod.addInterfaceGroup(((InterfaceGroup)ann).id());

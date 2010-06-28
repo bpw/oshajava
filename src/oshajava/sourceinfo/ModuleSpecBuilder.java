@@ -1,25 +1,25 @@
 package oshajava.sourceinfo;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
 import java.net.URI;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 import java.util.Vector;
 
+import oshajava.support.acme.util.Util;
 import oshajava.util.ColdStorage;
 import oshajava.util.intset.BitVectorIntSet;
-import oshajava.support.acme.util.Util;
-import oshajava.util.count.Counter;
 
 public class ModuleSpecBuilder implements Serializable {
 	
 	public static final String EXT = ".omb"; // for Osha Module Builder
 	
-	public static final boolean DEFAULT_INLINE = true;
+	public static boolean DEFAULT_INLINE;
+	
+	public static void setDefaultInline(boolean b) {
+		DEFAULT_INLINE = b;
+	}
 
 	protected final URI uri;
 	protected final String qualifiedName;
@@ -75,8 +75,8 @@ public class ModuleSpecBuilder implements Serializable {
 	/**
 	 * Create a new communication group.
 	 */
-	public void addGroup(String id, String[] delegates, String[] merges) {
-	    Group g = new Group(id, delegates, merges);
+	public void addGroup(String id) {
+	    Group g = new Group(id);
 	    groups.put(id, g);
 	}
 	
@@ -203,26 +203,11 @@ public class ModuleSpecBuilder implements Serializable {
 	 */
 	protected class Group implements Serializable {
 	    public String id;
-	    public Set<String> delegates = new HashSet<String>();
-	    public Set<String> merges = new HashSet<String>();
 	    public boolean isInterfaceGroup = false;
-	    
-	    // Initialize a communication group.
-	    public Group(String id, String[] delegates, String[] merges) {
-	        this.id = id;
-	        for (String delegate : delegates) {
-	            this.delegates.add(delegate);
-	        }
-	        for (String merge : merges) {
-	            this.merges.add(merge);
-	        }
-	    }
 	    
 	    // Initialize an interface group.
 	    public Group(String id) {
 	        this.id = id;
-	        merges = null;
-	        delegates = null;
 	        isInterfaceGroup = true;
 	    }
 	}
