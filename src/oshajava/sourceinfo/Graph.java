@@ -1,6 +1,8 @@
 package oshajava.sourceinfo;
 
 import java.io.Serializable;
+import java.util.Iterator;
+import java.util.Set;
 
 import oshajava.support.acme.util.Util;
 import oshajava.util.intset.BitVectorIntSet;
@@ -12,7 +14,7 @@ import oshajava.util.intset.IntSet;
  * @author bpw
  *
  */
-public class Graph implements Serializable {
+public class Graph implements Serializable, Iterable<Graph.Edge> {
 	
 	private static final long serialVersionUID = 1L;
 
@@ -136,6 +138,49 @@ public class Graph implements Serializable {
 		BitVectorIntSet[] p = new BitVectorIntSet[n];
 		System.arraycopy(table, 0, p, 0, n > nextID ? nextID : n);
 		table = p;
+	}
+	
+	public class Edge {
+		public final int source, sink;
+		public Edge(final int source, final int sink) {
+			this.source = source;
+			this.sink = sink;
+		}
+	}
+	public Iterator<Edge> iterator() {
+		return new Iterator<Edge>() {
+			private int source = 0;
+			private Iterator<Integer> sinks = null;
+
+			public boolean hasNext() {
+				if (sinks != null && sinks.hasNext()) {
+					return true;
+				}
+				while (source < table.length) {
+					if (sinks == null) {
+						if (table[source] == null) {
+							source++;
+						} else {
+							sinks = table[source].iterator();
+						}
+					} else if (!sinks.hasNext()) {
+						source++;
+						sinks = null;
+					} else {
+						return true;
+					}
+				}
+				return false;
+			}
+
+			public Edge next() {
+				return new Edge(source, sinks.next());
+			}
+
+			public void remove() {
+				throw new UnsupportedOperationException();
+			}
+		};	
 	}
 
 }

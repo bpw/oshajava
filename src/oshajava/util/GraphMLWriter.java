@@ -8,6 +8,8 @@ import java.io.Writer;
 public class GraphMLWriter {
 	private final Writer graphml;
 	
+	private static final String KIND_KEY = "kind", STACK_KEY = "stack";
+	
 	public GraphMLWriter(final String file) throws IOException {
 		 graphml = new PrintWriter(new File(file));
 		 // print boilerplate.
@@ -18,10 +20,8 @@ public class GraphMLWriter {
 		 graphml.write(" http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd\">\n");
 		 graphml.write("<graph id=\"G\" edgedefault=\"directed\">\n");
 		 graphml.write("<!-- data schema -->\n\n");
-		 graphml.write("<key id=\"fnname\" for=\"node\" attr.name=\"fnname\" attr.type=\"string\"/>\n");
-		 graphml.write("<key id=\"file\" for=\"node\" attr.name=\"file\" attr.type=\"string\"/>\n");
-		 graphml.write("<key id=\"kind\" for=\"edge\" attr.name=\"kind\" attr.type=\"string\"/>\n\n\n");
-		 graphml.write("<key id=\"weight\" for=\"edge\" attr.name=\"weight\" attr.type=\"double\"/>\n");
+		 graphml.write("<key id=\"" + STACK_KEY + "\" for=\"node\" attr.name=\"" + STACK_KEY + "\" attr.type=\"int\"/>\n");
+		 graphml.write("<key id=\"" + KIND_KEY + "\" for=\"edge\" attr.name=\"" + KIND_KEY + "\" attr.type=\"string\"/>\n\n\n");
 	}
 	
 	public void writeNode(final String id, final String name, final String file) throws IOException {
@@ -37,7 +37,7 @@ public class GraphMLWriter {
 	
 	public void writeEdge(final String sourceID, final String destID, final String kind, final int weight) throws IOException {
 		graphml.write("<edge source=\"" + filterForXml(sourceID) + "\" target=\"" +  filterForXml(destID) + "\">\n");
-		graphml.write("\t<data key=\"kind\">" + filterForXml(kind) + "</data>\n");
+		graphml.write("\t<data key=\"" + KIND_KEY + "\">" + filterForXml(kind) + "</data>\n");
 		graphml.write("\t<data key=\"weight\">" + weight + "</data>\n");
 		graphml.write("</edge>\n");
 	}

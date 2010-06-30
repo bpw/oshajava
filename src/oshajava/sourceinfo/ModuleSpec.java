@@ -3,6 +3,7 @@ package oshajava.sourceinfo;
 import java.io.Serializable;
 import java.util.HashMap;
 
+import oshajava.instrument.InstrumentationAgent;
 import oshajava.runtime.RuntimeMonitor;
 import oshajava.support.acme.util.Util;
 import oshajava.util.count.MaxRecorder;
@@ -88,7 +89,7 @@ public class ModuleSpec implements Serializable {
 	public ModuleSpec(final String name, final String[] methodIdToSig, final int commMethods,
 			final Graph internalGraph, final Graph interfaceGraph, final BitVectorIntSet inlinedMethods,
 			final HashMap<String,Integer> methodSigToId) {
-		this.name = name;
+		this.name = InstrumentationAgent.internalName(name);
 		this.methodIdToSig = methodIdToSig;
 		this.commMethods = commMethods;
 		this.internalGraph = internalGraph;
@@ -264,5 +265,20 @@ public class ModuleSpec implements Serializable {
 	public boolean checkIntegrity() {
 		return name != null && methodIdToSig != null && internalGraph != null 
 				&& interfaceGraph != null && inlinedMethods != null && methodSigToId != null;
+	}
+	
+	/**
+	 * DO NOT MODIFY the array returned.
+	 * @return
+	 */
+	public String[] getMethods() {
+		return methodIdToSig; 
+	}
+	
+	public Graph getCommunication() {
+		return internalGraph;
+	}
+	public Graph getInterface() {
+		return interfaceGraph;
 	}
 }

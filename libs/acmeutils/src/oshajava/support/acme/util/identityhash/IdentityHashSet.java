@@ -97,8 +97,8 @@ import java.util.*;
  */
 
 @SuppressWarnings("serial")
-public class IdentityHashSet<T> extends AbstractSet
-implements Set, Cloneable, java.io.Serializable
+public class IdentityHashSet<T> extends AbstractSet<T>
+implements Set<T>, Cloneable, java.io.Serializable
 {
 	private transient IdentityHashMap map;
 	

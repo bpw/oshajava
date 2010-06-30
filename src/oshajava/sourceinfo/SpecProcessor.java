@@ -32,6 +32,13 @@ import javax.lang.model.type.TypeKind;
 import javax.tools.Diagnostic;
 import javax.tools.StandardLocation;
 
+import com.sun.source.util.Trees;
+import com.sun.tools.javac.processing.JavacProcessingEnvironment;
+import com.sun.tools.javac.tree.JCTree;
+import com.sun.tools.javac.tree.TreeMaker;
+import com.sun.tools.javac.tree.TreeTranslator;
+import com.sun.tools.javac.tree.JCTree.JCAnnotation;
+import com.sun.tools.javac.util.Context;
 import oshajava.annotation.Group;
 import oshajava.annotation.Groups;
 import oshajava.annotation.Inline;
@@ -55,12 +62,17 @@ public class SpecProcessor extends AbstractProcessor {
 	private Map<String, ModuleSpecBuilder> classToModule = new HashMap<String, ModuleSpecBuilder>();
 
 	private final Set<ModuleSpecBuilder> changed = new HashSet<ModuleSpecBuilder>();
+	
+	private int tally;
+	private Trees trees;
+	private TreeMaker make;
 
 	@Override
-	public synchronized void init(ProcessingEnvironment processingEnv) {
-		super.init(processingEnv);
+	public synchronized void init(ProcessingEnvironment env) {
+		super.init(env);
 		// Set the default annotation to @Inline or @NonComm.
-		final String defaultAnn = processingEnv.getOptions().get("oshajava.annotation.default");
+		// e.g. -Aoshajava.annotation.default=NonComm
+		final String defaultAnn = env.getOptions().get("oshajava.annotation.default");
 		if (defaultAnn == null || defaultAnn.toLowerCase().equals(INLINE_ANN)) {
 			ModuleSpecBuilder.setDefaultInline(true);
 		} else if (defaultAnn.toLowerCase().equals(NONCOMM_ANN)) {
@@ -68,14 +80,17 @@ public class SpecProcessor extends AbstractProcessor {
 		} else {
 			throw new IllegalArgumentException("oshajava.annotation.default=" + defaultAnn);
 		}
+//		trees = Trees.instance(env);
+//		Context context = ((JavacProcessingEnvironment)env).getContext(); 
+//		make = TreeMaker.instance(context);
 	}
 
 	private void dumpChanges() {
-		for (ModuleSpecBuilder mod : changed) {
+		for (ModuleSpecBuilder mod : modules.values()) {
 			try {
 				note("Writing " + mod.getName());
 				note("  " + mod.summary());
-				mod.write();
+				mod.write(this);
 			} catch (IOException e1) {
 				processingEnv.getMessager().printMessage(Diagnostic.Kind.OTHER, "Failed to write " + mod.getName() + ModuleSpecBuilder.EXT + " or " + mod.getName() + ModuleSpec.EXT + ".");
 				e1.printStackTrace();
@@ -346,6 +361,7 @@ public class SpecProcessor extends AbstractProcessor {
 		//        String name = cls.getQualifiedName() + "." + m.getSimpleName();
 		ModuleSpecBuilder module = classToModule.get(cls.getQualifiedName().toString());
 		String sig = methodDescriptor(cls, m);
+		
 
 		assert module != null;
 
@@ -391,7 +407,15 @@ public class SpecProcessor extends AbstractProcessor {
 			module.inlineMethod(sig);
 		}
 		changed.add(module);
-
+		
+//		// Give the method an ID within this class.
+//		JCTree tree = (JCTree) trees.getTree(m);
+//		tree.accept(new TreeTranslator() {
+//			@Override
+//			public void visitAnnotation(JCAnnotation a) {
+//				a.getAnnotationType().
+//			}
+//		});
 	}
 
 	/**
@@ -422,7 +446,7 @@ public class SpecProcessor extends AbstractProcessor {
 	private void error(String message) {
 		processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, message);
 	}
-	private void note(String message) {
+	public void note(String message) {
 		processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE, message);
 	}
 

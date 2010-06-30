@@ -88,4 +88,19 @@ public class NullModuleSpec extends ModuleSpec {
         return true;
     }
     
+	public String[] getMethods() {
+		String[] s = new String[nullMethodIdToSig.size()];
+		for (int i = 0; i < s.length; i++) {
+			s[i] = nullMethodIdToSig.get(i);
+		}
+		return s;
+	}
+	
+	public Graph getCommunication() {
+		return new Graph(0);
+	}
+	public Graph getInterface() {
+		return new Graph(0);
+	}
+
 }

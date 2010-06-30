@@ -1,7 +1,10 @@
 package oshajava.runtime;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.HashSet;
 import java.util.Set;
@@ -15,14 +18,17 @@ import oshajava.support.acme.util.identityhash.IdentityHashSet;
 import oshajava.util.GraphMLWriter;
 import oshajava.util.Py;
 import oshajava.util.PyWriter;
+import oshajava.util.XMLWriter;
 import oshajava.util.count.Counter;
 import oshajava.util.count.DistributionCounter;
 import oshajava.util.count.SetSizeCounter;
 import oshajava.util.intset.BitVectorIntSet;
 
-public class Stack {
+public class Stack implements Serializable {
 	
 	public static final boolean RECORD = Config.recordOption.get();
+
+	private static final List<Stack> allStacks = new LinkedList<Stack>();
 
 	public static final Counter stacksCreated = new Counter("Distinct stacks created");
 	public static final DistributionCounter communicatingStackDepths = new DistributionCounter("Communicating stack depths");
@@ -44,7 +50,8 @@ public class Stack {
 	
 	protected static final Stack root = new Stack(-1, null);
 	protected static final Stack classInitializer = new Stack(-1, null);
-
+	
+	
 	/**
 	 * The Stack for the caller of the top of this stack.
 	 */
@@ -72,7 +79,7 @@ public class Stack {
 	 * have it in the (actual hardware) cache.  If we load the readerset from
 	 * a state representing a write, chances are it's not in the cache...
 	 */
-	public final BitVectorIntSet writerCache = new BitVectorIntSet();
+	public transient final BitVectorIntSet writerCache = new BitVectorIntSet();
 	
 	private final IdentityHashSet<Stack> writerMemoTable = new IdentityHashSet<Stack>();
 	
@@ -81,6 +88,12 @@ public class Stack {
 		this.parent = parent;
 		
 		if (COUNT_STACKS) stacksCreated.inc();
+		if (RECORD) {
+			synchronized (allStacks) {
+				// safe escape.
+				allStacks.add(this);
+			}
+		}
 	}
 	
 	/**
@@ -381,8 +394,10 @@ public class Stack {
 				final PyWriter commpy = new PyWriter("oshajava-communication-pairs.py", false);
 				final PyWriter ifpy = new PyWriter("oshajava-interface-pairs.py", false);
 //				final PyWriter nodepy = new PyWriter("oshajava-nodes.py", false);
-				final GraphMLWriter commGraphml = new GraphMLWriter(mainClass + ".oshajava.comm.graphml");
-				final GraphMLWriter interfaceGraphml = new GraphMLWriter(mainClass + ".oshajava.intfc.graphml");
+//				final GraphMLWriter commGraphml = new GraphMLWriter(mainClass + ".oshajava.comm.graphml");
+//				final GraphMLWriter interfaceGraphml = new GraphMLWriter(mainClass + ".oshajava.intfc.graphml");
+				final XMLWriter xml = new XMLWriter(mainClass + "-oshajava.xml");
+				
 				final Counter specCommNodes = new Counter("Total comm nodes in used specs");
 				final Counter specCommEdges = new Counter("Total comm edges in used specs");
 				final Counter specINodes = new Counter("Total interface nodes in used specs");
@@ -402,21 +417,86 @@ public class Stack {
 				commpy.startList();
 				ifpy.startList();
 				
+				
+				// Start exec.
+				xml.start("execution", "main", mainClass);
+				xml.start("modules");
+				for (ModuleSpec m : Spec.loadedModules()) {
+					xml.start("module", "id", m.getId(), "name", m.getName());
+					xml.start("methods");
+					String[] methods = m.getMethods();
+					for (int i = 0; i < methods.length; i++) {
+						xml.singleton("method", "uid", Spec.makeUID(m.getId(), i), "signature", methods[i]);
+					}
+					xml.end("methods");
+					xml.start("spec");
+					xml.start("communication");
+					for (Graph.Edge e : m.getCommunication()) {
+						xml.singleton("edge", "source", Spec.makeUID(m.getId(), e.source), "sink", Spec.makeUID(m.getId(), e.sink));
+					}
+					xml.end("communication");
+					xml.start("interface");
+					for (Graph.Edge e : m.getInterface()) {
+						xml.singleton("edge", "source", Spec.makeUID(m.getId(), e.source), "sink", Spec.makeUID(m.getId(), e.sink));
+					}
+					xml.end("interface");
+					xml.end("spec");
+					xml.end("module");
+				}
+				xml.end("modules");
+				xml.start("stacks");
+				int patchedID = idCounter;
+				HashMap<Stack,Integer> patchedStackIDs = new HashMap<Stack,Integer>();
+				for (Stack s : allStacks) {
+					int sid = s.id == Integer.MAX_VALUE ? ++patchedID : s.id;
+					patchedStackIDs.put(s, sid);
+					xml.start("stack", "id", sid);
+					int lastMod = -1;
+					while (s != root && s!= classInitializer) {
+						int thisMod = Spec.getModuleID(s.methodUID);
+						if (lastMod != thisMod) {
+							if (lastMod != -1) {
+								xml.end("segment");
+							}
+							xml.start("segment", "moduleid", thisMod);
+							lastMod = thisMod;
+						}
+						xml.singleton("frame", "methoduid", s.methodUID);
+						s = s.parent;
+					}
+					if (lastMod != -1) xml.end("segment");
+					xml.end("stack");
+				}
+				xml.end("stacks");
+				
+				xml.start("stackpairs");
+				for (Stack source : allStacks) {
+					int sid = patchedStackIDs.get(source);
+					for (Stack sink : source.writerMemoTable) {
+						xml.singleton("pair", "source", sid, "sink", patchedStackIDs.get(sink));
+					}
+				}
+				xml.end("stackpairs");
+				xml.end("execution");
+				xml.close();
+				// End exec.
+				
 				Set<Integer> recordedNodes = new HashSet<Integer>();
 				for (Map.Entry<ModuleSpec,Graph> e : commGraphs.entrySet()) {
 					ModuleSpec mod = e.getKey();
 					Graph g = e.getValue();
 					for (int i = 0; i < mod.numCommMethods(); i++) {
 						int uid = Spec.makeUID(mod.getId(), i);
-						commGraphml.writeNode(uid + "", mod.getMethodSignature(uid), "");
-						interfaceGraphml.writeNode(uid + "", mod.getMethodSignature(uid), "");
+//						commGraphml.writeNode(uid + "", mod.getMethodSignature(uid), "");
+//						interfaceGraphml.writeNode(uid + "", mod.getMethodSignature(uid), "");
 						BitVectorIntSet bv = g.getOutEdges(i);
 						if (bv != null && ! bv.isEmpty()) {
 							// FIXME
-							// commGraphml.writeEdge(uid + "", destID, "rw");
 							final int srcuid = Spec.makeUID(mod.getId(), i);
 							for (int j : bv.toJavaSet()) {
+								int destID = Spec.makeUID(mod.getId(), j);
 								commpy.writeElem(Py.tuple(srcuid, Spec.makeUID(mod.getId(), j)));
+//								commGraphml.writeEdge(uid + "", destID + "", "rw");
 								if (recordedNodes.add(Spec.makeUID(mod.getId(), j)))
 								    runCommNodes.inc();
 							}
@@ -436,10 +516,11 @@ public class Stack {
 						BitVectorIntSet bv = g.getOutEdges(i);
 						if (bv != null && ! bv.isEmpty()) {
 							// FIXME
-							// interfaceGraphml.writeEdge(uid + "", destID, "rw");
 							final int srcuid = Spec.makeUID(mod.getId(), i);
 							for (int j : bv.toJavaSet()) {
-								ifpy.writeElem(Py.tuple(srcuid, Spec.makeUID(mod.getId(), j)));
+								int destID = Spec.makeUID(mod.getId(), j);
+								ifpy.writeElem(Py.tuple(srcuid, destID));
+//								interfaceGraphml.writeEdge(uid + "", destID + "", "rw");
 								if (recordedNodes.add(Spec.makeUID(mod.getId(), j)))
 								    runINodes.inc();
 							}
@@ -450,8 +531,8 @@ public class Stack {
 					}
 				}
 
-				commGraphml.close();
-				interfaceGraphml.close();
+//				commGraphml.close();
+//				interfaceGraphml.close();
 				commpy.endList();
 				ifpy.endList();
 				commpy.close();
@@ -461,6 +542,4 @@ public class Stack {
 			}
 		}
 	}
-
-
 }

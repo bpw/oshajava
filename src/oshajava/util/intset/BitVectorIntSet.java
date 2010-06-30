@@ -1,6 +1,7 @@
 package oshajava.util.intset;
 
 import java.io.Serializable;
+import java.util.Iterator;
 import java.util.Set;
 import java.util.HashSet;
 
@@ -18,7 +19,7 @@ import oshajava.util.count.MaxRecorder;
  * @author bpw
  *
  */
-public class BitVectorIntSet extends IntSet implements Serializable {
+public class BitVectorIntSet extends IntSet implements Serializable, Iterable<Integer> {
 	
 	/**
 	 * Auto-generated version ID.
@@ -173,5 +174,26 @@ public class BitVectorIntSet extends IntSet implements Serializable {
 	        count += Integer.bitCount(i);
 	    }
 	    return count;
+	}
+	
+	public Iterator<Integer> iterator() {
+		return new Iterator<Integer>() {
+			private int next = 0;
+			public boolean hasNext() {
+				while (next < bits.length * SLOT_SIZE) {
+					if (contains(next)) return true;
+					next++;
+				}
+				return false;
+			}
+
+			public Integer next() {
+				return next++;
+			}
+
+			public void remove() {
+				throw new UnsupportedOperationException();
+			}
+		};
 	}
 }
