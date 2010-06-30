@@ -43,10 +43,15 @@ public class ModuleSpecBuilder implements Serializable {
 		this.uri = uri;
 	}
 	
-	public void write() throws IOException {
+	public void write(SpecProcessor sp) throws IOException {
 		ColdStorage.store(uri, this);
+		sp.note("  Incremental: " + uri.getPath());
 		String s = uri.getPath();
-		ColdStorage.store(s.substring(0, s.length() - EXT.length()) + ModuleSpec.EXT, generateSpec());
+		String ms = s.substring(0, s.length() - EXT.length()) + ModuleSpec.EXT;
+		sp.note("  Final: " + ms);
+		ModuleSpec m = generateSpec();
+		ColdStorage.store(ms, m);
+//		m.describe();
 	}
 	
 	public String getName() {
@@ -76,7 +81,7 @@ public class ModuleSpecBuilder implements Serializable {
 	 * Create a new communication group.
 	 */
 	public void addGroup(String id) {
-	    Group g = new Group(id);
+	    Group g = new Group(id, false);
 	    groups.put(id, g);
 	}
 	
@@ -84,7 +89,7 @@ public class ModuleSpecBuilder implements Serializable {
 	 * Create a new communication group.
 	 */
 	public void addInterfaceGroup(String id) {
-	    Group g = new Group(id);
+	    Group g = new Group(id, true);
 	    groups.put(id, g);
 	}
 	
@@ -206,9 +211,9 @@ public class ModuleSpecBuilder implements Serializable {
 	    public boolean isInterfaceGroup = false;
 	    
 	    // Initialize an interface group.
-	    public Group(String id) {
+	    public Group(String id, boolean isInterfaceGroup) {
 	        this.id = id;
-	        isInterfaceGroup = true;
+	        this.isInterfaceGroup = isInterfaceGroup;
 	    }
 	}
 	
