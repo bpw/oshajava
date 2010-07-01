@@ -32,13 +32,6 @@ import javax.lang.model.type.TypeKind;
 import javax.tools.Diagnostic;
 import javax.tools.StandardLocation;
 
-import com.sun.source.util.Trees;
-import com.sun.tools.javac.processing.JavacProcessingEnvironment;
-import com.sun.tools.javac.tree.JCTree;
-import com.sun.tools.javac.tree.TreeMaker;
-import com.sun.tools.javac.tree.TreeTranslator;
-import com.sun.tools.javac.tree.JCTree.JCAnnotation;
-import com.sun.tools.javac.util.Context;
 import oshajava.annotation.Group;
 import oshajava.annotation.Groups;
 import oshajava.annotation.Inline;
@@ -63,9 +56,9 @@ public class SpecProcessor extends AbstractProcessor {
 
 	private final Set<ModuleSpecBuilder> changed = new HashSet<ModuleSpecBuilder>();
 	
-	private int tally;
-	private Trees trees;
-	private TreeMaker make;
+//	private int tally;
+//	private Trees trees;
+//	private TreeMaker make;
 
 	@Override
 	public synchronized void init(ProcessingEnvironment env) {

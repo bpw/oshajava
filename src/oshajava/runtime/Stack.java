@@ -1,12 +1,11 @@
 package oshajava.runtime;
 
 import java.io.IOException;
-import java.io.Serializable;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.HashSet;
 import java.util.Set;
 
 import oshajava.sourceinfo.Graph;
@@ -15,7 +14,6 @@ import oshajava.sourceinfo.Spec;
 import oshajava.support.acme.util.Util;
 import oshajava.support.acme.util.identityhash.ConcurrentIdentityHashMap;
 import oshajava.support.acme.util.identityhash.IdentityHashSet;
-import oshajava.util.GraphMLWriter;
 import oshajava.util.Py;
 import oshajava.util.PyWriter;
 import oshajava.util.XMLWriter;
@@ -24,7 +22,7 @@ import oshajava.util.count.DistributionCounter;
 import oshajava.util.count.SetSizeCounter;
 import oshajava.util.intset.BitVectorIntSet;
 
-public class Stack implements Serializable {
+public class Stack {
 	
 	public static final boolean RECORD = Config.recordOption.get();
 
@@ -502,7 +500,7 @@ public class Stack implements Serializable {
 					ModuleSpec mod = e.getKey();
 					Graph g = e.getValue();
 					for (int i = 0; i < mod.numCommMethods(); i++) {
-						int uid = Spec.makeUID(mod.getId(), i);
+//						int uid = Spec.makeUID(mod.getId(), i);
 //						commGraphml.writeNode(uid + "", mod.getMethodSignature(uid), "");
 //						interfaceGraphml.writeNode(uid + "", mod.getMethodSignature(uid), "");
 						BitVectorIntSet bv = g.getOutEdges(i);
@@ -510,7 +508,7 @@ public class Stack implements Serializable {
 							// FIXME
 							final int srcuid = Spec.makeUID(mod.getId(), i);
 							for (int j : bv.toJavaSet()) {
-								int destID = Spec.makeUID(mod.getId(), j);
+//								int destID = Spec.makeUID(mod.getId(), j);
 								commpy.writeElem(Py.tuple(srcuid, Spec.makeUID(mod.getId(), j)));
 //								commGraphml.writeEdge(uid + "", destID + "", "rw");
 								if (recordedNodes.add(Spec.makeUID(mod.getId(), j)))
@@ -528,7 +526,7 @@ public class Stack implements Serializable {
 					ModuleSpec mod = e.getKey();
 					Graph g = e.getValue();
 					for (int i = 0; i < mod.numInterfaceMethods(); i++) {
-						int uid = Spec.makeUID(mod.getId(), i);
+//						int uid = Spec.makeUID(mod.getId(), i);
 						BitVectorIntSet bv = g.getOutEdges(i);
 						if (bv != null && ! bv.isEmpty()) {
 							// FIXME
