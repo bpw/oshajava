@@ -432,15 +432,31 @@ public class Stack implements Serializable {
 					xml.start("spec");
 					xml.start("communication");
 					for (Graph.Edge e : m.getCommunication()) {
-						xml.singleton("edge", "source", Spec.makeUID(m.getId(), e.source), "sink", Spec.makeUID(m.getId(), e.sink));
+						xml.singleton("pair", "writer", Spec.makeUID(m.getId(), e.source), "reader", Spec.makeUID(m.getId(), e.sink));
 					}
 					xml.end("communication");
 					xml.start("interface");
 					for (Graph.Edge e : m.getInterface()) {
-						xml.singleton("edge", "source", Spec.makeUID(m.getId(), e.source), "sink", Spec.makeUID(m.getId(), e.sink));
+						xml.singleton("pair", "writer", Spec.makeUID(m.getId(), e.source), "reader", Spec.makeUID(m.getId(), e.sink));
 					}
 					xml.end("interface");
 					xml.end("spec");
+					xml.start("runtime");
+					xml.start("communication");
+					if (commGraphs.containsKey(m)) {
+						for (Graph.Edge e : commGraphs.get(m)) {
+							xml.singleton("pair", "writer", Spec.makeUID(m.getId(), e.source), "reader", Spec.makeUID(m.getId(), e.sink));
+						}
+					}
+					xml.end("communication");
+					xml.start("interface");
+					if (interfaceGraphs.containsKey(m)) {
+						for (Graph.Edge e : interfaceGraphs.get(m)) {
+							xml.singleton("pair", "writer", Spec.makeUID(m.getId(), e.source), "reader", Spec.makeUID(m.getId(), e.sink));
+						}
+					}
+					xml.end("interface");
+					xml.end("runtime");
 					xml.end("module");
 				}
 				xml.end("modules");
@@ -473,7 +489,7 @@ public class Stack implements Serializable {
 				for (Stack source : allStacks) {
 					int sid = patchedStackIDs.get(source);
 					for (Stack sink : source.writerMemoTable) {
-						xml.singleton("pair", "source", sid, "sink", patchedStackIDs.get(sink));
+						xml.singleton("pair", "writer", sid, "reader", patchedStackIDs.get(sink));
 					}
 				}
 				xml.end("stackpairs");
