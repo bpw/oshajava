@@ -324,7 +324,7 @@ public class Stack {
 		if (RECORD) {
 			synchronized (commGraphs) {
 				if (!commGraphs.containsKey(module)) {
-					commGraphs.put(module, new Graph(module.numCommMethods()));
+					commGraphs.put(module, new Graph(module.getMethods().length));
 				}
 				BitVectorIntSet s = commGraphs.get(module).getOutEdges(Spec.getMethodID(methodUID));
 				if (s == null) {
