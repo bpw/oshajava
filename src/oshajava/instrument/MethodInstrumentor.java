@@ -59,8 +59,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 			if (InstrumentationAgent.ignoreMissingMethodsOption.get()) {
 				Util.log("IGNORED and INLINED: in module " + module.getName() + ", " + fullNameAndDesc + " not found");
 			} else {
-				module.describe();
-				Util.fail("in module " + module.getName() + ", " + fullNameAndDesc + " not found");
+				Util.fail("Method " + fullNameAndDesc + " not found in " + module);
 			}
 			policy = CommunicationKind.INLINE; // avoid warning
 			// Set policy appropriately if method is found.

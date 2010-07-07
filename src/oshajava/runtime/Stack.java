@@ -3,6 +3,7 @@ package oshajava.runtime;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -460,7 +461,7 @@ public class Stack {
 				xml.end("modules");
 				xml.start("stacks");
 				int patchedID = idCounter;
-				HashMap<Stack,Integer> patchedStackIDs = new HashMap<Stack,Integer>();
+				IdentityHashMap<Stack,Integer> patchedStackIDs = new IdentityHashMap<Stack,Integer>();
 				for (Stack s : allStacks) {
 					int sid = s.id == Integer.MAX_VALUE ? ++patchedID : s.id;
 					patchedStackIDs.put(s, sid);

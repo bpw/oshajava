@@ -83,7 +83,10 @@ public class Config {
     public static final CommandLineOption<Boolean> createOption =
     		CommandLine.makeBoolean("create", false, "Create a full execution graph.");
     
-	public static final CommandLine cl = new CommandLine(TOOL_NAME, "[ -javaOptions java options ] -- Class [ class args ]", helpOption, jvmOption);
+    public static final CommandLineOption<Boolean> summaryOption =
+		CommandLine.makeBoolean("summary", false, "Print summary.");
+
+    public static final CommandLine cl = new CommandLine(TOOL_NAME, "[ -javaOptions java options ] -- Class [ class args ]", helpOption, jvmOption);
 	
 	public static void configure(String[] args){
 		// add command line options here --------------------------------------------------
@@ -101,6 +104,7 @@ public class Config {
 		cl.add(profileExtOption);
 		cl.add(createOption);
 		cl.add(intraThreadOption);
+		cl.add(summaryOption);
 
 		cl.addGroup("Instrumentation");
 		

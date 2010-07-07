@@ -44,10 +44,13 @@ import oshajava.instrument.InstrumentationAgent;
 import oshajava.support.acme.util.Util;
 import oshajava.util.ColdStorage;
 
-@SupportedAnnotationTypes("oshajava.annotation.*")
+@SupportedAnnotationTypes("*")
 @SupportedSourceVersion(SourceVersion.RELEASE_6)
-@SupportedOptions({"oshajava.annotation.default"})
+@SupportedOptions({"oshajava.*"})
 public class SpecProcessor extends AbstractProcessor {
+	
+	private static final String DEFAULT_ANN_OPTION = "oshajava.annotation.default",
+		DEBUG_OPTION = "oshajava.verbose";
 	
 	private static final String INLINE_ANN = "inline", NONCOMM_ANN = "noncomm";
 
@@ -55,6 +58,8 @@ public class SpecProcessor extends AbstractProcessor {
 	private Map<String, ModuleSpecBuilder> classToModule = new HashMap<String, ModuleSpecBuilder>();
 
 	private final Set<ModuleSpecBuilder> changed = new HashSet<ModuleSpecBuilder>();
+	
+	private boolean verbose;
 	
 //	private int tally;
 //	private Trees trees;
@@ -65,14 +70,15 @@ public class SpecProcessor extends AbstractProcessor {
 		super.init(env);
 		// Set the default annotation to @Inline or @NonComm.
 		// e.g. -Aoshajava.annotation.default=NonComm
-		final String defaultAnn = env.getOptions().get("oshajava.annotation.default");
+		final String defaultAnn = env.getOptions().get(DEFAULT_ANN_OPTION);
 		if (defaultAnn == null || defaultAnn.toLowerCase().equals(INLINE_ANN)) {
 			ModuleSpecBuilder.setDefaultInline(true);
 		} else if (defaultAnn.toLowerCase().equals(NONCOMM_ANN)) {
 			ModuleSpecBuilder.setDefaultInline(false);			
 		} else {
-			throw new IllegalArgumentException("oshajava.annotation.default=" + defaultAnn);
+			throw new IllegalArgumentException(DEFAULT_ANN_OPTION + "=" + defaultAnn);
 		}
+		verbose = env.getOptions().containsKey(DEBUG_OPTION);
 //		trees = Trees.instance(env);
 //		Context context = ((JavacProcessingEnvironment)env).getContext(); 
 //		make = TreeMaker.instance(context);
@@ -84,6 +90,9 @@ public class SpecProcessor extends AbstractProcessor {
 				note("Writing " + mod.getName());
 				note("  " + mod.summary());
 				mod.write(this);
+				if (verbose) {
+					note(mod.generateSpec().toString());
+				}
 			} catch (IOException e1) {
 				processingEnv.getMessager().printMessage(Diagnostic.Kind.OTHER, "Failed to write " + mod.getName() + ModuleSpecBuilder.EXT + " or " + mod.getName() + ModuleSpec.EXT + ".");
 				e1.printStackTrace();
@@ -207,10 +216,12 @@ public class SpecProcessor extends AbstractProcessor {
 			return "L" + name + ";";
 
 		case TYPEVAR:
-			return "T" + tm.toString() + ";";
+//			return "T" + tm.toString() + ";";
+			return "Ljava/lang/Object;";
 
 		case WILDCARD:
-			return "?";
+//			return "?";
+			return "Ljava/lang/Object;";
 
 		case EXECUTABLE:        
 		case NULL:

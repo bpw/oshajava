@@ -373,6 +373,7 @@ public class ClassInstrumentor extends ClassAdapter {
 		    		//  from class loading.) FIXME
 		    		chain = new HandlerSorterAdapter(chain, access, name, desc, signature, exceptions);
 		    		//			    Util.log(name);
+//		    		Method method = new Method(name, desc);
 		    		try {
 		    			chain = new MethodInstrumentor(chain, access, name, desc, this, getModule());
 		    		} catch (ModuleSpecNotFoundException e) {

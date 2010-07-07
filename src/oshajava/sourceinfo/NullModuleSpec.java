@@ -79,8 +79,8 @@ public class NullModuleSpec extends ModuleSpec {
 	}
 	
     @Override
-    public void describe() {
-        System.out.println(name + " (null group)");
+    public String toString() {
+        return "Module " + name + " [null module] (ID " + id + ")";
     }
     
     @Override

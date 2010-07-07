@@ -226,40 +226,44 @@ public class ModuleSpec implements Serializable {
 		return interfaceGraph.numEdges();
 	}
 	
-	private void printGraph(Graph g) {
-	    for (int i = 0; i < methodSigToId.size() - inlinedMethods.size(); ++i) {
-            BitVectorIntSet dests = g.getOutEdges(i);
-            if (dests == null) {
-                System.out.println("    " + methodIdToSig[i] + ": noncomm");
-                continue;
-            }
-            if (!dests.isEmpty()) {
-                System.out.print("    " + methodIdToSig[i] + "="+i + " -> ");
-                for (int j=0; j<methodSigToId.size(); ++j) {
-                    if (dests.contains(j)) {
-                        System.out.print(methodIdToSig[j] + "="+i + " ");
-                    }
-                }
-                System.out.println("");
-            }
-        }
-	}
+//	private void printGraph(Graph g) {
+//	    for (int i = 0; i < methodSigToId.size() - inlinedMethods.size(); ++i) {
+//            BitVectorIntSet dests = g.getOutEdges(i);
+//            if (dests == null) {
+//                System.out.println("    " + methodIdToSig[i] + ": noncomm");
+//                continue;
+//            }
+//            if (!dests.isEmpty()) {
+//                System.out.print("    " + methodIdToSig[i] + "="+i + " -> ");
+//                for (int j=0; j<methodSigToId.size(); ++j) {
+//                    if (dests.contains(j)) {
+//                        System.out.print(methodIdToSig[j] + "="+i + " ");
+//                    }
+//                }
+//                System.out.println("");
+//            }
+//        }
+//	}
 	
-	/**
-	 * Prints a description of the module's policy.
-	 */
-	public void describe() {
-        System.out.println("Name: " + name);
-        System.out.println("Inlined methods:");
-        for (int i=0; i<methodIdToSig.length; ++i) {
-            if (inlinedMethods.contains(i)) {
-                System.out.println("    " + methodIdToSig[i]);
-            }
-        }
-        System.out.println("Internal graph:");
-        printGraph(internalGraph);
-        System.out.println("Interface graph:");
-        printGraph(interfaceGraph);
+	public String toString() {
+		String out = "Module " + name + " (ID " + id + ")\n";
+		out += "  Methods: " + methodIdToSig.length + "\n";
+		for (int i = 0; i < methodIdToSig.length; i++) {
+			out += "    " + i + ": " + methodIdToSig[i] + "\n";
+		}
+		out += "  Inlined: " + inlinedMethods.size() + "\n";
+		for (int i : inlinedMethods) {
+			out += "    " + i + ": " + methodIdToSig[i] + "\n";
+		}
+		out += "  Communicating Pairs:\n";
+		for (Graph.Edge e : internalGraph) {
+			out += "    " + e.source + ": " + methodIdToSig[e.source] + "  -->  " + e.sink + ": " + methodIdToSig[e.sink] + "\n";
+		}
+		out += "  Interface Pairs:\n";
+		for (Graph.Edge e : internalGraph) {
+			out += "    " + e.source + ": " + methodIdToSig[e.source] + "  -->  " + e.sink + ": " + methodIdToSig[e.sink] + "\n";
+		}
+		return out;
 	}
 
 	public boolean checkIntegrity() {
