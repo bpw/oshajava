@@ -54,7 +54,7 @@ public class Config {
 //		CommandLine.makeBoolean("defaultToNonComm", false, "Make methods non-communicating by default (instead of inlined).");
 	
 	public static final CommandLineOption<Boolean> noInstrumentOption =
-		CommandLine.makeBoolean("noInstrument", false, "Turn off instrumentation");
+		CommandLine.makeBoolean("noInstrument", false, "Turn off instrumentation.");
 	
 	public static final CommandLineOption<Boolean> profileOption =
 		CommandLine.makeBoolean("profile", false, "Report tool profiling information.");
@@ -71,8 +71,9 @@ public class Config {
     public static final CommandLineOption<Boolean> stackTracesOption =
         CommandLine.makeBoolean("traces", false, "Save writer stack traces for debugging violations.");
     
-    public static final CommandLineOption<Boolean> failStopOption =
-        CommandLine.makeBoolean("fail", false, "Instead of throwing exceptions, fail immediately on violations.");
+    public enum ErrorAction { HALT, THROW, WARN, NONE }
+    public static final CommandLineOption<ErrorAction> errorActionOption =
+        CommandLine.makeEnumChoice("errorAction", ErrorAction.HALT, "What to do when illegal communication occurs.", ErrorAction.class);
     
     public static final CommandLineOption<Boolean> recordOption =
     		CommandLine.makeBoolean("record", false, "Record exercised graph.");
@@ -91,20 +92,29 @@ public class Config {
 	public static void configure(String[] args){
 		// add command line options here --------------------------------------------------
 
-		cl.addGroup("Runtime");
+		cl.addGroup("Tracking");
 		
 		cl.add(arrayIndexStatesOption);
 		cl.add(objectStatesOption);
+		cl.add(intraThreadOption);
+		
+		cl.addGroup("Profiling");
+		
 		cl.add(profileOption);
 		cl.add(recordOption);
+		cl.add(summaryOption);
+		cl.add(createOption);
+		cl.add(profileExtOption);
+		
+		cl.addGroup("Optimizations");
+		
 		cl.add(arrayCacheSizeOption);
 		cl.add(lockCacheSizeOption);
+		
+		cl.addGroup("Error reporting");
+		
 		cl.add(stackTracesOption);
-		cl.add(failStopOption);
-		cl.add(profileExtOption);
-		cl.add(createOption);
-		cl.add(intraThreadOption);
-		cl.add(summaryOption);
+		cl.add(errorActionOption);
 
 		cl.addGroup("Instrumentation");
 		
