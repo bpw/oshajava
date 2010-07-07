@@ -46,7 +46,7 @@ import oshajava.util.ColdStorage;
 
 @SupportedAnnotationTypes("*")
 @SupportedSourceVersion(SourceVersion.RELEASE_6)
-@SupportedOptions({"oshajava.*"})
+@SupportedOptions({SpecProcessor.DEFAULT_ANN_OPTION, SpecProcessor.DEBUG_OPTION})
 public class SpecProcessor extends AbstractProcessor {
 	
 	private static final String DEFAULT_ANN_OPTION = "oshajava.annotation.default",
