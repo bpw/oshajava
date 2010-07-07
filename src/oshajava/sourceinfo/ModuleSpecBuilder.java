@@ -4,7 +4,9 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.net.URI;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.Vector;
 
 import oshajava.support.acme.util.Util;
@@ -13,6 +15,8 @@ import oshajava.util.intset.BitVectorIntSet;
 
 public class ModuleSpecBuilder implements Serializable {
 	
+	private static final long serialVersionUID = 2L;
+
 	public static final String EXT = ".omb"; // for Osha Module Builder
 	
 	public static boolean DEFAULT_INLINE;
@@ -27,9 +31,9 @@ public class ModuleSpecBuilder implements Serializable {
 	protected Vector<String> methodIdToSig = new Vector<String>();
 	
 	protected Map<String, Group> groups = new HashMap<String, Group>();
-	protected Vector<String> inlinedMethods = new Vector<String>();
-	protected Vector<GroupMembership> memberships = new Vector<GroupMembership>();
-	protected Vector<String> nonCommMethods = new Vector<String>();
+	protected Set<String> inlinedMethods = new HashSet<String>();
+	protected Set<GroupMembership> memberships = new HashSet<GroupMembership>();
+	protected Set<String> nonCommMethods = new HashSet<String>();
 	
 	// For conciseness measurement.
 	protected int ctrGroupMembership = 0;
@@ -126,17 +130,21 @@ public class ModuleSpecBuilder implements Serializable {
 	 * Add a method as a non-communicator.
 	 */
 	public void addNonComm(String signature) {
-		nonCommMethods.add(signature);
-        ctrNonComm++;
+		if (! nonCommMethods.contains(signature)) {
+			nonCommMethods.add(signature);
+			ctrNonComm++;
+		}
 	}
 	/**
 	 * Add a method to the list of inlined methods.
 	 */
 	public void inlineMethod(String signature) {
-	    inlinedMethods.add(signature);
-	    ctrInline++;
+		if (! inlinedMethods.contains(signature)) {
+			inlinedMethods.add(signature);
+			ctrInline++;
+		}
 	}
-	
+
 	/**
 	 * Add an unannotated method (DEFAULT)
 	 */
@@ -229,6 +237,15 @@ public class ModuleSpecBuilder implements Serializable {
 	        this.methodId = methodId;
 	        this.groupId = groupId;
 	        this.reader = reader;
+	    }
+	    
+	    @Override
+	    public int hashCode() {
+	    	return methodId ^ groupId.hashCode() & (reader ? 0 : 1);
+	    }
+	    @Override
+	    public boolean equals(Object other) {
+	    	return other != null && other instanceof GroupMembership && this.methodId == ((GroupMembership)other).methodId && this.groupId.equals(((GroupMembership)other).groupId) && this.reader == ((GroupMembership)other).reader;
 	    }
 	}
 	
