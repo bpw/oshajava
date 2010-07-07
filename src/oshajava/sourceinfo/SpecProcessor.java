@@ -49,7 +49,7 @@ import oshajava.util.ColdStorage;
 @SupportedOptions({SpecProcessor.DEFAULT_ANN_OPTION, SpecProcessor.DEBUG_OPTION})
 public class SpecProcessor extends AbstractProcessor {
 	
-	private static final String DEFAULT_ANN_OPTION = "oshajava.annotation.default",
+	public static final String DEFAULT_ANN_OPTION = "oshajava.annotation.default",
 		DEBUG_OPTION = "oshajava.verbose";
 	
 	private static final String INLINE_ANN = "inline", NONCOMM_ANN = "noncomm";
