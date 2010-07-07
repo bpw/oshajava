@@ -427,7 +427,9 @@ public class Stack {
 				// Start exec.
 				xml.start("execution", "main", mainClass);
 				xml.start("modules");
+				int modulesRecorded = 0;
 				for (ModuleSpec m : Spec.loadedModules()) {
+					modulesRecorded++;
 					xml.start("module", "id", m.getId(), "name", m.getName());
 					xml.start("methods");
 					String[] methods = m.getMethods();
@@ -469,7 +471,9 @@ public class Stack {
 				xml.start("stacks");
 				int patchedID = idCounter;
 				IdentityHashMap<Stack,Integer> patchedStackIDs = new IdentityHashMap<Stack,Integer>();
+				int stacksRecorded = 0;
 				for (Stack s : allStacks) {
+					stacksRecorded++;
 					int sid = s.id == Integer.MAX_VALUE ? ++patchedID : s.id;
 					patchedStackIDs.put(s, sid);
 					xml.start("stack", "id", sid);
@@ -492,15 +496,18 @@ public class Stack {
 				xml.end("stacks");
 				
 				xml.start("stackpairs");
+				int pairsRecorded = 0;
 				for (Stack source : allStacks) {
 					int sid = patchedStackIDs.get(source);
 					for (Stack sink : source.allReaders) {
+						pairsRecorded++;
 						xml.singleton("pair", "writer", sid, "reader", patchedStackIDs.get(sink));
 					}
 				}
 				xml.end("stackpairs");
 				xml.end("execution");
 				xml.close();
+				Util.logf("modules: %d, stacks: %d, stack pairs: %d", modulesRecorded, stacksRecorded, pairsRecorded);
 				// End exec.
 				
 				Set<Integer> recordedNodes = new HashSet<Integer>();
