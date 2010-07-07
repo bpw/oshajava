@@ -39,8 +39,10 @@ public class Stack {
 	public static final DistributionCounter segCountDist = new DistributionCounter("Segments on a communicating stack");
 	public static final SetSizeCounter<ModuleSpec> modulesUsed = new SetSizeCounter<ModuleSpec>("Modules used");
 	
+	// for the -record option
 	public static final HashMap<ModuleSpec,Graph> commGraphs = new HashMap<ModuleSpec,Graph>();
 	public static final HashMap<ModuleSpec,Graph> interfaceGraphs = new HashMap<ModuleSpec,Graph>();
+	private final HashSet<Stack> allReaders = new HashSet<Stack>();
 	
 	public static final Counter stackWalks = new Counter("Full stack walks");
 	public static final Counter memo2Hits = new Counter("Level 2 memo hits");
@@ -179,6 +181,11 @@ public class Stack {
 		if (!yes) { //  really slow path: full stack traversal
 			if (COUNT_STACKS) {
 				stackWalks.inc();
+			}
+			if (RECORD) {
+				synchronized (writer.allReaders) {
+					writer.allReaders.add(this);
+				}
 			}
 			if (walkStacks(writer, this, 0)) {
 				synchronized (writerMemoTable) {
@@ -487,7 +494,7 @@ public class Stack {
 				xml.start("stackpairs");
 				for (Stack source : allStacks) {
 					int sid = patchedStackIDs.get(source);
-					for (Stack sink : source.writerMemoTable) {
+					for (Stack sink : source.allReaders) {
 						xml.singleton("pair", "writer", sid, "reader", patchedStackIDs.get(sink));
 					}
 				}
