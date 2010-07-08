@@ -434,7 +434,7 @@ public class Stack {
 					xml.start("methods");
 					String[] methods = m.getMethods();
 					for (int i = 0; i < methods.length; i++) {
-						xml.singleton("method", "uid", Spec.makeUID(m.getId(), i), "signature", methods[i]);
+						xml.singleton("method", "uid", Spec.makeUID(m.getId(), i), "signature", methods[i], "kind", m.getCommunicationKind(i).toString().toLowerCase());
 					}
 					xml.end("methods");
 					xml.start("spec");

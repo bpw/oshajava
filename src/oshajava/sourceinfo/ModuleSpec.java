@@ -36,7 +36,7 @@ public class ModuleSpec implements Serializable {
 	 * @author bpw
 	 *
 	 */
-	public static enum CommunicationKind { INLINE, NONE, READ_ONLY, WRITE_ONLY, BOTH, UNCHECKED } 
+	public static enum CommunicationKind { INLINE, NONCOMM, COMM, UNCHECKED } 
 
 	/**
 	 * The module id of this module. Only instantiated at runtime.
@@ -196,14 +196,14 @@ public class ModuleSpec implements Serializable {
 			if (inlinedMethods.contains(mid)) {
 				return CommunicationKind.INLINE;
 			} else {
-				return CommunicationKind.NONE;
+				return CommunicationKind.NONCOMM;
 			}
-		} else if (internalGraph.getOutEdges(mid).isEmpty()) {
-			return CommunicationKind.READ_ONLY;
-		} else if (internalGraph.hasInEdges(mid)){
-			return CommunicationKind.WRITE_ONLY;
+//		} else if (internalGraph.getOutEdges(mid).isEmpty()) {
+//			return CommunicationKind.READ_ONLY;
+//		} else if (internalGraph.hasInEdges(mid)){
+//			return CommunicationKind.WRITE_ONLY;
 		} else {
-			return CommunicationKind.BOTH;
+			return CommunicationKind.COMM;
 		}
 		/* else if (uncheckedMethods.contains(mid)) {
 		 * return CommunicationKind.UNCHECKED;
