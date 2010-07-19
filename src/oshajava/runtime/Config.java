@@ -86,6 +86,9 @@ public class Config {
     
     public static final CommandLineOption<Boolean> summaryOption =
 		CommandLine.makeBoolean("summary", false, "Print summary.");
+    
+    public static final CommandLineOption<String> idOption =
+    	CommandLine.makeString("id", Long.toString(System.currentTimeMillis()), "ID for this run.");
 
     public static final CommandLine cl = new CommandLine(TOOL_NAME, "[ -javaOptions java options ] -- Class [ class args ]", helpOption, jvmOption);
 	
@@ -105,6 +108,7 @@ public class Config {
 		cl.add(summaryOption);
 		cl.add(createOption);
 		cl.add(profileExtOption);
+		cl.add(idOption);
 		
 		cl.addGroup("Optimizations");
 		
