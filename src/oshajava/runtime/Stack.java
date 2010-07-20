@@ -406,8 +406,8 @@ public class Stack {
 //				final PyWriter nodepy = new PyWriter("oshajava-nodes.py", false);
 //				final GraphMLWriter commGraphml = new GraphMLWriter(mainClass + ".oshajava.comm.graphml");
 //				final GraphMLWriter interfaceGraphml = new GraphMLWriter(mainClass + ".oshajava.intfc.graphml");
-				final XMLWriter specXml = new XMLWriter(mainClass + "-oshajava-spec.xml");
 				final XMLWriter execXml = new XMLWriter(mainClass + "-oshajava-exec-" + Config.idOption.get() + ".xml");
+				final XMLWriter specXml = execXml; //new XMLWriter(mainClass + "-oshajava-spec.xml");
 				
 				final Counter specCommNodes = new Counter("Total comm nodes in used specs");
 				final Counter specCommEdges = new Counter("Total comm edges in used specs");
@@ -429,20 +429,22 @@ public class Stack {
 				ifpy.startList();
 								
 				// Start exec.
-				specXml.start("spec", "main", mainClass);
+//				specXml.start("spec", "main", mainClass);
 				execXml.start("execution", "main", mainClass);
 				execXml.start("modules");
 //				specXml.start("modules");
 				int modulesRecorded = 0;
 				for (ModuleSpec m : Spec.loadedModules()) {
 					modulesRecorded++;
-					execXml.singleton("module", "id", m.getId(), "name", InstrumentationAgent.sourceName(m.getName()));
-					specXml.start("module", /*"id", m.getId(),*/ "name", InstrumentationAgent.sourceName(m.getName()));
+//					execXml.singleton("module", "id", m.getId(), "name", InstrumentationAgent.sourceName(m.getName()));
+//					specXml.start("module", /*"id", m.getId(),*/ "name", InstrumentationAgent.sourceName(m.getName()));
+					specXml.start("module", "id", m.getId(), "name", InstrumentationAgent.sourceName(m.getName()));
 					specXml.start("methods");
+
 					String[] methods = m.getMethods();
 					for (int i = 0; i < methods.length; i++) {
 						final Desc d = new Desc(methods[i]);
-						specXml.start("method", "id", i, 
+						specXml.start("method", "uid", Spec.makeUID(m.getId(), i), 
 									"class", d.cls,
 									"name", d.method,
 									"return", d.ret,
@@ -459,19 +461,19 @@ public class Stack {
 //					specXml.start("spec");
 					specXml.start("communication");
 					for (Graph.Edge e : m.getCommunication()) {
-						specXml.singleton("pair", "writer", e.source, "reader", e.sink);
+						specXml.singleton("pair", "writer", Spec.makeUID(m.getId(), e.source), "reader", Spec.makeUID(m.getId(), e.sink));
 					}
 					specXml.end("communication");
 					specXml.start("interface");
 					for (Graph.Edge e : m.getInterface()) {
-						specXml.singleton("pair", "writer", e.source, "reader", e.sink);
+						specXml.singleton("pair", "writer", Spec.makeUID(m.getId(), e.source), "reader", Spec.makeUID(m.getId(), e.sink));
 					}
 					specXml.end("interface");
 					specXml.end("module");					
 				}
 				execXml.end("modules");
-				specXml.end("spec");
-				specXml.close();
+//				specXml.end("spec");
+//				specXml.close();
 
 				execXml.start("stacks");
 				int patchedID = idCounter;
@@ -489,10 +491,10 @@ public class Stack {
 							if (lastMod != -1) {
 								execXml.end("segment");
 							}
-							execXml.start("segment", "module", thisMod);
+							execXml.start("segment", "moduleid", thisMod);
 							lastMod = thisMod;
 						}
-						execXml.singleton("frame", "method", Spec.getMethodID(s.methodUID));
+						execXml.singleton("frame", "methoduid", Spec.getMethodID(s.methodUID));
 						s = s.parent;
 					}
 					if (lastMod != -1) execXml.end("segment");
