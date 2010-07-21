@@ -29,8 +29,6 @@ def dcName(p):
 def jgfName(name):
     # remove "JGF" from head, "BenchSize_" from end
     name = name if not name.startswith("JGF") else name[3:-10]
-    if name == 'SOR':
-        name = 'Sor' # sort order
     return name
 
 profs = prof.loadAll(sys.argv[1:], 
@@ -81,9 +79,9 @@ canvas = pychart.area.T(x_coord = pychart.category_coord.T(jgf_precision, 0),
                                                 format="%i%%"),
                         y_grid_interval = ystep/2,
                         size=(width, 110), legend=None, y_range=(0,100))
-node_t = pychart.bar_plot.T(label="Nodes", data=jgf_precision, cluster=(0,2),
+node_t = pychart.bar_plot.T(label="Methods", data=jgf_precision, cluster=(0,2),
                             fill_style=pychart.fill_style.black)                        
-edge_t = pychart.bar_plot.T(label="Edges", data=jgf_precision, cluster=(1,2),
+edge_t = pychart.bar_plot.T(label="Method pairs", data=jgf_precision, cluster=(1,2),
                             hcol=2, fill_style=pychart.fill_style.gray70)
 canvas.add_plot(node_t, edge_t)
 canvas.draw()
@@ -99,9 +97,9 @@ canvas = pychart.area.T(x_coord = pychart.category_coord.T(dc_precision, 0),
                         size=(width * 3/8, 110),
                         loc=(width, 0), y_range=(0,100),
                         legend=pychart.legend.T(loc=(width*11/8+10,3)))
-node_t = pychart.bar_plot.T(label="Nodes", data=dc_precision, cluster=(0,2),
+node_t = pychart.bar_plot.T(label="Methods", data=dc_precision, cluster=(0,2),
                             fill_style=pychart.fill_style.black)                        
-edge_t = pychart.bar_plot.T(label="Edges", data=dc_precision, cluster=(1,2),
+edge_t = pychart.bar_plot.T(label="Method pairs", data=dc_precision, cluster=(1,2),
                             hcol=2, fill_style=pychart.fill_style.gray70)
 canvas.add_plot(node_t, edge_t)
 canvas.draw()
