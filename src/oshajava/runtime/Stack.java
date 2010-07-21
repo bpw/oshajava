@@ -494,7 +494,7 @@ public class Stack {
 							execXml.start("segment", "moduleid", thisMod);
 							lastMod = thisMod;
 						}
-						execXml.singleton("frame", "methoduid", Spec.getMethodID(s.methodUID));
+						execXml.singleton("frame", "methoduid", s.methodUID);
 						s = s.parent;
 					}
 					if (lastMod != -1) execXml.end("segment");
