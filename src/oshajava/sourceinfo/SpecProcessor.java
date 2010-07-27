@@ -334,7 +334,7 @@ public class SpecProcessor extends AbstractProcessor {
 			pkgName += ".";
 		}
 		
-		for (Element elem = cls; elem.getKind() == ElementKind.CLASS || elem.getKind() == ElementKind.INTERFACE;); // FIXME
+//		for (Element elem = cls; elem.getKind() == ElementKind.CLASS || elem.getKind() == ElementKind.INTERFACE;); // FIXME
 		if (memberAnn != null) {
 			String modName = memberAnn.value();
 			if (modName.contains(".")) {
