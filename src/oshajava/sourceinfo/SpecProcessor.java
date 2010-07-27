@@ -302,9 +302,11 @@ public class SpecProcessor extends AbstractProcessor {
 					module = new ModuleSpecBuilder(qualifiedName, uri);
 					changed.add(module);
 				} catch (IOException e1) {
+					Util.log("SpecProcessor.getModule(\""+ qualifiedName + "\") failing...");
 					throw new RuntimeException(e1);
 				}
 			} catch (ClassNotFoundException e) {
+				Util.log("SpecProcessor.getModule(\""+ qualifiedName + "\") failing...");
 				throw new RuntimeException(e);
 			}
 			modules.put(qualifiedName, module);
@@ -317,6 +319,11 @@ public class SpecProcessor extends AbstractProcessor {
 	 */
 	private void handleClass(TypeElement cls) {
 		String name = cls.getQualifiedName().toString();
+		
+		final Element parent = cls.getEnclosingElement();
+		final boolean isInner = cls.getKind() == ElementKind.CLASS || cls.getKind() == ElementKind.INTERFACE;
+		final TypeElement t = (TypeElement)parent;
+//		final
 
 		// Module membership.
 		Member memberAnn = cls.getAnnotation(Member.class);
@@ -326,6 +333,8 @@ public class SpecProcessor extends AbstractProcessor {
 		if (!pkgName.isEmpty()) {
 			pkgName += ".";
 		}
+		
+		for (Element elem = cls; elem.getKind() == ElementKind.CLASS || elem.getKind() == ElementKind.INTERFACE;); // FIXME
 		if (memberAnn != null) {
 			String modName = memberAnn.value();
 			if (modName.contains(".")) {
