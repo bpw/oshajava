@@ -375,7 +375,7 @@ public class WeakConcurrentIdentityHashMap<K, V> implements ConcurrentMap<K,V> {
 				int c = count;
 				if (c++ > threshold) {// ensure capacity
 					// TODO my addition:
-					gc();
+					// gc();
 					if (count >= threshold)
 						// end mine	
 						rehash();	

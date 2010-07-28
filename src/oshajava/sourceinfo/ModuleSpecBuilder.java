@@ -52,7 +52,7 @@ public class ModuleSpecBuilder implements Serializable {
 		sp.note("  Incremental: " + uri.getPath());
 		String s = uri.getPath();
 		String ms = s.substring(0, s.length() - EXT.length()) + ModuleSpec.EXT;
-		sp.note("  Final: " + ms);
+		sp.note("  Final:       " + ms);
 		ModuleSpec m = generateSpec();
 		ColdStorage.store(ms, m);
 //		m.describe();

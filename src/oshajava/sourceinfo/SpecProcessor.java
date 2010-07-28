@@ -287,7 +287,7 @@ public class SpecProcessor extends AbstractProcessor {
 			try {
 				// get the file it should be dumped in.
 				//    			Util.logf("pkg: %s relname: %s", pkg, simpleName);
-				URI uri = processingEnv.getFiler().getResource(StandardLocation.locationFor("CLASS_OUTPUT"), 
+				URI uri = processingEnv.getFiler().getResource(StandardLocation.locationFor("SOURCE_OUTPUT"), //  XXX Cody: I changed CLASS_OUTPUT to SOURCE_OUTPUT so that the files go to the right places.
 						pkg, simpleName + ModuleSpecBuilder.EXT).toUri();
 				uri = new File(uri.getPath()).getAbsoluteFile().toURI(); // ensure the URI is absolute
 				module = (ModuleSpecBuilder)ColdStorage.load(uri);
@@ -296,7 +296,7 @@ public class SpecProcessor extends AbstractProcessor {
 			} catch (IOException e) {
 				// File did not exist. Create new module and its file.
 				try {
-					URI uri = processingEnv.getFiler().createResource(StandardLocation.locationFor("CLASS_OUTPUT"), 
+					URI uri = processingEnv.getFiler().createResource(StandardLocation.locationFor("SOURCE_OUTPUT"), //  XXX Cody: I changed CLASS_OUTPUT to SOURCE_OUTPUT so that the files go to the right places.
 							pkg, simpleName + ModuleSpecBuilder.EXT).toUri();
 					uri = new File(uri.getPath()).getAbsoluteFile().toURI();
 					module = new ModuleSpecBuilder(qualifiedName, uri);
@@ -320,9 +320,9 @@ public class SpecProcessor extends AbstractProcessor {
 	private void handleClass(TypeElement cls) {
 		String name = cls.getQualifiedName().toString();
 		
-		final Element parent = cls.getEnclosingElement();
-		final boolean isInner = cls.getKind() == ElementKind.CLASS || cls.getKind() == ElementKind.INTERFACE;
-		final TypeElement t = (TypeElement)parent;
+//		final Element parent = cls.getEnclosingElement(); // TODO Ben was doing something here.
+//		final boolean isInner = cls.getKind() == ElementKind.CLASS || cls.getKind() == ElementKind.INTERFACE;
+//		final TypeElement t = (TypeElement)parent;
 //		final
 
 		// Module membership.
