@@ -140,6 +140,7 @@ public class Config {
 	protected static SequentialTimer premainFiniTimer = new SequentialTimer("Premain to fini time");
 	public static void premain(String agentArgs, Instrumentation inst) {
 		premainTimer.start();
+		{StackCommMonitor.def.getClass();} // Initialize monitoring system.
 		Thread.currentThread().setName(TOOL_NAME);
 		configure(agentArgs == null ? new String[0] : agentArgs.replace('#', ' ').split(","));
 		if( !CommandLine.javaArgs.get().replaceAll(" ", "").isEmpty()) {

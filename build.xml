@@ -55,6 +55,7 @@ Agent-Class: ${agent.class}
 </echo>
 		<jar destfile="${agent.jar}" index="true" manifest="${manifest}">	
 			<fileset dir="${classes.dir}" includes="**/*.class" />
+			<zipfileset src="/home/codeblack/research/osha/oshaviz/plugin/lib/prefuse.jar" />
 			<!-- <indexjars refid="libs.classpath" /> -->
 		</jar>
 	</target>

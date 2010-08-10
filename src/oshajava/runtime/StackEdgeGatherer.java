@@ -1,9 +1,16 @@
 package oshajava.runtime;
 
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+
 import oshajava.sourceinfo.ModuleSpec;
 import oshajava.sourceinfo.Spec;
 
 public abstract class StackEdgeGatherer implements StackCommMonitor {
+	
+	private final Map<Stack,Set<Stack>> done = new HashMap<Stack,Set<Stack>>();
 
 	public void addCommunicationAndFlush(final Stack s1, final Stack s2) {
 		addCommunication(s1, s2);
@@ -11,6 +18,19 @@ public abstract class StackEdgeGatherer implements StackCommMonitor {
 	}
 	
 	public void addCommunication(final Stack s1, final Stack s2) {
+		synchronized (done) {
+			if (done.containsKey(s1)) {
+				if (done.get(s1).contains(s2)) {
+					return; // Already done these comms.
+				} else {
+					done.get(s1).add(s2);
+				}
+			} else {
+				done.put(s1, new HashSet<Stack>());
+				done.get(s1).add(s2);
+			}	
+		}
+		
 		int modId = Spec.getModuleID(s1.methodUID);
 		if (modId != Spec.getModuleID(s2.methodUID)) {
 			return;
