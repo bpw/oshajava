@@ -130,7 +130,7 @@ public class ModuleSpecBuilder implements Serializable {
 	 * Add a method as a non-communicator.
 	 */
 	public void addNonComm(String signature) {
-		if (! nonCommMethods.contains(signature)) {
+		if (!nonCommMethods.contains(signature)) {
 			nonCommMethods.add(signature);
 			ctrNonComm++;
 		}
@@ -139,7 +139,7 @@ public class ModuleSpecBuilder implements Serializable {
 	 * Add a method to the list of inlined methods.
 	 */
 	public void inlineMethod(String signature) {
-		if (! inlinedMethods.contains(signature)) {
+		if (!inlinedMethods.contains(signature)) {
 			inlinedMethods.add(signature);
 			ctrInline++;
 		}

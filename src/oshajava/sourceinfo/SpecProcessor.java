@@ -193,7 +193,7 @@ public class SpecProcessor extends AbstractProcessor {
             }
 			 */
 
-			// Check if it's an iinner class.
+			// Check if it's an inner class.
 			TypeMirror encloser = null;
 			if (decl.getEnclosingType().getKind() != TypeKind.NONE) {
 				encloser = decl.getEnclosingType();
@@ -284,10 +284,11 @@ public class SpecProcessor extends AbstractProcessor {
 			final String pkg = lastDot == -1 ? "" : qualifiedName.substring(0, lastDot);
 			// relative name of module
 			final String simpleName = lastDot == -1 ? qualifiedName : qualifiedName.substring(lastDot + 1);
+			final String location = "SOURCE_OUTPUT"; //  XXX Cody: I changed CLASS_OUTPUT to SOURCE_OUTPUT so that the files go to the right places.
 			try {
 				// get the file it should be dumped in.
 				//    			Util.logf("pkg: %s relname: %s", pkg, simpleName);
-				URI uri = processingEnv.getFiler().getResource(StandardLocation.locationFor("SOURCE_OUTPUT"), //  XXX Cody: I changed CLASS_OUTPUT to SOURCE_OUTPUT so that the files go to the right places.
+				URI uri = processingEnv.getFiler().getResource(StandardLocation.locationFor(location),
 						pkg, simpleName + ModuleSpecBuilder.EXT).toUri();
 				uri = new File(uri.getPath()).getAbsoluteFile().toURI(); // ensure the URI is absolute
 				module = (ModuleSpecBuilder)ColdStorage.load(uri);
@@ -296,7 +297,7 @@ public class SpecProcessor extends AbstractProcessor {
 			} catch (IOException e) {
 				// File did not exist. Create new module and its file.
 				try {
-					URI uri = processingEnv.getFiler().createResource(StandardLocation.locationFor("SOURCE_OUTPUT"), //  XXX Cody: I changed CLASS_OUTPUT to SOURCE_OUTPUT so that the files go to the right places.
+					URI uri = processingEnv.getFiler().createResource(StandardLocation.locationFor(location),
 							pkg, simpleName + ModuleSpecBuilder.EXT).toUri();
 					uri = new File(uri.getPath()).getAbsoluteFile().toURI();
 					module = new ModuleSpecBuilder(qualifiedName, uri);
