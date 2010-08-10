@@ -5,7 +5,7 @@ import oshajava.sourceinfo.Spec;
 
 public abstract class StackEdgeGatherer implements StackCommMonitor {
 
-	public void addCommunicationFlush(final Stack s1, final Stack s2) {
+	public void addCommunicationAndFlush(final Stack s1, final Stack s2) {
 		addCommunication(s1, s2);
 		flushComms();
 	}

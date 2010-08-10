@@ -272,7 +272,10 @@ public class RuntimeMonitor {
 						if (PROFILE) {
 							lockCommCounter.inc();
 						}
-						StackCommMonitor.def.addCommunicationFlush(holderState.stack, lastHolderState.stack);
+						if (StackCommMonitor.TRACE) {
+							StackCommMonitor.def.addCommunicationAndFlush(holderState.stack, lastHolderState.stack);
+						}
+						
 						// if communication is not allowed, throw an exception.
 						if (!holderState.stack.writerCache.contains(lastHolderState.getStackID())) {
 							if (PROFILE) {
