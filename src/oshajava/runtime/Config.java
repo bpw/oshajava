@@ -78,6 +78,9 @@ public class Config {
     public static final CommandLineOption<Boolean> recordOption =
     		CommandLine.makeBoolean("record", false, "Record exercised graph.");
     
+	public static final CommandLineOption<Boolean> visualizeOption =
+		CommandLine.makeBoolean("visualize", false, "Visualize communications in real-time.");
+    
     public static final CommandLineOption<String> profileExtOption =
     	CommandLine.makeString("profileExt", "-oshajava-profile.py", "Extension on profile file (prefixed by main class)");
     
@@ -105,6 +108,7 @@ public class Config {
 		
 		cl.add(profileOption);
 		cl.add(recordOption);
+		cl.add(visualizeOption);
 		cl.add(summaryOption);
 		cl.add(createOption);
 		cl.add(profileExtOption);
@@ -140,9 +144,9 @@ public class Config {
 	protected static SequentialTimer premainFiniTimer = new SequentialTimer("Premain to fini time");
 	public static void premain(String agentArgs, Instrumentation inst) {
 		premainTimer.start();
-		{StackCommMonitor.def.getClass();} // Initialize monitoring system.
 		Thread.currentThread().setName(TOOL_NAME);
 		configure(agentArgs == null ? new String[0] : agentArgs.replace('#', ' ').split(","));
+		{Object o = StackCommMonitor.def;} // Initialize monitoring system.
 		if( !CommandLine.javaArgs.get().replaceAll(" ", "").isEmpty()) {
 			Util.logf("remaining args are \"%s\"", CommandLine.javaArgs.get());
 			helpOption.set(true);

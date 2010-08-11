@@ -216,21 +216,27 @@ public class VisualGrapher extends StackEdgeGatherer {
 		}
 		
 		private Node getMethodNode(ModuleSpec module, int methId) {
-			if (!uidToNode.containsKey(methId)) {
-				Node n = commGraph.addNode();
-				n.setString("name",module.getMethodSignature(methId));
-				uidToNode.put(methId, n);
+			synchronized (commGraph) {
+				synchronized (uidToNode) {
+					if (!uidToNode.containsKey(methId)) {
+						Node n = commGraph.addNode();
+						n.setString("name",module.getMethodSignature(methId));
+						uidToNode.put(methId, n);
+					}
+				}
 			}
 			return uidToNode.get(methId);
 		}
 
 		public void addToGraph() {
-			Edge e = commGraph.getEdge(writer,reader);
-			if (e == null) {
-				e = commGraph.addEdge(writer, reader);
-				e.setInt("type", type);
-			} else if (e.getInt("type") != type) {
-				e.setInt("type", Math.min(type+e.getInt("type"), 3));
+			synchronized (commGraph) {
+				Edge e = commGraph.getEdge(writer,reader);
+				if (e == null) {
+					e = commGraph.addEdge(writer, reader);
+					e.setInt("type", type);
+				} else if (e.getInt("type") != type) {
+					e.setInt("type", Math.min(type+e.getInt("type"), 3));
+				}
 			}
 		}
 	}
@@ -248,7 +254,6 @@ public class VisualGrapher extends StackEdgeGatherer {
 				double x2,
 				double y2) {
 			if (eitem.getSourceNode().equals(eitem.getTargetNode())) { // Self-loops!!!
-				// TODO The arrow can't be seen behind the node. Let's fix that later.
 				double scale = 60;
 				cp[0].setLocation(x1 - scale, y1 + scale);
 				cp[1].setLocation(x2 + scale, y2 + scale);

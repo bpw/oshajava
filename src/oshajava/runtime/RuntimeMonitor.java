@@ -272,7 +272,7 @@ public class RuntimeMonitor {
 						if (PROFILE) {
 							lockCommCounter.inc();
 						}
-						if (StackCommMonitor.TRACE) {
+						if (StackCommMonitor.VISUALIZE) {
 							StackCommMonitor.def.addCommunicationAndFlush(holderState.stack, lastHolderState.stack);
 						}
 						
