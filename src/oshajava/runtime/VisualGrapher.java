@@ -181,22 +181,22 @@ public class VisualGrapher extends StackEdgeGatherer {
 				e.addToGraph();
 		}
 	}
-//	
-//	private static class StaggeredAction {
-//		
-//		private final Runnable action;
-//		private final AtomicInteger count = new AtomicInteger(0);
-//		
-//		public StaggeredAction(Runnable action, int d) {
-//			this.action = action;
-//		}
-//		
-//		public void increment() {
-//			if (count.incrementAndGet()%d == 0) {
-//				action.run();
-//			}
-//		}
-//	}
+	//	
+	//	private static class StaggeredAction {
+	//		
+	//		private final Runnable action;
+	//		private final AtomicInteger count = new AtomicInteger(0);
+	//		
+	//		public StaggeredAction(Runnable action, int d) {
+	//			this.action = action;
+	//		}
+	//		
+	//		public void increment() {
+	//			if (count.incrementAndGet()%d == 0) {
+	//				action.run();
+	//			}
+	//		}
+	//	}
 
 	private class PreEdge {
 
@@ -205,16 +205,18 @@ public class VisualGrapher extends StackEdgeGatherer {
 		private int type;
 
 		public PreEdge(ModuleSpec module, int writerID, int readerID, boolean runtime) {
-			writer = getMethodNode(module,writerID);
-			reader = getMethodNode(module,readerID);
-
 			if (runtime) {
 				type = module.isAllowed(writerID, readerID) ? 3 : 1;
 			} else {
 				type = 2;
 			}
+
+			if (type == 1) { // XXX Only add nodes with bad edges.
+				writer = getMethodNode(module,writerID);
+				reader = getMethodNode(module,readerID);
+			}
 		}
-		
+
 		private Node getMethodNode(ModuleSpec module, int methId) {
 			synchronized (commGraph) {
 				synchronized (uidToNode) {
@@ -229,18 +231,20 @@ public class VisualGrapher extends StackEdgeGatherer {
 		}
 
 		public void addToGraph() {
-			synchronized (commGraph) {
-				Edge e = commGraph.getEdge(writer,reader);
-				if (e == null) {
-					e = commGraph.addEdge(writer, reader);
-					e.setInt("type", type);
-				} else if (e.getInt("type") != type) {
-					e.setInt("type", Math.min(type+e.getInt("type"), 3));
+			if (type == 1) { // XXX Only add bad edges.
+				synchronized (commGraph) {
+					Edge e = commGraph.getEdge(writer,reader);
+					if (e == null) {
+						e = commGraph.addEdge(writer, reader);
+						e.setInt("type", type);
+					}// else if (e.getInt("type") != type) {
+					//	e.setInt("type", Math.min(type+e.getInt("type"), 3));
+					//}
 				}
 			}
 		}
 	}
-	
+
 	private class CurvyEdgeRenderer extends EdgeRenderer {
 
 		public CurvyEdgeRenderer() {

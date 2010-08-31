@@ -171,15 +171,28 @@ public class SpecProcessor extends AbstractProcessor {
 
 		case DECLARED:
 			DeclaredType decl = (DeclaredType)tm;
-
-			String name = decl.toString();
-			int lt = name.indexOf('<');
-			if (lt != -1) {
-				// This is a parameterized type. Remove the <...> part.
-				name = name.substring(0, lt);
+			
+//			String name = decl.toString(); // XXX Old code.
+//			int lt = name.indexOf('<');
+//			if (lt != -1) {
+//				// This is a parameterized type. Remove the <...> part.
+//				name = name.substring(0, lt);
+//			}
+			StringBuilder nameBuilder = new StringBuilder(decl.toString()); // XXX New code to fix old bug for Class<E>.InnerClass
+			for (int l = 0; l < nameBuilder.length(); ++l) {
+				if (nameBuilder.charAt(l) == '<') {
+					int count = 1;
+					int r;
+					for (r = l+1; r < nameBuilder.length() && count != 0; ++r) {
+						if (nameBuilder.charAt(r) == '<')
+							count++;
+						else if (nameBuilder.charAt(r) == '>')
+							count--;
+					}
+					nameBuilder.delete(l, r);
+				}
 			}
-
-			name = InstrumentationAgent.internalName(name);
+			String name = InstrumentationAgent.internalName(nameBuilder.toString());
 
 			// Disable <...> appending, because ASM doesn't seem to do it?
 			/*
