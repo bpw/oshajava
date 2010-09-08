@@ -69,7 +69,7 @@ public class SpecProcessor extends AbstractProcessor {
 	public synchronized void init(ProcessingEnvironment env) {
 		super.init(env);
 		// Set the default annotation to @Inline or @NonComm.
-		// e.g. -Aoshajava.annotation.default=NonComm
+		// e.g. -Aoshajava.annotation.default=noncomm
 		final String defaultAnn = env.getOptions().get(DEFAULT_ANN_OPTION);
 		if (defaultAnn == null || defaultAnn.toLowerCase().equals(INLINE_ANN)) {
 			ModuleSpecBuilder.setDefaultInline(true);
@@ -275,6 +275,7 @@ public class SpecProcessor extends AbstractProcessor {
 			// Annotation processing is also not aware that inner class
 			// constructors get their outer class passed as a parameter.
 			out += typeDescriptor(cls.getEnclosingElement().asType());
+			// TODO Print out inner classes here.
 		}
 		for (VariableElement ve : m.getParameters()) {
 			out += typeDescriptor(ve.asType());

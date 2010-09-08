@@ -374,11 +374,12 @@ public class WeakConcurrentIdentityHashMap<K, V> implements ConcurrentMap<K,V> {
 			try {
 				int c = count;
 				if (c++ > threshold) {// ensure capacity
-					// TODO my addition:
+					// ADDITION by bpw
+					// FIXME: KILLS performance in JBB.
 					// gc();
-					if (count >= threshold)
-						// end mine	
-						rehash();	
+					// if (count >= threshold)
+					// end ADDITION	
+					rehash();	
 				}
 				HashEntry[] tab = table;
 				int index = hash & (tab.length - 1);
