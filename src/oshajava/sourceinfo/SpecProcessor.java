@@ -336,15 +336,12 @@ public class SpecProcessor extends AbstractProcessor {
 		
 //		for (Element elem = cls; elem.getKind() == ElementKind.CLASS || elem.getKind() == ElementKind.INTERFACE;); // FIXME
 		if (memberAnn != null) {
+			// All @Mmembers use fully qualified arguments
 			String modName = memberAnn.value();
-			if (modName.contains(".")) {
-				module = getModule(modName);
-			} else {
-				module = getModule(pkgName + modName);
-			}
+			module = getModule(modName);
 			module.ctrModuleMembership++;
 		} else {
-			// Default membership.
+			// Default membership: currentpackage.Default
 			module = getModule(pkgName + ModuleSpec.DEFAULT_NAME);
 		}
 		// Facilitate module lookup for this class's methods.
