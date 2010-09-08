@@ -75,6 +75,7 @@ public class BitVectorIntSet extends IntSet implements Serializable, Iterable<In
 			if (COUNT_SLOTS) maxSlots.add(slot + 1);
 		}
 		bits[slot] |= (1 << (member % SLOT_SIZE));
+		Util.assertTrue(bits[slot] != 0);
 	}
 	
 	public synchronized void addAll(final BitVectorIntSet set) {
@@ -91,10 +92,12 @@ public class BitVectorIntSet extends IntSet implements Serializable, Iterable<In
 	 * current set.
 	 */
 	public void fit() {
-		int newBitsSize = bits[bits.length - 1];
+		int newBitsSize = bits[bits.length - 1]; // TODO Check this initialization.
+												 //  I believe it should be bits.length.
 		while (newBitsSize >= 0 && bits[newBitsSize] == 0) {
 			newBitsSize--;
 		}
+		Util.assertTrue(newBitsSize >= 0); // TODO This assertion can fail...
 		bits = ArrayUtil.copy(bits, newBitsSize);
 	}
 
@@ -163,7 +166,7 @@ public class BitVectorIntSet extends IntSet implements Serializable, Iterable<In
 	 */
 	public boolean isEmpty() {
 		for (int i : bits) {
-			if (i > 0) return false;
+			if (i != 0) return false; // XXX Was '> 0' but bits could be shifted into the sign bit.
 		}
 		return true;
 	}

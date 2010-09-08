@@ -171,15 +171,28 @@ public class SpecProcessor extends AbstractProcessor {
 
 		case DECLARED:
 			DeclaredType decl = (DeclaredType)tm;
-
-			String name = decl.toString();
-			int lt = name.indexOf('<');
-			if (lt != -1) {
-				// This is a parameterized type. Remove the <...> part.
-				name = name.substring(0, lt);
+			
+//			String name = decl.toString(); // XXX Old code.
+//			int lt = name.indexOf('<');
+//			if (lt != -1) {
+//				// This is a parameterized type. Remove the <...> part.
+//				name = name.substring(0, lt);
+//			}
+			StringBuilder nameBuilder = new StringBuilder(decl.toString()); // XXX New code to fix old bug for Class<E>.InnerClass
+			for (int l = 0; l < nameBuilder.length(); ++l) {
+				if (nameBuilder.charAt(l) == '<') {
+					int count = 1;
+					int r;
+					for (r = l+1; r < nameBuilder.length() && count != 0; ++r) {
+						if (nameBuilder.charAt(r) == '<')
+							count++;
+						else if (nameBuilder.charAt(r) == '>')
+							count--;
+					}
+					nameBuilder.delete(l, r);
+				}
 			}
-
-			name = InstrumentationAgent.internalName(name);
+			String name = InstrumentationAgent.internalName(nameBuilder.toString());
 
 			// Disable <...> appending, because ASM doesn't seem to do it?
 			/*
@@ -193,7 +206,7 @@ public class SpecProcessor extends AbstractProcessor {
             }
 			 */
 
-			// Check if it's an iinner class.
+			// Check if it's an inner class.
 			TypeMirror encloser = null;
 			if (decl.getEnclosingType().getKind() != TypeKind.NONE) {
 				encloser = decl.getEnclosingType();
@@ -284,10 +297,11 @@ public class SpecProcessor extends AbstractProcessor {
 			final String pkg = lastDot == -1 ? "" : qualifiedName.substring(0, lastDot);
 			// relative name of module
 			final String simpleName = lastDot == -1 ? qualifiedName : qualifiedName.substring(lastDot + 1);
+			final String location = "SOURCE_OUTPUT"; //  XXX Cody: I changed CLASS_OUTPUT to SOURCE_OUTPUT so that the files go to the right places.
 			try {
 				// get the file it should be dumped in.
 				//    			Util.logf("pkg: %s relname: %s", pkg, simpleName);
-				URI uri = processingEnv.getFiler().getResource(StandardLocation.locationFor("CLASS_OUTPUT"), 
+				URI uri = processingEnv.getFiler().getResource(StandardLocation.locationFor(location),
 						pkg, simpleName + ModuleSpecBuilder.EXT).toUri();
 				uri = new File(uri.getPath()).getAbsoluteFile().toURI(); // ensure the URI is absolute
 				module = (ModuleSpecBuilder)ColdStorage.load(uri);
@@ -296,7 +310,7 @@ public class SpecProcessor extends AbstractProcessor {
 			} catch (IOException e) {
 				// File did not exist. Create new module and its file.
 				try {
-					URI uri = processingEnv.getFiler().createResource(StandardLocation.locationFor("CLASS_OUTPUT"), 
+					URI uri = processingEnv.getFiler().createResource(StandardLocation.locationFor(location),
 							pkg, simpleName + ModuleSpecBuilder.EXT).toUri();
 					uri = new File(uri.getPath()).getAbsoluteFile().toURI();
 					module = new ModuleSpecBuilder(qualifiedName, uri);
@@ -320,9 +334,9 @@ public class SpecProcessor extends AbstractProcessor {
 	private void handleClass(TypeElement cls) {
 		String name = cls.getQualifiedName().toString();
 		
-		final Element parent = cls.getEnclosingElement();
-		final boolean isInner = cls.getKind() == ElementKind.CLASS || cls.getKind() == ElementKind.INTERFACE;
-		final TypeElement t = (TypeElement)parent;
+//		final Element parent = cls.getEnclosingElement(); // TODO Ben was doing something here.
+//		final boolean isInner = cls.getKind() == ElementKind.CLASS || cls.getKind() == ElementKind.INTERFACE;
+//		final TypeElement t = (TypeElement)parent;
 //		final
 
 		// Module membership.

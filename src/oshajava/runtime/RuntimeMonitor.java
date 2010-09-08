@@ -272,6 +272,10 @@ public class RuntimeMonitor {
 						if (PROFILE) {
 							lockCommCounter.inc();
 						}
+						if (StackCommMonitor.VISUALIZE) {
+							StackCommMonitor.def.addCommunicationAndFlush(holderState.stack, lastHolderState.stack);
+						}
+						
 						// if communication is not allowed, throw an exception.
 						if (!holderState.stack.writerCache.contains(lastHolderState.getStackID())) {
 							if (PROFILE) {
@@ -282,6 +286,7 @@ public class RuntimeMonitor {
 							}
 						}
 					}
+					
 				}
 			} else { // depth is > 0. This is a reentrant acquire
 				lockState.incrementDepth();
