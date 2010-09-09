@@ -58,6 +58,10 @@ public class ModuleSpecBuilder implements Serializable {
 //		m.describe();
 	}
 	
+	/**
+	 * Returns the module's qualifed name.
+	 * @return
+	 */
 	public String getName() {
 		return qualifiedName;
 	}

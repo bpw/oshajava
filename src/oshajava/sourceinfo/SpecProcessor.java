@@ -18,9 +18,11 @@ import javax.annotation.processing.SupportedOptions;
 import javax.annotation.processing.SupportedSourceVersion;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.Element;
+import javax.lang.model.element.ElementVisitor;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.TypeParameterElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.NestingKind;
@@ -29,6 +31,8 @@ import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.type.TypeKind;
+import javax.lang.model.util.AbstractElementVisitor6;
+import javax.lang.model.util.ElementScanner6;
 import javax.tools.Diagnostic;
 import javax.tools.StandardLocation;
 
@@ -36,7 +40,7 @@ import oshajava.annotation.Group;
 import oshajava.annotation.Groups;
 import oshajava.annotation.Inline;
 import oshajava.annotation.InterfaceGroup;
-import oshajava.annotation.Member;
+import oshajava.annotation.Module;
 import oshajava.annotation.NonComm;
 import oshajava.annotation.Reader;
 import oshajava.annotation.Writer;
@@ -54,17 +58,17 @@ public class SpecProcessor extends AbstractProcessor {
 	
 	private static final String INLINE_ANN = "inline", NONCOMM_ANN = "noncomm";
 
-	private Map<String, ModuleSpecBuilder> modules = new HashMap<String, ModuleSpecBuilder>();
-	private Map<String, ModuleSpecBuilder> classToModule = new HashMap<String, ModuleSpecBuilder>();
-
-	private final Set<ModuleSpecBuilder> changed = new HashSet<ModuleSpecBuilder>();
+	private final Map<String, ModuleSpecBuilder> modules = new HashMap<String, ModuleSpecBuilder>();
+//	private final Map<String, String> packageToModule = new HashMap<String, String>();
+	private final Map<Element, ModuleSpecBuilder> processedModules = new HashMap<Element, ModuleSpecBuilder>();
+	private final ModuleScanner moduleScanner = new ModuleScanner();
+	private final GroupScanner groupScanner = new GroupScanner();
+	private final GroupMembershipScanner groupMembershipScanner = new GroupMembershipScanner();
+	
+//	private final Set<ModuleSpecBuilder> changed = new HashSet<ModuleSpecBuilder>();
 	
 	private boolean verbose;
 	
-//	private int tally;
-//	private Trees trees;
-//	private TreeMaker make;
-
 	@Override
 	public synchronized void init(ProcessingEnvironment env) {
 		super.init(env);
@@ -79,11 +83,215 @@ public class SpecProcessor extends AbstractProcessor {
 			throw new IllegalArgumentException(DEFAULT_ANN_OPTION + "=" + defaultAnn);
 		}
 		verbose = env.getOptions().containsKey(DEBUG_OPTION);
-//		trees = Trees.instance(env);
-//		Context context = ((JavacProcessingEnvironment)env).getContext(); 
-//		make = TreeMaker.instance(context);
 	}
 
+	/**
+	 *  Annotation processing hook.
+	 *  
+	 *  NOTE: We assume that the list returned by env.getRootElements() ALWAYS lists outer class before inner class. 
+	 *  This is what we have observed in practice.
+	 */
+	@Override
+	public boolean process(Set<? extends TypeElement> annotationTypes, RoundEnvironment env) {
+		// Packages, classes, and interfaces to process in this round.
+		final Set<? extends Element> elements = env.getRootElements();
+		if (elements.isEmpty()) {
+			// If empty, then processing is done. Dump the modules to disk.
+			dumpChanges();
+		} else {
+			// First, establish modules.
+			for (final Element e : elements) {
+				moduleScanner.scan(e);
+			}
+			// Second, establish groups.
+			for (final Element e : elements) {
+				groupScanner.scan(e);
+			}			
+			// Third, establish readers and writers in groups, noncomm, and inline.
+			for (final Element e : elements) {
+				groupMembershipScanner.scan(e);
+			}
+		}
+		// Let other processors see the annotations.
+		return false;
+	}
+	
+	/**
+	 * Convenience...
+	 * @author bpw
+	 *
+	 * @param <R>
+	 * @param <P>
+	 */
+	class MyElementScanner<R,P> extends ElementScanner6<R, P> {
+		@Override
+		public R visitExecutable(ExecutableElement e, P p) { return null; }
+		@Override
+		public final R visitVariable(VariableElement e, P p) { return null; }
+		@Override
+		public final R visitTypeParameter(TypeParameterElement e, P p) { return null; }
+	}
+
+	/**
+	 * Scans Element tree for module membership declarations.
+	 * @author bpw
+	 *
+	 */
+	class ModuleScanner extends MyElementScanner<ModuleSpecBuilder, ModuleSpecBuilder> {
+		@Override
+		public ModuleSpecBuilder scan(Element e, ModuleSpecBuilder p) {
+			if (! processedModules.containsKey(e)) {
+				final Module memberDecl = e.getAnnotation(Module.class);
+				final ModuleSpecBuilder module;
+				if (memberDecl != null) {
+					module = getModuleByName(memberDecl.value());
+					processedModules.put(e, module);
+					super.scan(e, module);
+					return module;
+				} else {
+					module = super.scan(e, p);
+					processedModules.put(e, module);
+				}
+				return module;
+			}
+			return processedModules.get(e);
+		}
+		
+		@Override
+		public ModuleSpecBuilder visitPackage(PackageElement pkg, ModuleSpecBuilder p) {
+			return getModuleByName(pkg.isUnnamed() ? ModuleSpec.DEFAULT_NAME : pkg.getQualifiedName() + "." + ModuleSpec.DEFAULT_NAME);
+		}
+
+		@Override
+		public ModuleSpecBuilder visitType(TypeElement e, ModuleSpecBuilder p) {
+			if (p == null) {
+				p = scan(processingEnv.getElementUtils().getPackageOf(e));
+			}
+			super.visitType(e, p);
+			return p;
+		}
+
+		@Override
+		public ModuleSpecBuilder visitExecutable(ExecutableElement e, ModuleSpecBuilder p) {
+			return p;
+		}
+
+	}
+	
+	class GroupScanner extends MyElementScanner<Object, Object> {
+
+		private final Set<Element> processedGroups = new HashSet<Element>();
+
+		@Override
+		public Object scan(Element e, Object p) {
+			if (! processedGroups.contains(e)) {
+				processedGroups.add(e);
+				final ModuleSpecBuilder module = processedModules.get(e);
+				// Handle any single group declarations.
+				addGroup(module, e.getAnnotation(Group.class));
+				addGroup(module, e.getAnnotation(InterfaceGroup.class));
+				// Handle multiple group declarations.
+				Groups groupsAnn = e.getAnnotation(Groups.class);
+				if (groupsAnn != null) {
+					for (Group groupAnn : groupsAnn.communication()) {
+						addGroup(module, groupAnn);
+					}
+					for (InterfaceGroup iGroupAnn : groupsAnn.intfc()) {
+						addGroup(module, iGroupAnn);
+					}
+				}
+				super.scan(e, p);
+			}
+			return null;
+		}
+		
+	}
+	
+	class GroupMembershipScanner extends MyElementScanner<Object, Object> {
+
+		private final Set<Element> processedGroupMemberships = new HashSet<Element>();
+
+		@Override
+		public Object scan(Element e, Object p) {
+			if (!processedGroupMemberships.contains(e)) {
+				processedGroupMemberships.add(e);
+				super.scan(e, p);
+			}
+			return null;
+		}
+
+		@Override
+		public Object visitExecutable(ExecutableElement m, Object p) {
+			// Get the right module.
+			final ModuleSpecBuilder module = processedModules.get(m);
+
+			
+			TypeElement cls = (TypeElement)m.getEnclosingElement();
+			String sig = DescriptorWrangler.methodDescriptor(cls, m);
+			
+
+			assert module != null;
+
+			Reader readerAnn = m.getAnnotation(Reader.class);
+			Writer writerAnn = m.getAnnotation(Writer.class);
+			Inline inlineAnn = m.getAnnotation(Inline.class);
+			NonComm nonCommAnn = m.getAnnotation(NonComm.class);
+
+			if (((readerAnn != null || writerAnn != null) && (inlineAnn != null || nonCommAnn != null))
+					|| (inlineAnn != null && nonCommAnn != null)) {
+				error("method " + sig + ": conflicting annotations. @Inline, @NonComm, and @Writer/@Reader are mutually exclusive.");
+			}
+
+			boolean nonEmptyGroups = false;
+			// Group membership.
+			if (readerAnn != null) {
+				for (String groupId : readerAnn.value()) {
+					module.addReader(groupId, sig);
+					module.ctrGroupMembership++;
+				}
+				nonEmptyGroups = readerAnn.value() != null && readerAnn.value().length > 0;
+			}
+			if (writerAnn != null) {
+				for (String groupId : writerAnn.value()) {
+					module.addWriter(groupId, sig);
+					module.ctrGroupMembership++;
+				}
+				nonEmptyGroups = nonEmptyGroups || (writerAnn.value() != null && writerAnn.value().length > 0);
+			}
+
+			// Explicit Non-comm
+			if (nonCommAnn != null || ((writerAnn != null || readerAnn != null) && !nonEmptyGroups)) {
+				module.addNonComm(sig);
+			}
+
+			// Default (unannotated)
+			if (readerAnn == null && writerAnn == null && nonCommAnn == null && inlineAnn == null) {
+				module.addUnannotatedMethod(sig);
+			}
+
+			// Explicit Inline
+			if (inlineAnn != null) {
+				module.inlineMethod(sig);
+			}
+
+			
+			return null;
+		}
+
+		@Override
+		public Object visitPackage(PackageElement e, Object p) {
+			// TODO:  Allow cascading defaults?
+			return super.visitPackage(e, p);
+		}
+
+		@Override
+		public Object visitType(TypeElement e, Object p) {
+			// TODO:  Allow cascading defaults?
+			return super.visitType(e, p);
+		}
+		
+	}
+	
 	private void dumpChanges() {
 		for (ModuleSpecBuilder mod : modules.values()) {
 			try {
@@ -98,197 +306,14 @@ public class SpecProcessor extends AbstractProcessor {
 				e1.printStackTrace();
 			}
 		}
-		changed.clear();
-	}
-
-	/**
-	 *  Recursively visit all classes and methods.
-	 * @param elements
-	 */
-	private void processAll(Collection<? extends Element>elements) {
-		for (Element e : elements) {
-			switch (e.getKind()) {
-			case METHOD:
-			case CONSTRUCTOR:
-				handleMethod((ExecutableElement)e);
-				break;
-			case CLASS:
-			case INTERFACE:
-			case ENUM:
-				handleClass((TypeElement)e);
-				processAll(e.getEnclosedElements());
-				break;
-			case PACKAGE:    
-				processAll(e.getEnclosedElements());
-				break;
-			}
-		}
-	}
-
-	/**
-	 *  Annotation processing hook.
-	 */
-	@Override
-	public boolean process(
-			Set<? extends TypeElement> elements,
-			RoundEnvironment env
-	) {
-		// Process eveything.
-		processAll(env.getRootElements());
-		dumpChanges();
-		return false;
-	}
-
-	/**
-	 * Construct the JVM type descriptor for a TypeMirror.
-	 */
-	private String typeDescriptor(TypeMirror tm) {
-		// Reference:
-		// http://java.sun.com/docs/books/jvms/second_edition/html/ClassFile.doc.html#1169
-		// http://www.ibm.com/developerworks/java/library/j-cwt02076.html
-		switch (tm.getKind()) {
-		case BOOLEAN:
-			return "Z";
-		case BYTE:
-			return "B";
-		case CHAR:
-			return "C";
-		case DOUBLE:
-			return "D";
-		case FLOAT:
-			return "F";
-		case INT:
-			return "I";
-		case LONG:
-			return "J";
-		case VOID:
-			return "V";
-		case SHORT:
-			return "S";
-
-		case ARRAY:
-			return "[" + typeDescriptor(((ArrayType)tm).getComponentType());
-
-		case DECLARED:
-			DeclaredType decl = (DeclaredType)tm;
-			
-//			String name = decl.toString(); // XXX Old code.
-//			int lt = name.indexOf('<');
-//			if (lt != -1) {
-//				// This is a parameterized type. Remove the <...> part.
-//				name = name.substring(0, lt);
-//			}
-			StringBuilder nameBuilder = new StringBuilder(decl.toString()); // XXX New code to fix old bug for Class<E>.InnerClass
-			for (int l = 0; l < nameBuilder.length(); ++l) {
-				if (nameBuilder.charAt(l) == '<') {
-					int count = 1;
-					int r;
-					for (r = l+1; r < nameBuilder.length() && count != 0; ++r) {
-						if (nameBuilder.charAt(r) == '<')
-							count++;
-						else if (nameBuilder.charAt(r) == '>')
-							count--;
-					}
-					nameBuilder.delete(l, r);
-				}
-			}
-			String name = InstrumentationAgent.internalName(nameBuilder.toString());
-
-			// Disable <...> appending, because ASM doesn't seem to do it?
-			/*
-            if (!decl.getTypeArguments().isEmpty()) {
-                // Add back type parameters.
-                name += "<";
-                for (TypeMirror arg : decl.getTypeArguments()) {
-                    name += typeDescriptor(arg);
-                }
-                name += ">";
-            }
-			 */
-
-			// Check if it's an inner class.
-			TypeMirror encloser = null;
-			if (decl.getEnclosingType().getKind() != TypeKind.NONE) {
-				encloser = decl.getEnclosingType();
-			} else if (decl.asElement().getEnclosingElement()
-					instanceof TypeElement) {
-				encloser = decl.asElement().getEnclosingElement().asType();
-			}
-
-			if (encloser != null) {
-				// This is an inner class.
-				int lastSlash = name.lastIndexOf('/');
-				String baseName = name.substring(lastSlash + 1);
-				String enclosingName = typeDescriptor(encloser);
-				// Remove L and ; on either end of encloser descriptor.
-				enclosingName = enclosingName.substring(1,
-						enclosingName.length() - 1);
-				name = enclosingName + "$" + baseName;
-			}
-
-			return "L" + name + ";";
-
-		case TYPEVAR:
-//			return "T" + tm.toString() + ";";
-			return "Ljava/lang/Object;";
-
-		case WILDCARD:
-//			return "?";
-			return "Ljava/lang/Object;";
-
-		case EXECUTABLE:        
-		case NULL:
-		case OTHER:
-		case PACKAGE:
-		case ERROR:
-		default:
-			return null;
-		}
-
-	}
-
-	/**
-	 * Construct the JVM method descriptor for an ExecutableElement.
-	 */
-	private String methodDescriptor(TypeElement cls, ExecutableElement m) {
-		// Container name.
-		String out = typeDescriptor(cls.asType());
-		// Remove L and ; from container class.
-		out = out.substring(1, out.length() - 1);
-
-		// Method name.
-		out += "." + m.getSimpleName();
-
-		// Parameter and return types.
-		out += "(";
-		// Special case for enumeration constructors.
-		if (cls.getKind() == ElementKind.ENUM &&
-				m.getSimpleName().toString().equals("<init>")) {
-			// For some reason, the annotation processing system seems
-			// to miss some enum constructor parameters!
-			out += "Ljava/lang/String;I";
-		}
-		// Special case for non-static inner class constructors.
-		if (cls.getNestingKind() == NestingKind.MEMBER &&
-				!cls.getModifiers().contains(Modifier.STATIC) &&
-				m.getSimpleName().toString().equals("<init>")) {
-			// Annotation processing is also not aware that inner class
-			// constructors get their outer class passed as a parameter.
-			out += typeDescriptor(cls.getEnclosingElement().asType());
-			// TODO Print out inner classes here.
-		}
-		for (VariableElement ve : m.getParameters()) {
-			out += typeDescriptor(ve.asType());
-		}
-		out += ")" + typeDescriptor(m.getReturnType());
-		return out;
+//		changed.clear();
 	}
 
 	/**
 	 * Get the ModuleSpecBuilder object for the module named. If none exists,
 	 * one is created.
 	 */
-	private ModuleSpecBuilder getModule(String qualifiedName) {
+	private ModuleSpecBuilder getModuleByName(String qualifiedName) {
 		if (modules.containsKey(qualifiedName)) {
 			return modules.get(qualifiedName);
 		} else {
@@ -296,7 +321,7 @@ public class SpecProcessor extends AbstractProcessor {
 			final int lastDot = qualifiedName.lastIndexOf('.');
 			// package name of module
 			final String pkg = lastDot == -1 ? "" : qualifiedName.substring(0, lastDot);
-			// relative name of module
+			// simple name of module
 			final String simpleName = lastDot == -1 ? qualifiedName : qualifiedName.substring(lastDot + 1);
 			final String location = "SOURCE_OUTPUT"; //  XXX Cody: I changed CLASS_OUTPUT to SOURCE_OUTPUT so that the files go to the right places.
 			try {
@@ -315,7 +340,7 @@ public class SpecProcessor extends AbstractProcessor {
 							pkg, simpleName + ModuleSpecBuilder.EXT).toUri();
 					uri = new File(uri.getPath()).getAbsoluteFile().toURI();
 					module = new ModuleSpecBuilder(qualifiedName, uri);
-					changed.add(module);
+//					changed.add(module);
 				} catch (IOException e1) {
 					Util.log("SpecProcessor.getModule(\""+ qualifiedName + "\") failing...");
 					throw new RuntimeException(e1);
@@ -327,120 +352,6 @@ public class SpecProcessor extends AbstractProcessor {
 			modules.put(qualifiedName, module);
 			return module;
 		}
-	}
-
-	/**
-	 * Process a class definition.
-	 */
-	private void handleClass(TypeElement cls) {
-		String name = cls.getQualifiedName().toString();
-		
-//		final Element parent = cls.getEnclosingElement(); // TODO Ben was doing something here.
-//		final boolean isInner = cls.getKind() == ElementKind.CLASS || cls.getKind() == ElementKind.INTERFACE;
-//		final TypeElement t = (TypeElement)parent;
-//		final
-
-		// Module membership.
-		Member memberAnn = cls.getAnnotation(Member.class);
-		ModuleSpecBuilder module;
-		PackageElement pkg = processingEnv.getElementUtils().getPackageOf(cls);
-		String pkgName = pkg.getQualifiedName().toString();
-		if (!pkgName.isEmpty()) {
-			pkgName += ".";
-		}
-		
-//		for (Element elem = cls; elem.getKind() == ElementKind.CLASS || elem.getKind() == ElementKind.INTERFACE;); // FIXME
-		if (memberAnn != null) {
-			// All @Mmembers use fully qualified arguments
-			String modName = memberAnn.value();
-			module = getModule(modName);
-			module.ctrModuleMembership++;
-		} else {
-			// Default membership: currentpackage.Default
-			module = getModule(pkgName + ModuleSpec.DEFAULT_NAME);
-		}
-		// Facilitate module lookup for this class's methods.
-		classToModule.put(name, module);
-
-		// Single group declarations.
-		addGroup(module, cls.getAnnotation(Group.class));
-		addGroup(module, cls.getAnnotation(InterfaceGroup.class));
-		// Multiple group declarations.
-		Groups groupsAnn = cls.getAnnotation(Groups.class);
-		if (groupsAnn != null) {
-			for (Group groupAnn : groupsAnn.communication()) {
-				addGroup(module, groupAnn);
-			}
-			for (InterfaceGroup iGroupAnn : groupsAnn.intfc()) {
-				addGroup(module, iGroupAnn);
-			}
-		}
-
-	}
-
-	/**
-	 * Process a method declaration.
-	 */
-	private void handleMethod(ExecutableElement m) {
-		TypeElement cls = (TypeElement)m.getEnclosingElement();
-		//        String name = cls.getQualifiedName() + "." + m.getSimpleName();
-		ModuleSpecBuilder module = classToModule.get(cls.getQualifiedName().toString());
-		String sig = methodDescriptor(cls, m);
-		
-
-		assert module != null;
-
-		Reader readerAnn = m.getAnnotation(Reader.class);
-		Writer writerAnn = m.getAnnotation(Writer.class);
-		Inline inlineAnn = m.getAnnotation(Inline.class);
-		NonComm nonCommAnn = m.getAnnotation(NonComm.class);
-
-		if (((readerAnn != null || writerAnn != null) && (inlineAnn != null || nonCommAnn != null))
-				|| (inlineAnn != null && nonCommAnn != null)) {
-			error("method " + sig + ": conflicting annotations. @Inline, @NonComm, and @Writer/@Reader are mutually exclusive.");
-		}
-
-		boolean nonEmptyGroups = false;
-		// Group membership.
-		if (readerAnn != null) {
-			for (String groupId : readerAnn.value()) {
-				module.addReader(groupId, sig);
-				module.ctrGroupMembership++;
-			}
-			nonEmptyGroups = readerAnn.value() != null && readerAnn.value().length > 0;
-		}
-		if (writerAnn != null) {
-			for (String groupId : writerAnn.value()) {
-				module.addWriter(groupId, sig);
-				module.ctrGroupMembership++;
-			}
-			nonEmptyGroups = nonEmptyGroups || (writerAnn.value() != null && writerAnn.value().length > 0);
-		}
-
-		// Explicit Non-comm
-		if (nonCommAnn != null || ((writerAnn != null || readerAnn != null) && !nonEmptyGroups)) {
-			module.addNonComm(sig);
-		}
-
-		// Default (unannotated)
-		if (readerAnn == null && writerAnn == null && nonCommAnn == null && inlineAnn == null) {
-			module.addUnannotatedMethod(sig);
-		}
-
-		// Explicit Inline
-		if (inlineAnn != null) {
-			module.inlineMethod(sig);
-		}
-		changed.add(module);
-		
-//		// Give the method an ID within this class.
-//		JCTree tree = (JCTree) trees.getTree(m);
-//		tree.accept(new TreeTranslator() {
-//			@Override
-//			public void visitAnnotation(JCAnnotation a) {
-//				a.getAnnotationType().
-//			}
-//		});
 	}
 
 	/**
@@ -456,10 +367,10 @@ public class SpecProcessor extends AbstractProcessor {
 		if (ann instanceof Group) {
 			Group groupAnn = (Group)ann;
 			mod.addGroup(groupAnn.id());
-			changed.add(mod);
+//			changed.add(mod);
 		} else if (ann instanceof InterfaceGroup) {
 			mod.addInterfaceGroup(((InterfaceGroup)ann).id());
-			changed.add(mod);
+//			changed.add(mod);
 		} else {
 			assert false;
 		}
