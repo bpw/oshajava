@@ -3,6 +3,7 @@ package oshajava.runtime;
 import java.lang.instrument.Instrumentation;
 
 import oshajava.instrument.InstrumentationAgent;
+import oshajava.rtviz.StackCommMonitor;
 import oshajava.support.acme.util.Util;
 import oshajava.support.acme.util.option.CommandLine;
 import oshajava.support.acme.util.option.CommandLineOption;

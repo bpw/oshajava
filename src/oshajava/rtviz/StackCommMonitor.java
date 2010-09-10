@@ -1,4 +1,7 @@
-package oshajava.runtime;
+package oshajava.rtviz;
+
+import oshajava.runtime.Config;
+import oshajava.runtime.Stack;
 
 public interface StackCommMonitor {
 

@@ -1,10 +1,11 @@
-package oshajava.runtime;
+package oshajava.rtviz;
 
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import oshajava.runtime.Stack;
 import oshajava.sourceinfo.ModuleSpec;
 import oshajava.sourceinfo.Spec;
 

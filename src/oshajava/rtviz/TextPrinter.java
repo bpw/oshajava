@@ -1,4 +1,4 @@
-package oshajava.runtime;
+package oshajava.rtviz;
 
 import java.io.PrintStream;
 import java.util.LinkedList;

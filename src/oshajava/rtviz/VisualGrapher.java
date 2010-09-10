@@ -1,4 +1,4 @@
-package oshajava.runtime;
+package oshajava.rtviz;
 
 import java.awt.BorderLayout;
 import java.awt.Color;

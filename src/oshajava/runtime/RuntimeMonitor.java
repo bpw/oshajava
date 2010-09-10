@@ -10,6 +10,7 @@ import java.lang.reflect.Array;
 import java.util.Set;
 import java.util.HashSet;
 
+import oshajava.rtviz.StackCommMonitor;
 import oshajava.runtime.exceptions.IllegalCommunicationException;
 import oshajava.runtime.exceptions.IllegalSharingException;
 import oshajava.runtime.exceptions.IllegalSynchronizationException;
