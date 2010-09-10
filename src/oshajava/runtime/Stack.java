@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.Set;
 
 import oshajava.instrument.InstrumentationAgent;
+import oshajava.rtviz.StackCommMonitor;
 import oshajava.sourceinfo.Graph;
 import oshajava.sourceinfo.ModuleSpec;
 import oshajava.sourceinfo.Spec;
@@ -190,6 +191,10 @@ public class Stack {
 				synchronized (writer.allReaders) {
 					writer.allReaders.add(this);
 				}
+			}
+			// Real-time visualizer
+			if (StackCommMonitor.VISUALIZE) {
+				StackCommMonitor.def.addCommunicationAndFlush(writer, this);
 			}
 			if (walkStacks(writer, this, 0)) {
 				synchronized (writerMemoTable) {

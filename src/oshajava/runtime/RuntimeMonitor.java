@@ -7,10 +7,9 @@ import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryMXBean;
 import java.lang.management.MemoryPoolMXBean;
 import java.lang.reflect.Array;
-import java.util.Set;
 import java.util.HashSet;
+import java.util.Set;
 
-import oshajava.rtviz.StackCommMonitor;
 import oshajava.runtime.exceptions.IllegalCommunicationException;
 import oshajava.runtime.exceptions.IllegalSharingException;
 import oshajava.runtime.exceptions.IllegalSynchronizationException;
@@ -22,7 +21,6 @@ import oshajava.util.WeakConcurrentIdentityHashMap;
 import oshajava.util.cache.DirectMappedShadowCache;
 import oshajava.util.count.AbstractCounter;
 import oshajava.util.count.Counter;
-import oshajava.util.count.ConcurrentTimer;
 import oshajava.util.intset.BitVectorIntSet;
 
 /**
@@ -272,9 +270,6 @@ public class RuntimeMonitor {
 					if (INTRA_THREAD || lastHolderState.thread != holder) {
 						if (PROFILE) {
 							lockCommCounter.inc();
-						}
-						if (StackCommMonitor.VISUALIZE) {
-							StackCommMonitor.def.addCommunicationAndFlush(holderState.stack, lastHolderState.stack);
 						}
 						
 						// if communication is not allowed, throw an exception.

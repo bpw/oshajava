@@ -7,8 +7,8 @@ import oshajava.rtviz.StackCommMonitor;
 import oshajava.support.acme.util.Util;
 import oshajava.support.acme.util.option.CommandLine;
 import oshajava.support.acme.util.option.CommandLineOption;
-import oshajava.util.count.SequentialTimer;
 import oshajava.util.count.ConcurrentTimer;
+import oshajava.util.count.SequentialTimer;
 
 /**
  * Options may be created here or in any class, but must be listed as args
@@ -147,7 +147,9 @@ public class Config {
 		premainTimer.start();
 		Thread.currentThread().setName(TOOL_NAME);
 		configure(agentArgs == null ? new String[0] : agentArgs.replace('#', ' ').split(","));
-		{Object o = StackCommMonitor.def;} // Initialize monitoring system.
+		if (visualizeOption.get()) {
+			Object _ = StackCommMonitor.def; // Initialize real-time visualization system.
+		}
 		if( !CommandLine.javaArgs.get().replaceAll(" ", "").isEmpty()) {
 			Util.logf("remaining args are \"%s\"", CommandLine.javaArgs.get());
 			helpOption.set(true);
