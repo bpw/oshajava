@@ -1,14 +1,13 @@
-package oshajava.sourceinfo;
+package oshajava.util;
 
 import java.io.IOException;
 
-import oshajava.util.ColdStorage;
 
-public class ModuleSpecBuilderReader {
+public class ObjectFilePrinter {
 	public static void main(String[] args) {
 		for (String a : args) {
 			try {
-				System.out.println(((ModuleSpecBuilder)ColdStorage.load(a)).generateSpec());
+				System.out.println(ColdStorage.load(a));
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();

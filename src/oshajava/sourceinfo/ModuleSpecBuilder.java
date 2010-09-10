@@ -283,4 +283,8 @@ public class ModuleSpecBuilder implements Serializable {
 	    return out;
 	}
 	
+	public String toString() {
+		return generateSpec().toString();
+	}
+	
 }
