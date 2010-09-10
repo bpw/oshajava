@@ -260,7 +260,7 @@ public class ModuleSpec implements Serializable {
 			out += "    " + e.source + ": " + methodIdToSig[e.source] + "  -->  " + e.sink + ": " + methodIdToSig[e.sink] + "\n";
 		}
 		out += "  Interface Pairs:\n";
-		for (Graph.Edge e : internalGraph) {
+		for (Graph.Edge e : interfaceGraph) {
 			out += "    " + e.source + ": " + methodIdToSig[e.source] + "  -->  " + e.sink + ": " + methodIdToSig[e.sink] + "\n";
 		}
 		return out;
