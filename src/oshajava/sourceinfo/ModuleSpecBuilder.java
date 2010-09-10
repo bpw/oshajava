@@ -108,6 +108,10 @@ public class ModuleSpecBuilder implements Serializable {
 	    return groups.get(id);
 	}
 	
+//	public void addMethod(String signature, MethodSpec s) {
+//		
+//	}
+	
 	/**
 	 * Add a method to a group as a reader.
 	 */

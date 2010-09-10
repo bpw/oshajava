@@ -1,10 +1,9 @@
 package oshajava.sourceinfo;
 
-import java.io.IOException;
 import java.io.File;
+import java.io.IOException;
 import java.lang.annotation.Annotation;
 import java.net.URI;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -25,15 +24,6 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.TypeParameterElement;
 import javax.lang.model.element.UnknownElementException;
 import javax.lang.model.element.VariableElement;
-import javax.lang.model.element.ElementKind;
-import javax.lang.model.element.NestingKind;
-import javax.lang.model.element.Modifier;
-import javax.lang.model.type.ArrayType;
-import javax.lang.model.type.DeclaredType;
-import javax.lang.model.type.TypeMirror;
-import javax.lang.model.type.TypeKind;
-import javax.lang.model.util.AbstractElementVisitor6;
-import javax.lang.model.util.ElementScanner6;
 import javax.tools.Diagnostic;
 import javax.tools.StandardLocation;
 
@@ -45,7 +35,6 @@ import oshajava.annotation.Module;
 import oshajava.annotation.NonComm;
 import oshajava.annotation.Reader;
 import oshajava.annotation.Writer;
-import oshajava.instrument.InstrumentationAgent;
 import oshajava.support.acme.util.Util;
 import oshajava.util.ColdStorage;
 
@@ -498,7 +487,7 @@ public class SpecProcessor extends AbstractProcessor {
 	/**
 	 * Print an error and stop compiling.
 	 */
-	private void error(String message) {
+	public void error(String message) {
 		processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, message);
 	}
 	public void note(String message) {
