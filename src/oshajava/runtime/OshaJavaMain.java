@@ -10,7 +10,7 @@ import oshajava.util.count.SequentialTimer;
 public class OshaJavaMain {
 	
 	public static void main(final String[] args) {
-		if (Config.helpOption.get()) {
+			if (Config.helpOption.get()) {
 			Config.cl.usage();
 			return;
 		}

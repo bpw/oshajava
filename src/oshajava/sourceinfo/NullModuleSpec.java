@@ -3,6 +3,7 @@ package oshajava.sourceinfo;
 import java.util.Vector;
 import java.util.HashMap;
 import oshajava.util.intset.BitVectorIntSet;
+import oshajava.instrument.InstrumentationAgent;
 import oshajava.support.acme.util.Util;
 
 public class NullModuleSpec extends ModuleSpec {
@@ -19,7 +20,7 @@ public class NullModuleSpec extends ModuleSpec {
         Util.assertTrue(Spec.getModuleID(methodUID) == id, 
 				"method id " + methodUID + " (module=" + Spec.getModuleID(methodUID) 
 				+ ", method=" + Spec.getMethodID(methodUID) + 
-				") is not a member of module " + name + " (id " + id + ")");
+				") is not a member of module " + InstrumentationAgent.sourceName(qualifiedName) + " (id " + id + ")");
 		return nullMethodIdToSig.get(Spec.getMethodID(methodUID));
     }
     
@@ -54,7 +55,7 @@ public class NullModuleSpec extends ModuleSpec {
     
     @Override
     public CommunicationKind getCommunicationKind(final int uid) {
-        Util.assertTrue(Spec.getModuleID(uid) == id, "method id " + uid + " (module=" + Spec.getModuleID(uid) + ", method=" + Spec.getMethodID(uid) + ") is not a member of module " + name + " (id " + id + ")");
+        Util.assertTrue(Spec.getModuleID(uid) == id, "method id " + uid + " (module=" + Spec.getModuleID(uid) + ", method=" + Spec.getMethodID(uid) + ") is not a member of module " + InstrumentationAgent.sourceName(qualifiedName)  + " (id " + id + ")");
         return ModuleSpec.CommunicationKind.INLINE;
     }
     
@@ -80,12 +81,7 @@ public class NullModuleSpec extends ModuleSpec {
 	
     @Override
     public String toString() {
-        return "Module " + name + " [null module] (ID " + id + ")";
-    }
-    
-    @Override
-    public boolean checkIntegrity() {
-        return true;
+        return "Module " + InstrumentationAgent.sourceName(qualifiedName)  + " [null module] (ID " + id + ")";
     }
     
 	public String[] getMethods() {

@@ -187,8 +187,20 @@ public class InstrumentationAgent implements ClassFileTransformer {
 
 	public byte[] transform(ClassLoader loader, String className, Class<?> classBeingRedefined, 
 			ProtectionDomain pd, byte[] bytecode) throws IllegalClassFormatException {
+		if (loader == null) {
+			if (shouldTransform(className)) {
+				Util.warn("Should have instrumented %s, but bootstrap class loader in use.", className);
+			}
+//			if (!shouldInstrument(className)) {
+//				System.out.print('.');
+//			}
+			return null;
+		}
 		try {
-			if (!shouldTransform(className)) return null;
+			if (!shouldTransform(className)) {
+				Util.warn("Not transforming %s, even though it has a non-null classloader.", className);
+				return null;
+			}
 
 			insTimer.start();
 			
@@ -214,7 +226,7 @@ public class InstrumentationAgent implements ClassFileTransformer {
 		}
 	}
 
-	private boolean shouldTransform(String className) {
+	private static boolean shouldTransform(String className) {
 		if (!instrumentationOn) {
 			if(className.equals(mainClassInternalName)) {
 				instrumentationOn = true;

@@ -45,7 +45,7 @@ public class Spec {
 	 * @return
 	 * @throws ModuleSpecNotFoundException if there was a problem finding or loading the spec.
 	 */
-	protected static ModuleSpec loadModule(String qualifiedName, ClassLoader loader, String requestingClass) throws ModuleSpecNotFoundException {
+	protected static ModuleSpec loadModule(String qualifiedName, ClassLoader loader, String requester) throws ModuleSpecNotFoundException {
 		try {
 			final InputStream res = loader.getResourceAsStream(InstrumentationAgent.internalName(qualifiedName) + ModuleSpec.EXT);
 			if (res == null) {
@@ -55,7 +55,7 @@ public class Spec {
 			    // (inlined) spec. This is somewhat unsafe, but allows
 			    // use of precompiled libraries that don't have
 			    // specifications.
-			    Util.log("No spec found for " + qualifiedName + ", using null spec.");
+			    Util.warn("No spec found for " + InstrumentationAgent.sourceName(qualifiedName) + ", using null spec.");
 			    return new NullModuleSpec(qualifiedName);
 			}
 			ModuleSpec ms = (ModuleSpec)ColdStorage.load(res);
@@ -64,9 +64,9 @@ public class Spec {
 			}
 			return ms;
 		} catch (IOException e) {
-			throw new ModuleSpecNotFoundException(qualifiedName + ", referenced by " + requestingClass);
+			throw new ModuleSpecNotFoundException(qualifiedName + ", referenced by " + requester);
 		} catch (ClassNotFoundException e) {
-			throw new ModuleSpecNotFoundException(qualifiedName + ", referenced by " + requestingClass);
+			throw new ModuleSpecNotFoundException(qualifiedName + ", referenced by " + requester);
 		}
 	}
 	
@@ -78,15 +78,16 @@ public class Spec {
 	 * @return
 	 * @throws ModuleSpecNotFoundException
 	 */
-	public static synchronized ModuleSpec getModule(String name, ClassLoader loader, String requestingClass) throws ModuleSpecNotFoundException {
+	public static synchronized ModuleSpec getModule(String name, ClassLoader loader, String requester) throws ModuleSpecNotFoundException {
 	    if (loader == null) {
+	    	// FIXME
 	        // Loaded by the JVM.
 	        return new NullModuleSpec(name);
 	    }
 	    
 		ModuleSpec module = nameToModule.get(name);
 		if (module == null) {
-			module = loadModule(name, loader, requestingClass);
+			module = loadModule(name, loader, requester);
 //			module.describe();
 //			synchronized (idToModule) { // not needed if this method is synchronized
 				module.setId(idToModule.size());
@@ -98,6 +99,22 @@ public class Spec {
 	}
 	public static ModuleSpec getModule(final int uid) {
 		return idToModule.get(Spec.getModuleID(uid));
+	}
+	
+	public static synchronized ModuleMap getModuleMap(String className, ClassLoader loader) throws ModuleMapNotFoundException {
+		//FIXME
+		if (loader == null) return new ModuleMap(className);
+		try {
+			final InputStream res = loader.getResourceAsStream(InstrumentationAgent.internalName(className) + ModuleMap.EXT);
+			if (res == null) throw new ModuleMapNotFoundException(className);
+			ModuleMap ms = (ModuleMap)ColdStorage.load(res);
+			if (ms == null) throw new ModuleMapNotFoundException(className);
+			return ms;
+		} catch (IOException e) {
+			throw new ModuleMapNotFoundException(className);
+		} catch (ClassNotFoundException e) {
+			throw new ModuleMapNotFoundException(className);
+		}
 	}
 	
 //	/**

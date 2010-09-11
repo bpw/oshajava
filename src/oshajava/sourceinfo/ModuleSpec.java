@@ -8,14 +8,12 @@ import oshajava.runtime.RuntimeMonitor;
 import oshajava.support.acme.util.Util;
 import oshajava.util.count.MaxRecorder;
 import oshajava.util.intset.BitVectorIntSet;
-
-import oshajava.support.acme.util.Util;
 /**
  * Module specification format for saving to disk and using at runtime.
  * @author bpw
  *
  */
-public class ModuleSpec implements Serializable {
+public class ModuleSpec extends SpecFile {
 	
 	private static final long serialVersionUID = 1L;
 	
@@ -24,7 +22,7 @@ public class ModuleSpec implements Serializable {
 	/**
 	 * File extension for serialized ModuleSpec storage.
 	 */
-	protected static final String EXT = ".omg"; // for Osha Module Graph
+	protected static final String EXT = ".oms"; // for Osha Module Spec
 
 	public static final MaxRecorder maxCommMethods = new MaxRecorder("Max comm. methods per module");
 	public static final MaxRecorder maxInterfaceMethods = new MaxRecorder("Max interface methods per module");
@@ -42,11 +40,6 @@ public class ModuleSpec implements Serializable {
 	 * The module id of this module. Only instantiated at runtime.
 	 */
 	protected transient int id = -1;
-	
-	/**
-	 * The name of this module.
-	 */
-	protected final String name;
 	
 	/**
 	 * Map from method signature to id.
@@ -89,7 +82,7 @@ public class ModuleSpec implements Serializable {
 	public ModuleSpec(final String name, final String[] methodIdToSig, final int commMethods,
 			final Graph internalGraph, final Graph interfaceGraph, final BitVectorIntSet inlinedMethods,
 			final HashMap<String,Integer> methodSigToId) {
-		this.name = InstrumentationAgent.internalName(name);
+		super(InstrumentationAgent.internalName(name));
 		this.methodIdToSig = methodIdToSig;
 		this.commMethods = commMethods;
 		this.internalGraph = internalGraph;
@@ -121,14 +114,6 @@ public class ModuleSpec implements Serializable {
 	}
 	
 	/**
-	 * Get the module name.
-	 * @return
-	 */
-	public String getName() {
-		return name;
-	}
-	
-	/**
 	 * Get the method signature of the method with id mid. Use for error reporting.
 	 * @param methodUID
 	 * @return
@@ -137,7 +122,7 @@ public class ModuleSpec implements Serializable {
 		Util.assertTrue(Spec.getModuleID(methodUID) == id, 
 				"method id " + methodUID + " (module=" + Spec.getModuleID(methodUID) 
 				+ ", method=" + Spec.getMethodID(methodUID) + 
-				") is not a member of module " + name + " (id " + id + ")");
+				") is not a member of module " + InstrumentationAgent.sourceName(qualifiedName) + " (id " + id + ")");
 		return methodIdToSig[Spec.getMethodID(methodUID)];
 	}
 	
@@ -190,7 +175,7 @@ public class ModuleSpec implements Serializable {
 	 * @return
 	 */
 	public CommunicationKind getCommunicationKind(final int uid) {
-		Util.assertTrue(Spec.getModuleID(uid) == id, "method id " + uid + " (module=" + Spec.getModuleID(uid) + ", method=" + Spec.getMethodID(uid) + ") is not a member of module " + name + " (id " + id + ")");
+		Util.assertTrue(Spec.getModuleID(uid) == id, "method id " + uid + " (module=" + Spec.getModuleID(uid) + ", method=" + Spec.getMethodID(uid) + ") is not a member of module " + InstrumentationAgent.sourceName(qualifiedName) + " (id " + id + ")");
 		final int mid = Spec.getMethodID(uid);
 		if (mid >= commMethods) {
 			if (inlinedMethods.contains(mid)) {
@@ -246,7 +231,7 @@ public class ModuleSpec implements Serializable {
 //	}
 	
 	public String toString() {
-		String out = "Module " + name + " (ID " + id + ")\n";
+		String out = "Module " + InstrumentationAgent.sourceName(qualifiedName) + " (ID " + id + ")\n";
 		out += "  Methods: " + methodIdToSig.length + "\n";
 		for (int i = 0; i < methodIdToSig.length; i++) {
 			out += "    " + i + ": " + methodIdToSig[i] + "\n";
@@ -266,11 +251,6 @@ public class ModuleSpec implements Serializable {
 		return out;
 	}
 
-	public boolean checkIntegrity() {
-		return name != null && methodIdToSig != null && internalGraph != null 
-				&& interfaceGraph != null && inlinedMethods != null && methodSigToId != null;
-	}
-	
 	/**
 	 * DO NOT MODIFY the array returned.
 	 * @return

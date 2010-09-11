@@ -29,12 +29,12 @@ public class ModuleSpecCompressor {
     	DistributionCounter annModuleMembership = new DistributionCounter("Module membership annotations");
 	    
 		for (final String s : args) {
-			if (!s.endsWith(ModuleSpecBuilder.EXT)) {
+			if (!s.endsWith(Module.EXT)) {
 			    if (s.equals("-stats"))
 			        stats = true;
 				continue;
 			}
-			final ModuleSpecBuilder msb = ((ModuleSpecBuilder)ColdStorage.load(s));
+			final Module msb = ((Module)ColdStorage.load(s));
 			final ModuleSpec ms = msb.generateSpec();
 			
 			if (stats) {
@@ -43,7 +43,7 @@ public class ModuleSpecCompressor {
 			    
 			    int cg = 0;
 			    int ig = 0;
-			    for (ModuleSpecBuilder.Group g : msb.groups.values()) {
+			    for (Module.Group g : msb.groups.values()) {
 			        if (g.isInterfaceGroup)
 			            ig++;
 			        else
@@ -61,7 +61,7 @@ public class ModuleSpecCompressor {
 
 			System.out.println("Compressing " + msb.getName());
     		
-			ColdStorage.store(s.substring(0, s.lastIndexOf(ModuleSpecBuilder.EXT)) + ModuleSpec.EXT, ms);
+			ColdStorage.store(s.substring(0, s.lastIndexOf(Module.EXT)) + ModuleSpec.EXT, ms);
 		}
 		
 		if (stats) {

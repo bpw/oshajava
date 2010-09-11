@@ -8,13 +8,12 @@ import java.util.List;
 import java.util.Set;
 
 import oshajava.runtime.Config;
+import oshajava.sourceinfo.ModuleMap;
+import oshajava.sourceinfo.ModuleMapNotFoundException;
 import oshajava.sourceinfo.ModuleSpec;
 import oshajava.sourceinfo.ModuleSpecNotFoundException;
 import oshajava.sourceinfo.Spec;
 import oshajava.support.acme.util.Util;
-import oshajava.support.acme.util.option.CommandLine;
-import oshajava.support.acme.util.option.CommandLineOption;
-import oshajava.support.org.objectweb.asm.AnnotationVisitor;
 import oshajava.support.org.objectweb.asm.ClassAdapter;
 import oshajava.support.org.objectweb.asm.ClassVisitor;
 import oshajava.support.org.objectweb.asm.FieldVisitor;
@@ -119,23 +118,33 @@ public class ClassInstrumentor extends ClassAdapter {
 	protected String classDesc;
 	protected Type classType;
 	protected String superName;
-	protected ModuleSpec module;
 	protected Set<String> shadowedInheritedFields;
 	protected String packageName;
 	protected final ClassLoader loader;
 	private final ArrayList<String> instanceShadowedFields = new ArrayList<String>();
 	private final ArrayList<String> staticShadowedFields = new ArrayList<String>();
+	private ModuleMap methodToModule;
 
 	public ClassInstrumentor(ClassVisitor cv, ClassLoader loader) {
 		super(cv);
 		this.loader = loader;
 	}
 	
-	private ModuleSpec getModule() throws ModuleSpecNotFoundException {
-		if (module == null) {
-			module = Spec.getModule(packageName + ModuleSpec.DEFAULT_NAME, loader, InstrumentationAgent.sourceName(className));
+	private ModuleSpec getModuleForMethod(String name, String desc, String sig) throws ModuleSpecNotFoundException {
+		ModuleSpec module;
+		String moduleName;
+		if (methodToModule == null) {
+			moduleName = packageName + ModuleSpec.DEFAULT_NAME;
+		} else {
+			try {
+				moduleName = methodToModule.get(className + "." + name + desc);
+			} catch (ModuleMap.MissingEntryException e) {
+				Util.warn("Method not mapped to module: %s", InstrumentationAgent.sourceName(className) + "." + name + desc);
+				moduleName = packageName + ModuleSpec.DEFAULT_NAME;
+			}
 		}
-		Util.assertTrue(module != null, "No module specified for %s.", className);
+		module = Spec.getModule(moduleName, loader, InstrumentationAgent.sourceName(className) + "." + name + desc);
+		Util.assertTrue(module != null, "No module specified for %s.%s.", InstrumentationAgent.sourceName(className), name + desc);
 		return module;
 	}
 	
@@ -284,6 +293,13 @@ public class ClassInstrumentor extends ClassAdapter {
 		if (Config.objectStatesOption.get() && (access & Opcodes.ACC_INTERFACE) == 0 && (superName == null || superName.equals("java/lang/Object"))) {
 			superName = Type.getType(oshajava.runtime.ObjectWithState.class).getInternalName();
 		}
+		
+		try {
+			methodToModule = Spec.getModuleMap(className, loader);
+		} catch (ModuleMapNotFoundException e) {
+//			throw e.wrap();
+			Util.warn("No module map found for class %s. All methods assumed to be in module %s%s", InstrumentationAgent.sourceName(className), InstrumentationAgent.sourceName(packageName), ModuleSpec.DEFAULT_NAME);
+		}
 
 		// TODO 5/6
 		super.visit((version == Opcodes.V1_6 ? Opcodes.V1_5 : version), access, name, signature, superName, interfaces);
@@ -313,33 +329,33 @@ public class ClassInstrumentor extends ClassAdapter {
 		
 	}
 	
-	// TODO allow READER/WRITER annotations on a class... just send to all methods...
-	@Override
-	public AnnotationVisitor visitAnnotation(String desc, boolean visible) {
-		if (ANNOT_MODULE_MEMBER_DESC.equals(desc)) {
-			return new AnnotationVisitor() {
-				public void visit(String name, Object value) { // throws ModuleSpecNotFoundException
-					try {
-					    String modName = (String)value;
-					    if (modName.contains(".")) {
-                            modName = modName.replace('.', '/');
-					    } else {
-    					    modName = packageName + modName;
-                    	}
-						ClassInstrumentor.this.module = Spec.getModule(modName, loader, className.replace('/','.'));
-					} catch (ModuleSpecNotFoundException e) {
-						throw e.wrap();
-					}
-				}
-				public AnnotationVisitor visitAnnotation(String name, String desc) { return null; }
-				public AnnotationVisitor visitArray(String name) { return null; }
-				public void visitEnd() { }
-				public void visitEnum(String name, String desc, String value) { }
-			};
-		} else {
-			return null;
-		}
-	}
+//	// TODO allow READER/WRITER annotations on a class... just send to all methods...
+//	@Override
+//	public AnnotationVisitor visitAnnotation(String desc, boolean visible) {
+//		if (ANNOT_MODULE_MEMBER_DESC.equals(desc)) {
+//			return new AnnotationVisitor() {
+//				public void visit(String name, Object value) { // throws ModuleSpecNotFoundException
+//					try {
+//					    String modName = (String)value;
+//					    if (modName.contains(".")) {
+//                            modName = modName.replace('.', '/');
+//					    } else {
+//    					    modName = packageName + modName;
+//                    	}
+//						ClassInstrumentor.this.module = Spec.getModule(modName, loader, className.replace('/','.'));
+//					} catch (ModuleSpecNotFoundException e) {
+//						throw e.wrap();
+//					}
+//				}
+//				public AnnotationVisitor visitAnnotation(String name, String desc) { return null; }
+//				public AnnotationVisitor visitArray(String name) { return null; }
+//				public void visitEnd() { }
+//				public void visitEnum(String name, String desc, String value) { }
+//			};
+//		} else {
+//			return null;
+//		}
+//	}
 	
 	@Override
 	public void visitOuterClass(String owner, String name, String desc) {
@@ -375,7 +391,7 @@ public class ClassInstrumentor extends ClassAdapter {
 		    		//			    Util.log(name);
 //		    		Method method = new Method(name, desc);
 		    		try {
-		    			chain = new MethodInstrumentor(chain, access, name, desc, this, getModule());
+		    			chain = new MethodInstrumentor(chain, access, name, desc, this, getModuleForMethod(name, desc, signature));
 		    		} catch (ModuleSpecNotFoundException e) {
 		    			throw e.wrap();
 		    		}
@@ -409,11 +425,11 @@ public class ClassInstrumentor extends ClassAdapter {
 	 * @param desc
 	 * @return
 	 */
-	public boolean shouldInstrumentField(String owner, String name, String desc) {
+	public static boolean shouldInstrumentField(String owner, String name, String desc) {
 		return InstrumentationAgent.shouldInstrument(owner) && shouldInstrumentField(name, desc);
 	}
 	
-	protected boolean shouldInstrumentField(String name, String desc) {
+	protected static boolean shouldInstrumentField(String name, String desc) {
 		return !name.matches("this\\$\\d.*");
 	}
 	

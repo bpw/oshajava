@@ -11,6 +11,8 @@ import java.io.OutputStream;
 import java.io.Serializable;
 import java.net.URI;
 
+import javax.tools.FileObject;
+
 /**
  * Utilities for serializing and deserializing objects from files and streams.
  * @author bpw
@@ -57,6 +59,18 @@ public class ColdStorage {
 	}
 	
 	/**
+	 * Dump an object to a FileObject;
+	 * @param stream
+	 * @param o
+	 * @throws IOException
+	 */
+	public static void store(FileObject f, Serializable o) throws IOException {
+		OutputStream out = f.openOutputStream();
+		store(out, o);
+		out.close();		
+	}
+	
+	/**
 	 * Load one object from one file.
 	 * @param file
 	 * @return
@@ -94,6 +108,20 @@ public class ColdStorage {
 	public static Object load(InputStream stream) throws IOException, ClassNotFoundException {
 		final ObjectInputStream in = new ObjectInputStream(stream);
 		return in.readObject();
+	}
+	
+	/**
+	 * Load an object from a FileObject.
+	 * @param stream
+	 * @return
+	 * @throws IOException
+	 * @throws ClassNotFoundException
+	 */
+	public static Object load(FileObject f) throws IOException, ClassNotFoundException {
+		final InputStream in = f.openInputStream();
+		final Object o = load(in);
+		in.close();
+		return o;
 	}
 	
 	static class ObjectFile extends File {

@@ -21,6 +21,7 @@
 	<property name="paths.script" value="setup.sh" />
 	<property name="module.compressor.bin" value="${bin.dir}/oshamodcompress" />
 	<property name="module.rm.bin" value="${bin.dir}/oshamodrm" />
+	<property name="module.prettyprinter" value="${bin.dir}/oshamodpp" />
 	
 	<property name="agent.jar"      value="${build.dir}/${ant.project.name}.jar" />
 	<property name="annotation.jar" value="${agent.jar}" />
@@ -191,6 +192,10 @@ classpath.split(":").each do |d|
 	system "find #{d} -name '*.omg' -delete"
 end
 		</echo>	
+		
+		<echo file="${module.prettyprinter}">#!/bin/sh
+			java -cp ${basedir}/${agent.jar} oshajava.util.ObjectFilePrinter $@
+		</echo>
 		
 		<!-- make everything in build/bin executable -->
 		<chmod perm="a+x" type="file">

@@ -1,8 +1,6 @@
 package oshajava.sourceinfo;
 
-import java.io.IOException;
 import java.io.Serializable;
-import java.net.URI;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -10,14 +8,13 @@ import java.util.Set;
 import java.util.Vector;
 
 import oshajava.support.acme.util.Util;
-import oshajava.util.ColdStorage;
 import oshajava.util.intset.BitVectorIntSet;
 
-public class ModuleSpecBuilder implements Serializable {
+public class Module extends SpecFile {
 	
 	private static final long serialVersionUID = 2L;
 
-	public static final String EXT = ".omb"; // for Osha Module Builder
+	public static final String EXT = ".omi"; // Osha Module Incremental
 	
 	public static boolean DEFAULT_INLINE;
 	
@@ -25,9 +22,6 @@ public class ModuleSpecBuilder implements Serializable {
 		DEFAULT_INLINE = b;
 	}
 
-	protected final URI uri;
-	protected final String qualifiedName;
-	
 	protected Vector<String> methodIdToSig = new Vector<String>();
 	
 	protected Map<String, Group> groups = new HashMap<String, Group>();
@@ -42,32 +36,8 @@ public class ModuleSpecBuilder implements Serializable {
 	protected int ctrInline = 0;
 	protected int ctrModuleMembership = 0;
 	
-	public ModuleSpecBuilder(String qualifiedName, URI uri) {
-		this.qualifiedName = qualifiedName;
-		this.uri = uri;
-	}
-	
-	public void write(SpecProcessor sp) throws IOException {
-		ColdStorage.store(uri, this);
-		sp.note("  Incremental: " + uri.getPath());
-		String s = uri.getPath();
-		String ms = s.substring(0, s.length() - EXT.length()) + ModuleSpec.EXT;
-		sp.note("  Final:       " + ms);
-		ModuleSpec m = generateSpec();
-		ColdStorage.store(ms, m);
-//		m.describe();
-	}
-	
-	/**
-	 * Returns the module's qualifed name.
-	 * @return
-	 */
-	public String getName() {
-		return qualifiedName;
-	}
-	
-	public URI getURI() {
-		return uri;
+	public Module(String qualifiedName) {
+		super(qualifiedName);
 	}
 	
 	/**
@@ -223,7 +193,11 @@ public class ModuleSpecBuilder implements Serializable {
 	 * Represents a communication or interface group.
 	 */
 	protected class Group implements Serializable {
-	    public String id;
+	    /**
+		 * 
+		 */
+		private static final long serialVersionUID = 1L;
+		public String id;
 	    public boolean isInterfaceGroup = false;
 	    
 	    // Initialize an interface group.
@@ -237,7 +211,11 @@ public class ModuleSpecBuilder implements Serializable {
 	 * Represents that a method is part of a group.
 	 */
 	protected class GroupMembership implements Serializable {
-	    public int methodId;
+	    /**
+		 * 
+		 */
+		private static final long serialVersionUID = 1L;
+		public int methodId;
 	    public String groupId;
 	    public boolean reader; // otherwise writer
 	    

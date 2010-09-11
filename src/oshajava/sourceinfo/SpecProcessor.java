@@ -1,9 +1,7 @@
 package oshajava.sourceinfo;
 
-import java.io.File;
 import java.io.IOException;
 import java.lang.annotation.Annotation;
-import java.net.URI;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -24,19 +22,19 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.TypeParameterElement;
 import javax.lang.model.element.UnknownElementException;
 import javax.lang.model.element.VariableElement;
+import javax.lang.model.util.ElementFilter;
 import javax.tools.Diagnostic;
+import javax.tools.Diagnostic.Kind;
 import javax.tools.StandardLocation;
 
 import oshajava.annotation.Group;
 import oshajava.annotation.Groups;
 import oshajava.annotation.Inline;
 import oshajava.annotation.InterfaceGroup;
-import oshajava.annotation.Module;
 import oshajava.annotation.NonComm;
 import oshajava.annotation.Reader;
 import oshajava.annotation.Writer;
-import oshajava.support.acme.util.Util;
-import oshajava.util.ColdStorage;
+import oshajava.sourceinfo.SpecFileManager.Creator;
 
 @SupportedAnnotationTypes("*")
 @SupportedSourceVersion(SourceVersion.RELEASE_6)
@@ -48,27 +46,38 @@ public class SpecProcessor extends AbstractProcessor {
 	
 	private static final String INLINE_ANN = "inline", NONCOMM_ANN = "noncomm";
 
-	private final Map<String, ModuleSpecBuilder> modules = new HashMap<String, ModuleSpecBuilder>();
-//	private final Map<String, String> packageToModule = new HashMap<String, String>();
-	private final Map<Element, ModuleSpecBuilder> processedModules = new HashMap<Element, ModuleSpecBuilder>();
+	private SpecFileManager<Module> modules;
+	private SpecFileManager<ModuleMap> maps;
+	private SpecFileManager<ModuleSpec> moduleSpecs;
+	private final Map<Element, Module> processedModules = new HashMap<Element, Module>();
 	private final ModuleTraversal moduleScanner = new ModuleTraversal();
 	private final GroupTraversal groupScanner = new GroupTraversal();
 	private final CommTraversal groupMembershipScanner = new CommTraversal();
-	
-//	private final Set<ModuleSpecBuilder> changed = new HashSet<ModuleSpecBuilder>();
 	
 	private boolean verbose;
 	
 	@Override
 	public synchronized void init(ProcessingEnvironment env) {
 		super.init(env);
+		modules = new SpecFileManager<Module>(Module.EXT, new Creator<Module>() {
+			public Module create(final String qualifiedName) {
+				return new Module(qualifiedName);
+			}
+		}, env, StandardLocation.SOURCE_OUTPUT); // FIXME: Why source output and not class output?  Cody switched to source output because something wasn't working.
+		maps = new SpecFileManager<ModuleMap>(ModuleMap.EXT, new Creator<ModuleMap>() {
+			public ModuleMap create(final String className) {
+				return new ModuleMap(className);
+			}
+		}, env, StandardLocation.SOURCE_OUTPUT);
+		moduleSpecs = new SpecFileManager<ModuleSpec>(ModuleSpec.EXT, null, env, StandardLocation.SOURCE_OUTPUT);
+		
 		// Set the default annotation to @Inline or @NonComm.
 		// e.g. -Aoshajava.annotation.default=noncomm
 		final String defaultAnn = env.getOptions().get(DEFAULT_ANN_OPTION);
 		if (defaultAnn == null || defaultAnn.toLowerCase().equals(INLINE_ANN)) {
-			ModuleSpecBuilder.setDefaultInline(true);
+			Module.setDefaultInline(true);
 		} else if (defaultAnn.toLowerCase().equals(NONCOMM_ANN)) {
-			ModuleSpecBuilder.setDefaultInline(false);			
+			Module.setDefaultInline(false);			
 		} else {
 			throw new IllegalArgumentException(DEFAULT_ANN_OPTION + "=" + defaultAnn);
 		}
@@ -86,12 +95,35 @@ public class SpecProcessor extends AbstractProcessor {
 		// Packages, classes, and interfaces to process in this round.
 		final Set<? extends Element> elements = env.getRootElements();
 		if (elements.isEmpty()) {
-			// If empty, then processing is done. Dump the modules to disk.
-			dumpChanges();
+			// If empty, then processing is done. Flush the spec files to disk.
+			try {
+				modules.flushAll();
+				for (Module m : modules) {
+					ModuleSpec ms = m.generateSpec();
+					moduleSpecs.save(ms);
+					if (verbose) {
+						System.out.println(ms);
+					}
+				}
+				maps.flushAll();
+				note("Compiled " + modules.size() + " OSHA modules from " + maps.size() + " classes.");
+			} catch (IOException e) {
+				error("Failed to write spec to disk due to IOException.");
+				e.printStackTrace();
+			}
 		} else {
 			// First, establish modules.
 			for (final Element e : elements) {
 				moduleScanner.traverse(e);
+			}
+			// Map methods and constructors to their modules.
+			for (final ExecutableElement e : ElementFilter.methodsIn(processedModules.keySet())) {
+				TypeElement cls = (TypeElement)e.getEnclosingElement();
+				maps.get(cls.getQualifiedName().toString()).put(DescriptorWrangler.methodDescriptor(cls, e), processedModules.get(e).getName());
+			}
+			for (final ExecutableElement e : ElementFilter.constructorsIn(processedModules.keySet())) {
+				TypeElement cls = (TypeElement)e.getEnclosingElement();
+				maps.get(cls.getQualifiedName().toString()).put(DescriptorWrangler.methodDescriptor(cls, e), processedModules.get(e).getName());	
 			}
 			// Second, establish groups.
 			for (final Element e : elements) {
@@ -190,31 +222,31 @@ public class SpecProcessor extends AbstractProcessor {
 }
 
 	
-	class ModuleTraversal extends LabelingTraversal<ModuleSpecBuilder> {
+	class ModuleTraversal extends LabelingTraversal<Module> {
 
 		@Override
-		protected ModuleSpecBuilder getLabelFromAnnotation(Element e) {
-			final Module memberDecl = e.getAnnotation(Module.class);
+		protected Module getLabelFromAnnotation(Element e) {
+			final oshajava.annotation.Module memberDecl = e.getAnnotation(oshajava.annotation.Module.class);
 			if (memberDecl != null) {
-				return getModuleByName(memberDecl.value());
+				return modules.get(memberDecl.value());
 			} else {
 				return null;
 			}
 		}
 
 		@Override
-		protected void setLabel(Element e, ModuleSpecBuilder r) {
+		protected void setLabel(Element e, Module r) {
 			processedModules.put(e, r);
 		}
 
 		@Override
-		protected ModuleSpecBuilder getLabel(Element e) {
+		protected Module getLabel(Element e) {
 			return e == null ? null : processedModules.get(e);
 		}
 
 		@Override
-		public ModuleSpecBuilder visitPackage(PackageElement e, Object _) {
-			return getModuleByName(e.isUnnamed() ? ModuleSpec.DEFAULT_NAME : e.getQualifiedName() + "." + ModuleSpec.DEFAULT_NAME);
+		public Module visitPackage(PackageElement e, Object _) {
+			return modules.get(e.isUnnamed() ? ModuleSpec.DEFAULT_NAME : e.getQualifiedName() + "." + ModuleSpec.DEFAULT_NAME);
 		}
 
 	}
@@ -229,7 +261,7 @@ public class SpecProcessor extends AbstractProcessor {
 
 		@Override
 		protected void handle(Element e) {
-			final ModuleSpecBuilder module = processedModules.get(e);
+			final Module module = processedModules.get(e);
 			// Handle any single group declarations.
 			addGroup(module, e.getAnnotation(Group.class));
 			addGroup(module, e.getAnnotation(InterfaceGroup.class));
@@ -347,7 +379,7 @@ public class SpecProcessor extends AbstractProcessor {
 			if (e instanceof ExecutableElement) {
 				final ExecutableElement m = (ExecutableElement)e;
 				// Get the right module.
-				final ModuleSpecBuilder module = processedModules.get(m);
+				final Module module = processedModules.get(m);
 				TypeElement cls = (TypeElement)e.getEnclosingElement();
 				String sig = DescriptorWrangler.methodDescriptor(cls, m);
 
@@ -396,76 +428,14 @@ public class SpecProcessor extends AbstractProcessor {
 			return defaultAnnotation();
 		}
 		private MethodSpec defaultAnnotation() {
-			return ModuleSpecBuilder.DEFAULT_INLINE ? new MethodSpec(Comm.INLINE) : new MethodSpec(Comm.NONCOMM);
-		}
-	}
-	
-	private void dumpChanges() {
-		for (ModuleSpecBuilder mod : modules.values()) {
-			try {
-				note("Writing " + mod.getName());
-				note("  " + mod.summary());
-				mod.write(this);
-				if (verbose) {
-					note(mod.generateSpec().toString());
-				}
-			} catch (IOException e1) {
-				processingEnv.getMessager().printMessage(Diagnostic.Kind.OTHER, "Failed to write " + mod.getName() + ModuleSpecBuilder.EXT + " or " + mod.getName() + ModuleSpec.EXT + ".");
-				e1.printStackTrace();
-			}
-		}
-//		changed.clear();
-	}
-
-	/**
-	 * Get the ModuleSpecBuilder object for the module named. If none exists,
-	 * one is created.
-	 */
-	private ModuleSpecBuilder getModuleByName(String qualifiedName) {
-		if (modules.containsKey(qualifiedName)) {
-			return modules.get(qualifiedName);
-		} else {
-			ModuleSpecBuilder module;
-			final int lastDot = qualifiedName.lastIndexOf('.');
-			// package name of module
-			final String pkg = lastDot == -1 ? "" : qualifiedName.substring(0, lastDot);
-			// simple name of module
-			final String simpleName = lastDot == -1 ? qualifiedName : qualifiedName.substring(lastDot + 1);
-			final String location = "SOURCE_OUTPUT"; //  XXX Cody: I changed CLASS_OUTPUT to SOURCE_OUTPUT so that the files go to the right places.
-			try {
-				// get the file it should be dumped in.
-				//    			Util.logf("pkg: %s relname: %s", pkg, simpleName);
-				URI uri = processingEnv.getFiler().getResource(StandardLocation.locationFor(location),
-						pkg, simpleName + ModuleSpecBuilder.EXT).toUri();
-				uri = new File(uri.getPath()).getAbsoluteFile().toURI(); // ensure the URI is absolute
-				module = (ModuleSpecBuilder)ColdStorage.load(uri);
-				note("Read " + qualifiedName);
-				Util.assertTrue(uri.equals(module.getURI()));
-			} catch (IOException e) {
-				// File did not exist. Create new module and its file.
-				try {
-					URI uri = processingEnv.getFiler().createResource(StandardLocation.locationFor(location),
-							pkg, simpleName + ModuleSpecBuilder.EXT).toUri();
-					uri = new File(uri.getPath()).getAbsoluteFile().toURI();
-					module = new ModuleSpecBuilder(qualifiedName, uri);
-//					changed.add(module);
-				} catch (IOException e1) {
-					Util.log("SpecProcessor.getModule(\""+ qualifiedName + "\") failing...");
-					throw new RuntimeException(e1);
-				}
-			} catch (ClassNotFoundException e) {
-				Util.log("SpecProcessor.getModule(\""+ qualifiedName + "\") failing...");
-				throw new RuntimeException(e);
-			}
-			modules.put(qualifiedName, module);
-			return module;
+			return Module.DEFAULT_INLINE ? new MethodSpec(Comm.INLINE) : new MethodSpec(Comm.NONCOMM);
 		}
 	}
 
 	/**
 	 * Add a communication or interface group to a module.
 	 */
-	private void addGroup(ModuleSpecBuilder mod, Annotation ann) {
+	private void addGroup(Module mod, Annotation ann) {
 		if (ann == null) {
 			return;
 		}
