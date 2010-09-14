@@ -38,7 +38,7 @@ public class ModuleMap extends SpecFile {
 	
 	public void clear() {
 		for (Map.Entry<String, String> e : map.entrySet()) {
-//			e.
+//			TODO
 		}
 		map.clear();
 		affects.clear();

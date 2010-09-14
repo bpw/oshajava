@@ -166,14 +166,13 @@ public class SpecProcessor extends AbstractProcessor {
 				// If this element is not already done:
 				final Element parent = e.getEnclosingElement();
 				if (parent != null && !done(parent)) {
-					// Parent is unlabeled: traverse from parent.
-					traverse(parent);
-				} else {
-					handle(e);
-					// Traverse children.
-					for (Element child : e.getEnclosedElements()) {
-						traverse(child);
-					}
+					// Parent is unlabeled: handle parent.
+					handle(parent);
+				}
+				handle(e);
+				// Traverse children.
+				for (Element child : e.getEnclosedElements()) {
+					traverse(child);
 				}
 			}
 		}

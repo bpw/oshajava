@@ -3,8 +3,6 @@ package oshajava.sourceinfo;
 import java.util.HashMap;
 import java.util.Map;
 
-import oshajava.sourceinfo.Group.DuplicateMethodException;
-
 /**
  * A compile-time representation of a module.
  */
