@@ -5,6 +5,7 @@ import java.util.LinkedList;
 import java.util.Queue;
 
 import oshajava.sourceinfo.ModuleSpec;
+import oshajava.sourceinfo.CompiledModuleSpec;
 
 public class TextPrinter extends StackEdgeGatherer {
 

@@ -1,7 +1,6 @@
 package oshajava.sourceinfo;
 
 import java.io.IOException;
-import java.lang.annotation.Annotation;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -25,15 +24,17 @@ import javax.lang.model.element.VariableElement;
 import javax.lang.model.util.ElementFilter;
 import javax.tools.Diagnostic;
 import javax.tools.Diagnostic.Kind;
+import javax.tools.JavaFileManager.Location;
 import javax.tools.StandardLocation;
 
-import oshajava.annotation.Group;
 import oshajava.annotation.Groups;
 import oshajava.annotation.Inline;
 import oshajava.annotation.InterfaceGroup;
 import oshajava.annotation.NonComm;
 import oshajava.annotation.Reader;
 import oshajava.annotation.Writer;
+import oshajava.sourceinfo.Module.DuplicateGroupException;
+import oshajava.sourceinfo.Module.DuplicateMethodException;
 import oshajava.sourceinfo.SpecFileManager.Creator;
 
 @SupportedAnnotationTypes("*")
@@ -45,10 +46,12 @@ public class SpecProcessor extends AbstractProcessor {
 		DEBUG_OPTION = "oshajava.verbose";
 	
 	private static final String INLINE_ANN = "inline", NONCOMM_ANN = "noncomm";
+	
+	private static final Location OUTPUT = StandardLocation.SOURCE_OUTPUT;
 
 	private SpecFileManager<Module> modules;
 	private SpecFileManager<ModuleMap> maps;
-	private SpecFileManager<ModuleSpec> moduleSpecs;
+	private SpecFileManager<CompiledModuleSpec> moduleSpecs;
 	private final Map<Element, Module> processedModules = new HashMap<Element, Module>();
 	private final ModuleTraversal moduleScanner = new ModuleTraversal();
 	private final GroupTraversal groupScanner = new GroupTraversal();
@@ -63,13 +66,14 @@ public class SpecProcessor extends AbstractProcessor {
 			public Module create(final String qualifiedName) {
 				return new Module(qualifiedName);
 			}
-		}, env, StandardLocation.SOURCE_OUTPUT); // FIXME: Why source output and not class output?  Cody switched to source output because something wasn't working.
+		}, env, OUTPUT, false); // FIXME: Why source output and not class output?  
+		// Cody switched to source output because something wasn't working.
 		maps = new SpecFileManager<ModuleMap>(ModuleMap.EXT, new Creator<ModuleMap>() {
 			public ModuleMap create(final String className) {
 				return new ModuleMap(className);
 			}
-		}, env, StandardLocation.SOURCE_OUTPUT);
-		moduleSpecs = new SpecFileManager<ModuleSpec>(ModuleSpec.EXT, null, env, StandardLocation.SOURCE_OUTPUT);
+		}, env, OUTPUT, true);
+		moduleSpecs = new SpecFileManager<CompiledModuleSpec>(CompiledModuleSpec.EXT, env, OUTPUT);
 		
 		// Set the default annotation to @Inline or @NonComm.
 		// e.g. -Aoshajava.annotation.default=noncomm
@@ -85,21 +89,31 @@ public class SpecProcessor extends AbstractProcessor {
 	}
 
 	/**
+	 * Print an error and stop compiling.
+	 */
+	public void error(String message) {
+		processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, message);
+	}
+	public void note(String message) {
+		processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE, message);
+	}
+
+	/**
 	 *  Annotation processing hook.
 	 *  
 	 *  NOTE: We assume that the list returned by env.getRootElements() ALWAYS lists outer class before inner class. 
 	 *  This is what we have observed in practice.
 	 */
 	@Override
-	public boolean process(Set<? extends TypeElement> annotationTypes, RoundEnvironment env) {
+	public boolean process(Set<? extends TypeElement> annotationTypes, RoundEnvironment round) {
 		// Packages, classes, and interfaces to process in this round.
-		final Set<? extends Element> elements = env.getRootElements();
+		final Set<? extends Element> elements = round.getRootElements();
 		if (elements.isEmpty()) {
 			// If empty, then processing is done. Flush the spec files to disk.
 			try {
 				modules.flushAll();
 				for (Module m : modules) {
-					ModuleSpec ms = m.generateSpec();
+					CompiledModuleSpec ms = m.generateSpec();
 					moduleSpecs.save(ms);
 					if (verbose) {
 						System.out.println(ms);
@@ -119,11 +133,11 @@ public class SpecProcessor extends AbstractProcessor {
 			// Map methods and constructors to their modules.
 			for (final ExecutableElement e : ElementFilter.methodsIn(processedModules.keySet())) {
 				TypeElement cls = (TypeElement)e.getEnclosingElement();
-				maps.get(cls.getQualifiedName().toString()).put(DescriptorWrangler.methodDescriptor(cls, e), processedModules.get(e).getName());
+				maps.getOrCreate(cls.getQualifiedName().toString()).put(DescriptorWrangler.methodDescriptor(cls, e), processedModules.get(e).getName());
 			}
 			for (final ExecutableElement e : ElementFilter.constructorsIn(processedModules.keySet())) {
 				TypeElement cls = (TypeElement)e.getEnclosingElement();
-				maps.get(cls.getQualifiedName().toString()).put(DescriptorWrangler.methodDescriptor(cls, e), processedModules.get(e).getName());	
+				maps.getOrCreate(cls.getQualifiedName().toString()).put(DescriptorWrangler.methodDescriptor(cls, e), processedModules.get(e).getName());	
 			}
 			// Second, establish groups.
 			for (final Element e : elements) {
@@ -228,7 +242,7 @@ public class SpecProcessor extends AbstractProcessor {
 		protected Module getLabelFromAnnotation(Element e) {
 			final oshajava.annotation.Module memberDecl = e.getAnnotation(oshajava.annotation.Module.class);
 			if (memberDecl != null) {
-				return modules.get(memberDecl.value());
+				return modules.getOrCreate(memberDecl.value());
 			} else {
 				return null;
 			}
@@ -246,13 +260,14 @@ public class SpecProcessor extends AbstractProcessor {
 
 		@Override
 		public Module visitPackage(PackageElement e, Object _) {
-			return modules.get(e.isUnnamed() ? ModuleSpec.DEFAULT_NAME : e.getQualifiedName() + "." + ModuleSpec.DEFAULT_NAME);
+			return modules.getOrCreate(e.isUnnamed() ? CompiledModuleSpec.DEFAULT_NAME : e.getQualifiedName() + "." + CompiledModuleSpec.DEFAULT_NAME);
 		}
 
 	}
 	
 	class GroupTraversal extends Traversal {
 		private final HashSet<Element> done = new HashSet<Element>();
+		private final HashMap<String,Element> groups = new HashMap<String,Element>();
 
 		@Override
 		protected boolean done(Element e) {
@@ -262,17 +277,49 @@ public class SpecProcessor extends AbstractProcessor {
 		@Override
 		protected void handle(Element e) {
 			final Module module = processedModules.get(e);
-			// Handle any single group declarations.
-			addGroup(module, e.getAnnotation(Group.class));
-			addGroup(module, e.getAnnotation(InterfaceGroup.class));
-			// Handle multiple group declarations.
+			{
+				final oshajava.annotation.Group groupAnn = e.getAnnotation(oshajava.annotation.Group.class);
+				if (groupAnn != null) {
+					try {
+						module.addCommGroup(groupAnn.id());
+						groups.put(groupAnn.id(), e);
+					} catch (DuplicateGroupException e1) {
+						processingEnv.getMessager().printMessage(Kind.ERROR, groupAnn + " conflicts with subsequent group declaration.", groups.get(groupAnn.id()));
+						processingEnv.getMessager().printMessage(Kind.ERROR, groupAnn + " conflicts with previous group declaration.", e);
+					}
+				}
+			}
+			{
+				final InterfaceGroup interfaceAnn = e.getAnnotation(InterfaceGroup.class);
+				if (interfaceAnn != null) {
+					try {
+						module.addInterfaceGroup(interfaceAnn.id());
+						groups.put(interfaceAnn.id(), e);
+					} catch (DuplicateGroupException e1) {
+						processingEnv.getMessager().printMessage(Kind.ERROR, interfaceAnn + " conflicts with subsequent group declaration.", groups.get(interfaceAnn.id()));
+						processingEnv.getMessager().printMessage(Kind.ERROR, interfaceAnn + " conflicts with previous group declaration.", e);
+					}
+				}
+			}
 			Groups groupsAnn = e.getAnnotation(Groups.class);
 			if (groupsAnn != null) {
-				for (Group groupAnn : groupsAnn.communication()) {
-					addGroup(module, groupAnn);
+				for (oshajava.annotation.Group g : groupsAnn.communication()) {
+					try {
+						module.addCommGroup(g.id());
+						groups.put(g.id(), e);
+					} catch (DuplicateGroupException e1) {
+						processingEnv.getMessager().printMessage(Kind.ERROR, g + " conflicts with subsequent group declaration.", groups.get(g.id()));
+						processingEnv.getMessager().printMessage(Kind.ERROR, g + " conflicts with previous group declaration.", e);
+					}
 				}
-				for (InterfaceGroup iGroupAnn : groupsAnn.intfc()) {
-					addGroup(module, iGroupAnn);
+				for (InterfaceGroup i : groupsAnn.intfc()) {
+					try {
+						module.addInterfaceGroup(i.id());
+						groups.put(i.id(), e);
+					} catch (DuplicateGroupException e1) {
+						processingEnv.getMessager().printMessage(Kind.ERROR, i + " conflicts with subsequent group declaration.", groups.get(i.id()));
+						processingEnv.getMessager().printMessage(Kind.ERROR, i + " conflicts with previous group declaration.", e);
+					}
 				}
 			}
 			done.add(e);
@@ -280,73 +327,59 @@ public class SpecProcessor extends AbstractProcessor {
 
 	}
 
-	enum Comm { INLINE, NONCOMM, COMM, ERROR, DEFAULT };
-	class CommTraversal extends LabelingTraversal<CommTraversal.MethodSpec> {
-		// TODO: singletons for INLINE, NONCOMM
-		// TODO different subclasses for inline, noncomm, comm.  Merge method via dynamic dispatch + static overloading/casts.
-//		final InlineTag inlineTag = new InlineTag();
-//		final NonCommTag noncommTag = new NonCommTag();
-//	
-//		abstract class CommTag {
-//			
-//		}
-//		
-//		class InlineTag extends CommTag { }
-//		class NonCommTag { }
-//		
-//		class RWTag {
-//			final Set<ModuleSpecBuilder.Group> readGroups = new HashSet<ModuleSpecBuilder.Group>(), writeGroups = new HashSet<ModuleSpecBuilder.Group>();
-//		}
+	class CommTraversal extends LabelingTraversal<MethodSpec> {
 		
-		class MethodSpec {
-			final Inline inline;
-			final NonComm noncomm;
-			final Reader reader;
-			final Writer writer;
-			final Comm comm;
-			public MethodSpec(Inline inline, NonComm noncomm, Reader reader, Writer writer) {
-				this.reader = reader;
-				this.writer = writer;
-				this.inline = inline;
-				this.noncomm = noncomm;
-				if (inline != null) {
-					if (noncomm == null && reader == null && writer == null) {
-						comm = Comm.INLINE;
-					} else {
-						comm = Comm.ERROR;
-					}
-				} else if (noncomm != null) {
-					if (reader == null && writer == null) {
-						comm = Comm.NONCOMM;
-					} else {
-						comm = Comm.ERROR;
-					}
-				} else if (reader != null || writer != null) {
-					comm = Comm.COMM;
-				} else {
-					comm = Comm.DEFAULT;
-				}
-			}
-			public MethodSpec(Comm c) {
-				inline = null;
-				noncomm = null;
-				reader = null;
-				writer = null;
-				comm = c;
-			}
-			public String toString() {
-				return "" + inline + noncomm + reader + writer + "    " + comm;
-			}
-		}
-
 		private final Map<Element, MethodSpec> defaultMethodSpecs = new HashMap<Element, MethodSpec>();
 
 		@Override
 		protected MethodSpec getLabelFromAnnotation(Element e) {
-			MethodSpec ms = new MethodSpec(e.getAnnotation(Inline.class), e.getAnnotation(NonComm.class),
-					e.getAnnotation(Reader.class), e.getAnnotation(Writer.class));
-			if (ms.comm == Comm.ERROR) {
+			Reader reader = e.getAnnotation(Reader.class);
+			Writer writer = e.getAnnotation(Writer.class);
+			Inline inline = e.getAnnotation(Inline.class);
+			NonComm noncomm = e.getAnnotation(NonComm.class);
+			final Module module = processedModules.get(e);
+			MethodSpec ms;
+			try {
+			if (inline != null) {
+				if (noncomm == null && reader == null && writer == null) {
+					ms = MethodSpec.INLINE;
+				} else {
+					ms = MethodSpec.ERROR;
+				}
+			} else if (noncomm != null) {
+				if (reader == null && writer == null) {
+					ms = MethodSpec.NONCOMM;
+				} else {
+					ms = MethodSpec.ERROR;
+				}
+			} else if (reader != null || writer != null) {
+				Set<Group> readGroups = null, writeGroups = null;
+				if (reader != null) {
+					readGroups = new HashSet<Group>();
+					for (String readGroup : reader.value()) {
+						readGroups.add(module.getGroup(readGroup));
+					}
+				}
+				if (writer != null) {
+					 writeGroups = new HashSet<Group>();
+					 for (String writeGroup : writer.value()) {
+						writeGroups.add(module.getGroup(writeGroup));
+					}
+				}
+				if ((readGroups == null || readGroups.isEmpty()) && (writeGroups == null || writeGroups.isEmpty())) {
+					ms = MethodSpec.NONCOMM;
+				} else {
+					ms = new MethodSpec(MethodSpec.Kind.COMM, readGroups, writeGroups);
+				}
+			} else {
+				ms = MethodSpec.DEFAULT;
+			}
+			} catch (Module.GroupNotFoundException e1) {
+				ms = MethodSpec.ERROR;
+			}
+			if (ms == MethodSpec.ERROR) {
 				error(e.getSimpleName() + ": conflicting annotations. @Inline, @NonComm, and @Writer/@Reader are mutually exclusive.");
+				return null;
 			}
 			return ms;
 		}
@@ -355,21 +388,21 @@ public class SpecProcessor extends AbstractProcessor {
 		protected MethodSpec mergeLabels(MethodSpec label, MethodSpec parentLabel) {
 			if (label == null) return parentLabel;
 			if (parentLabel == null) return label;
-			switch (label.comm) {
+			switch (label.kind()) {
 			case INLINE:
 			case NONCOMM:
 				return label;
 			case COMM:
-				if ((parentLabel.reader != null && label.reader == null) || (parentLabel.writer != null && label.writer == null)) {
-					return new MethodSpec(null, null, label.reader != null ? label.reader : parentLabel.reader,
-							label.writer != null ? label.writer : parentLabel.writer);
+				if (parentLabel.kind() == MethodSpec.Kind.COMM) {
+					return new MethodSpec(MethodSpec.Kind.COMM, label.readGroups() == null ? parentLabel.readGroups() : label.readGroups(), 
+							label.writeGroups() == null ? parentLabel.writeGroups() : label.writeGroups());
 				} else {
 					return label;
 				}
-			case DEFAULT:
-				return defaultAnnotation();
+//			case DEFAULT: // TODO reinstate with @Default?
+//				return defaultAnnotation();
 			default:
-				return null;
+				return defaultAnnotation(); // FIXME correct?
 			}
 		}
 
@@ -382,39 +415,16 @@ public class SpecProcessor extends AbstractProcessor {
 				final Module module = processedModules.get(m);
 				TypeElement cls = (TypeElement)e.getEnclosingElement();
 				String sig = DescriptorWrangler.methodDescriptor(cls, m);
-
-				boolean nonEmptyGroups = false;
-				// Group membership.
-				if (r.reader != null) {
-					for (String groupId : r.reader.value()) {
-						module.addReader(groupId, sig);
-						module.ctrGroupMembership++;
-					}
-					nonEmptyGroups = r.reader.value() != null && r.reader.value().length > 0;
+				try {
+					module.addMethod(sig, r);
+				} catch (DuplicateMethodException e1) {
+					defaultMethodSpecs.put(e, MethodSpec.ERROR);
+					processingEnv.getMessager().printMessage(Kind.ERROR, sig + " is already declared in module " + e1.getModule().getName() + ".", e);
+				} catch (Group.DuplicateMethodException e2) {
+					defaultMethodSpecs.put(e, MethodSpec.ERROR);
+					processingEnv.getMessager().printMessage(Kind.ERROR, sig + " is already a " + 
+							e2.getKind().toString().toLowerCase() + " in group " + e2.getGroup().getName() + ".", e);
 				}
-				if (r.writer != null) {
-					for (String groupId : r.writer.value()) {
-						module.addWriter(groupId, sig);
-						module.ctrGroupMembership++;
-					}
-					nonEmptyGroups = nonEmptyGroups || (r.writer.value() != null && r.writer.value().length > 0);
-				}
-
-				// Explicit Non-comm
-				if (r.noncomm != null || ((r.writer != null || r.reader != null) && !nonEmptyGroups)) {
-					module.addNonComm(sig);
-				}
-
-				// Default (unannotated)
-				if (r.reader == null && r.writer == null && r.noncomm == null && r.inline == null) {
-					module.addUnannotatedMethod(sig);
-				}
-
-				// Explicit Inline
-				if (r.inline != null) {
-					module.inlineMethod(sig);
-				}
-
 			}		
 		}
 
@@ -428,40 +438,8 @@ public class SpecProcessor extends AbstractProcessor {
 			return defaultAnnotation();
 		}
 		private MethodSpec defaultAnnotation() {
-			return Module.DEFAULT_INLINE ? new MethodSpec(Comm.INLINE) : new MethodSpec(Comm.NONCOMM);
+			return Module.DEFAULT_INLINE ? MethodSpec.INLINE : MethodSpec.NONCOMM;
 		}
-	}
-
-	/**
-	 * Add a communication or interface group to a module.
-	 */
-	private void addGroup(Module mod, Annotation ann) {
-		if (ann == null) {
-			return;
-		}
-
-		mod.ctrGroupDeclaration++;
-
-		if (ann instanceof Group) {
-			Group groupAnn = (Group)ann;
-			mod.addGroup(groupAnn.id());
-//			changed.add(mod);
-		} else if (ann instanceof InterfaceGroup) {
-			mod.addInterfaceGroup(((InterfaceGroup)ann).id());
-//			changed.add(mod);
-		} else {
-			assert false;
-		}
-	}
-
-	/**
-	 * Print an error and stop compiling.
-	 */
-	public void error(String message) {
-		processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, message);
-	}
-	public void note(String message) {
-		processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE, message);
 	}
 
 }

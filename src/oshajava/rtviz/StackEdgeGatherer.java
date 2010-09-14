@@ -7,6 +7,7 @@ import java.util.Set;
 
 import oshajava.runtime.Stack;
 import oshajava.sourceinfo.ModuleSpec;
+import oshajava.sourceinfo.CompiledModuleSpec;
 import oshajava.sourceinfo.Spec;
 
 public abstract class StackEdgeGatherer implements StackCommMonitor {

@@ -1,6 +1,8 @@
 package oshajava.sourceinfo;
 
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
 
 public class ModuleMap extends SpecFile {
 	
@@ -8,7 +10,14 @@ public class ModuleMap extends SpecFile {
 	
 	public static final String EXT = ".omm";
 	
+	/**
+	 * Maps each method signature to the qualified name of the module it belongs to.
+	 */
 	private final HashMap<String,String> map = new HashMap<String,String>();
+	/**
+	 * Lists modules whose contents are affected by annotations in the source of this class.
+	 */
+	private final HashSet<String> affects = new HashSet<String>();
 
 	public ModuleMap(String className) {
 		super(className);
@@ -16,6 +25,7 @@ public class ModuleMap extends SpecFile {
 	
 	public void put(String method, String module) {
 		map.put(method, module);
+		affects.add(module);
 	}
 
 	public String get(String method) throws MissingEntryException {
@@ -27,7 +37,11 @@ public class ModuleMap extends SpecFile {
 	}
 	
 	public void clear() {
+		for (Map.Entry<String, String> e : map.entrySet()) {
+//			e.
+		}
 		map.clear();
+		affects.clear();
 	}
 	
 	public String toString() {

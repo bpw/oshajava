@@ -1,34 +1,14 @@
 package oshajava.sourceinfo;
 
-import java.io.Serializable;
-import java.util.HashMap;
-
 import oshajava.instrument.InstrumentationAgent;
-import oshajava.runtime.RuntimeMonitor;
-import oshajava.support.acme.util.Util;
-import oshajava.util.count.MaxRecorder;
+import oshajava.sourceinfo.CompiledModuleSpec.MethodNotFoundException;
 import oshajava.util.intset.BitVectorIntSet;
-/**
- * Module specification format for saving to disk and using at runtime.
- * @author bpw
- *
- */
-public class ModuleSpec extends SpecFile {
-	
-	private static final long serialVersionUID = 1L;
-	
-	public static final String DEFAULT_NAME = "Default";
-	
-	/**
-	 * File extension for serialized ModuleSpec storage.
-	 */
-	protected static final String EXT = ".oms"; // for Osha Module Spec
 
-	public static final MaxRecorder maxCommMethods = new MaxRecorder("Max comm. methods per module");
-	public static final MaxRecorder maxInterfaceMethods = new MaxRecorder("Max interface methods per module");
-	public static final MaxRecorder maxMethods = new MaxRecorder("Max total methods per module");
-	public static final boolean COUNT_METHODS = RuntimeMonitor.PROFILE && true;
-	
+public abstract class ModuleSpec extends SpecFile {
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
 	/**
 	 * Kinds of communication.
 	 * @author bpw
@@ -36,66 +16,16 @@ public class ModuleSpec extends SpecFile {
 	 */
 	public static enum CommunicationKind { INLINE, NONCOMM, COMM, UNCHECKED } 
 
+
 	/**
 	 * The module id of this module. Only instantiated at runtime.
 	 */
 	protected transient int id = -1;
 	
-	/**
-	 * Map from method signature to id.
-	 */
-	protected final HashMap<String,Integer> methodSigToId;
-	
-	/**
-	 * Inlined methods.
-	 */
-	protected final BitVectorIntSet inlinedMethods;
-	// TODO optimization: private final BitVectorIntSet nonCommMethods;
-	
-	/**
-	 * Map from method id to signature.
-	 */
-	protected final String[] methodIdToSig;
-	
-	protected final int commMethods;
-	
-	/**
-	 * The communication allowed amongst methods within the module.
-	 */
-	protected final Graph internalGraph;
-	
-	/**
-	 * The module's communication interface.
-	 * Graph representing the edges for which communication escapes this module.
-	 */
-	protected final Graph interfaceGraph;
-	
-	/**
-	 * Create a new ModuleSpec.
-	 * @param name module name
-	 * @param methodIdToSig map from method id (within the module) to method signature
-	 * @param internalGraph graph of internally allowed communication
-	 * @param interfaceGraph graph of the interface -- where communication between module methods is visible
-	 * @param inlinedMethods set of methods that are inlined
-	 * @param methodSigToId map from method signature to method id
-	 */
-	public ModuleSpec(final String name, final String[] methodIdToSig, final int commMethods,
-			final Graph internalGraph, final Graph interfaceGraph, final BitVectorIntSet inlinedMethods,
-			final HashMap<String,Integer> methodSigToId) {
+	public ModuleSpec(final String name) {
 		super(InstrumentationAgent.internalName(name));
-		this.methodIdToSig = methodIdToSig;
-		this.commMethods = commMethods;
-		this.internalGraph = internalGraph;
-		this.interfaceGraph = interfaceGraph;
-		this.inlinedMethods = inlinedMethods;
-		this.methodSigToId = methodSigToId;
-		if (COUNT_METHODS) {
-			maxCommMethods.add(commMethods);
-			maxInterfaceMethods.add(interfaceGraph == null ? 0 : interfaceGraph.size());
-			maxMethods.add(methodSigToId == null ? 0 : methodSigToId.size());
-		}
 	}
-	
+
 	/**
 	 * Set the module ID. Module IDs are generated dynamically at runtime. Lookup and linking
 	 * is done on a name basis.
@@ -118,27 +48,16 @@ public class ModuleSpec extends SpecFile {
 	 * @param methodUID
 	 * @return
 	 */
-	public String getMethodSignature(final int methodUID) {
-		Util.assertTrue(Spec.getModuleID(methodUID) == id, 
-				"method id " + methodUID + " (module=" + Spec.getModuleID(methodUID) 
-				+ ", method=" + Spec.getMethodID(methodUID) + 
-				") is not a member of module " + InstrumentationAgent.sourceName(qualifiedName) + " (id " + id + ")");
-		return methodIdToSig[Spec.getMethodID(methodUID)];
-	}
+	public abstract String getMethodSignature(final int methodUID);
 	
 	/**
-	 * Get the method ID for the method with signature sig. Returns -1
+	 * Get the method ID for the method with signature sig. throws exception
 	 * if not found.
 	 * @param sig
 	 * @return
+	 * @throws MethodNotFoundException 
 	 */
-	public int getMethodUID(final String sig) {
-	    if (!methodSigToId.containsKey(sig)) {
-	        return -1;
-	    }
-		final int mid = methodSigToId.get(sig);
-		return Spec.makeUID(id, mid);
-	}
+	public abstract int getMethodUID(final String sig) throws MethodNotFoundException;
 	
 	/**
 	 * Check if communication is allowed from method with ID w to method with ID r.
@@ -146,16 +65,8 @@ public class ModuleSpec extends SpecFile {
 	 * @param r
 	 * @return
 	 */
-	public boolean isAllowed(final int w, final int r) {
-		Util.assertTrue(Spec.getModuleID(w) == id && Spec.getModuleID(r) == id);
-		return internalGraph.containsEdge(Spec.getMethodID(w), Spec.getMethodID(r));
-	}
-	public boolean allAllowed(final int w, final BitVectorIntSet readers) {
-		Util.assertTrue(Spec.getModuleID(w) == id); //FIXME && Spec.getModuleID(r) == id);
-		final BitVectorIntSet edges = internalGraph.getOutEdges(Spec.getMethodID(w));
-		if (edges == null) return false;
-		return edges.containsAll(readers);
-	}
+	public abstract boolean isAllowed(final int w, final int r);
+	public abstract boolean allAllowed(final int w, final BitVectorIntSet readers);
 	
 	/**
 	 * Check if communication is visible from method with ID w to method with ID r.
@@ -163,10 +74,7 @@ public class ModuleSpec extends SpecFile {
 	 * @param r
 	 * @return
 	 */
-	public boolean isPublic(final int w, final int r) {
-		Util.assertTrue(Spec.getModuleID(w) == id && Spec.getModuleID(r) == id);
-		return interfaceGraph.containsEdge(Spec.getMethodID(w), Spec.getMethodID(r));
-	}
+	public abstract boolean isPublic(final int w, final int r);
 	
 	/**
 	 * Get the kind of communication in which method with id mid is involved. Options are
@@ -174,95 +82,21 @@ public class ModuleSpec extends SpecFile {
 	 * @param mid
 	 * @return
 	 */
-	public CommunicationKind getCommunicationKind(final int uid) {
-		Util.assertTrue(Spec.getModuleID(uid) == id, "method id " + uid + " (module=" + Spec.getModuleID(uid) + ", method=" + Spec.getMethodID(uid) + ") is not a member of module " + InstrumentationAgent.sourceName(qualifiedName) + " (id " + id + ")");
-		final int mid = Spec.getMethodID(uid);
-		if (mid >= commMethods) {
-			if (inlinedMethods.contains(mid)) {
-				return CommunicationKind.INLINE;
-			} else {
-				return CommunicationKind.NONCOMM;
-			}
-//		} else if (internalGraph.getOutEdges(mid).isEmpty()) {
-//			return CommunicationKind.READ_ONLY;
-//		} else if (internalGraph.hasInEdges(mid)){
-//			return CommunicationKind.WRITE_ONLY;
-		} else {
-			return CommunicationKind.COMM;
-		}
-		/* else if (uncheckedMethods.contains(mid)) {
-		 * return CommunicationKind.UNCHECKED;
-		 */
-	}
+	public abstract CommunicationKind getCommunicationKind(final int uid);
 	
-	public int numCommMethods() {
-		return internalGraph.capacity();
-	}
+	public abstract int numCommMethods();
 	
-	public int numInterfaceMethods() {
-		return interfaceGraph.capacity();
-	}
+	public abstract int numInterfaceMethods();
 	
-	public int numCommEdges() {
-		return internalGraph.numEdges();
-	}
+	public abstract int numCommEdges();
 	
-	public int numInterfaceEdges() {
-		return interfaceGraph.numEdges();
-	}
+	public abstract int numInterfaceEdges();
 	
-//	private void printGraph(Graph g) {
-//	    for (int i = 0; i < methodSigToId.size() - inlinedMethods.size(); ++i) {
-//            BitVectorIntSet dests = g.getOutEdges(i);
-//            if (dests == null) {
-//                System.out.println("    " + methodIdToSig[i] + ": noncomm");
-//                continue;
-//            }
-//            if (!dests.isEmpty()) {
-//                System.out.print("    " + methodIdToSig[i] + "="+i + " -> ");
-//                for (int j=0; j<methodSigToId.size(); ++j) {
-//                    if (dests.contains(j)) {
-//                        System.out.print(methodIdToSig[j] + "="+i + " ");
-//                    }
-//                }
-//                System.out.println("");
-//            }
-//        }
-//	}
+	public abstract String toString();
 	
-	public String toString() {
-		String out = "Module " + InstrumentationAgent.sourceName(qualifiedName) + " (ID " + id + ")\n";
-		out += "  Methods: " + methodIdToSig.length + "\n";
-		for (int i = 0; i < methodIdToSig.length; i++) {
-			out += "    " + i + ": " + methodIdToSig[i] + "\n";
-		}
-		out += "  Inlined: " + inlinedMethods.size() + "\n";
-		for (int i : inlinedMethods) {
-			out += "    " + i + ": " + methodIdToSig[i] + "\n";
-		}
-		out += "  Communicating Pairs:\n";
-		for (Graph.Edge e : internalGraph) {
-			out += "    " + e.source + ": " + methodIdToSig[e.source] + "  -->  " + e.sink + ": " + methodIdToSig[e.sink] + "\n";
-		}
-		out += "  Interface Pairs:\n";
-		for (Graph.Edge e : interfaceGraph) {
-			out += "    " + e.source + ": " + methodIdToSig[e.source] + "  -->  " + e.sink + ": " + methodIdToSig[e.sink] + "\n";
-		}
-		return out;
-	}
+	public abstract String[] getMethods();
+	
+	public abstract Graph getCommunication();
+	public abstract Graph getInterface();
 
-	/**
-	 * DO NOT MODIFY the array returned.
-	 * @return
-	 */
-	public String[] getMethods() {
-		return methodIdToSig; 
-	}
-	
-	public Graph getCommunication() {
-		return internalGraph;
-	}
-	public Graph getInterface() {
-		return interfaceGraph;
-	}
 }

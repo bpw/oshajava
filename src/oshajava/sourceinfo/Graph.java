@@ -2,9 +2,7 @@ package oshajava.sourceinfo;
 
 import java.io.Serializable;
 import java.util.Iterator;
-import java.util.Set;
 
-import oshajava.support.acme.util.Util;
 import oshajava.util.intset.BitVectorIntSet;
 import oshajava.util.intset.IntSet;
 
@@ -19,11 +17,6 @@ public class Graph implements Serializable, Iterable<Graph.Edge> {
 	private static final long serialVersionUID = 1L;
 
 	/**
-	 * ID counter for adding new nodes.
-	 */
-	private int nextID = 0;
-
-	/**
 	 * Array of IntSets. Rows represent edge sources and columns represent 
 	 * edge destinations.
 	 */
@@ -35,7 +28,16 @@ public class Graph implements Serializable, Iterable<Graph.Edge> {
 	 * @param nodeCapacity
 	 */
 	public Graph(int nodeCapacity) {
+		this(nodeCapacity, nodeCapacity);
+	}
+	public Graph(int nodeCapacity, int fillLine) {
 		table = new BitVectorIntSet[nodeCapacity];
+		if (fillLine > nodeCapacity) fillLine = nodeCapacity;
+		for (int i = 0; i < fillLine; i++) {
+			if (table[i] == null) {
+				table[i] = new BitVectorIntSet();
+			}
+		}
 	}
 	
 	/**
@@ -44,7 +46,7 @@ public class Graph implements Serializable, Iterable<Graph.Edge> {
 	 * @return
 	 */
 	public final BitVectorIntSet getOutEdges(int i) {
-		if (i >= table.length) return null;
+		if (i >= size()) return null;
 		return table[i];
 	}
 	
@@ -69,56 +71,19 @@ public class Graph implements Serializable, Iterable<Graph.Edge> {
 	 * @return
 	 */
 	public final boolean containsEdge(int i, int j) {
-		assert i >= 0 && i < nextID && j >= 0 && j < nextID;
-		if (i >= table.length) return false;
+		assert i >= 0 && i < size() && j >= 0 && j < size();
+		if (i >= size()) return false;
 		final IntSet set = table[i];
 		return set != null && set.contains(j);
 	}
 	
-	/**
-	 * Add a node that has edges to the nodes in the given int set.
-	 * @param set
-	 * @return
-	 */
-	public int addNode(BitVectorIntSet set) {
-		assert nextID >= table.length;
-		final int id = nextID;
-		++nextID;
-		table[id] = set;
-		return id;
-	}
-	
-	public void setOutEdges(int i, BitVectorIntSet set) {
-		assert i < table.length;
-		table[i] = set;
-	}
-	
-	public void addEdge(int i, int j) {
-		getOutEdges(i).add(j);
-	}
-	
-	public void fill() {
-		for (int i = 0; i < table.length; i++) {
-			if (table[i] == null) {
-				table[i] = new BitVectorIntSet();
-			}
-		}
-	}
-		
-	/**
-	 * Get the capacity of the table.
-	 * @return
-	 */
-	public int capacity() {
-		return table.length;
-	}
 	
 	/**
 	 * Get the number of nodes.
 	 * @return
 	 */
 	public int size() {
-		return nextID;
+		return table.length;
 	}
 	
 	public int numEdges() {
@@ -128,18 +93,7 @@ public class Graph implements Serializable, Iterable<Graph.Edge> {
 		}
 		return n;
 	}
-	
-	/**
-	 * Resize the internal table to hold up to n nodes.
-	 * @param n
-	 */
-	protected final void resize(int n) {
-		assert n > 0;
-		BitVectorIntSet[] p = new BitVectorIntSet[n];
-		System.arraycopy(table, 0, p, 0, n > nextID ? nextID : n);
-		table = p;
-	}
-	
+
 	public class Edge {
 		public final int source, sink;
 		public Edge(final int source, final int sink) {

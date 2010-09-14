@@ -25,15 +25,17 @@ public class SpecFileManager<T extends SpecFile> implements Iterable<T> {
 	private final Creator<T> creator;
 	private final Map<String,T> items = new HashMap<String,T>();
 	private final Map<T,FileObject> files = new HashMap<T,FileObject>();
+	private final boolean overwrite;
 
 	public SpecFileManager(final String ext, final ProcessingEnvironment env, final Location base) {
-		this(ext, null, env, base);
+		this(ext, null, env, base, true);
 	}
-	public SpecFileManager(final String ext, final Creator<T> creator, final ProcessingEnvironment env, final Location base) {
+	public SpecFileManager(final String ext, final Creator<T> creator, final ProcessingEnvironment env, final Location base, final boolean overwrite) {
 		this.ext = ext;
 		this.env = env;
 		this.base = base;
 		this.creator = creator;
+		this.overwrite = overwrite;
 	}
 	
 	public void save(T t) {
@@ -54,11 +56,11 @@ public class SpecFileManager<T extends SpecFile> implements Iterable<T> {
 		}		
 	}
 	
-	public T get(final String qualifiedName) {
-		return get(qualifiedName, null);
+	public T getOrCreate(final String qualifiedName) {
+		return getOrCreate(qualifiedName, null);
 	}
 	@SuppressWarnings("unchecked")
-	public T get(final String qualifiedName, final Element cause) {
+	public T getOrCreate(final String qualifiedName, final Element cause) {
 		if (items.containsKey(qualifiedName)) {
 			return items.get(qualifiedName);
 		}
@@ -67,15 +69,17 @@ public class SpecFileManager<T extends SpecFile> implements Iterable<T> {
 		final int lastDot = qualifiedName.lastIndexOf('.');
 		final String pkg = lastDot == -1 ? "" : qualifiedName.substring(0, lastDot);
 		final String simpleName = lastDot == -1 ? qualifiedName : qualifiedName.substring(lastDot + 1);
-		try {
-			// If a file for this resource already exists, this will succeed.
-			t = (T)ColdStorage.load(env.getFiler().getResource(base, pkg, simpleName + ext));
-			items.put(qualifiedName, t);
-			return t;
-		} catch (IOException e) {
-			// Do nothing.  Just fail over. 
-		} catch (ClassNotFoundException e) {
-			env.getMessager().printMessage(Kind.WARNING, qualifiedName + ext + " stored in outdated format on disk. Generating a new (blank) version.");
+		if (!overwrite) {
+			try {
+				// If a file for this resource already exists, this will succeed.
+				t = (T)ColdStorage.load(env.getFiler().getResource(base, pkg, simpleName + ext));
+				items.put(qualifiedName, t);
+				return t;
+			} catch (IOException e) {
+				// Do nothing.  Just fail over. 
+			} catch (ClassNotFoundException e) {
+				env.getMessager().printMessage(Kind.WARNING, qualifiedName + ext + " stored in outdated format on disk. Generating a new (blank) version.");
+			}
 		}
 		// Else we'll create a new resource and a new file for it.
 		t = creator != null ? creator.create(qualifiedName) : null;
@@ -85,6 +89,15 @@ public class SpecFileManager<T extends SpecFile> implements Iterable<T> {
 			env.getMessager().printMessage(Kind.ERROR, qualifiedName + ext + " could not be created on disk.");
 		}
 		items.put(qualifiedName, t);
+		return t;
+	}
+	
+	public T create(final String qualifiedName) {
+		return create(qualifiedName, null);
+	}
+	public T create(final String qualifiedName, Element cause) {
+		T t = creator.create(qualifiedName);
+		save(t, cause);
 		return t;
 	}
 	

@@ -11,8 +11,9 @@ import java.util.Set;
 
 import oshajava.instrument.InstrumentationAgent;
 import oshajava.rtviz.StackCommMonitor;
-import oshajava.sourceinfo.Graph;
 import oshajava.sourceinfo.ModuleSpec;
+import oshajava.sourceinfo.ExpandableGraph;
+import oshajava.sourceinfo.Graph;
 import oshajava.sourceinfo.Spec;
 import oshajava.support.acme.util.Util;
 import oshajava.support.acme.util.identityhash.ConcurrentIdentityHashMap;
@@ -43,8 +44,8 @@ public class Stack {
 	public static final SetSizeCounter<ModuleSpec> modulesUsed = new SetSizeCounter<ModuleSpec>("Modules used");
 	
 	// for the -record option
-	public static final HashMap<ModuleSpec,Graph> commGraphs = new HashMap<ModuleSpec,Graph>();
-	public static final HashMap<ModuleSpec,Graph> interfaceGraphs = new HashMap<ModuleSpec,Graph>();
+	public static final HashMap<ModuleSpec,ExpandableGraph> commGraphs = new HashMap<ModuleSpec,ExpandableGraph>();
+	public static final HashMap<ModuleSpec,ExpandableGraph> interfaceGraphs = new HashMap<ModuleSpec,ExpandableGraph>();
 	private final HashSet<Stack> allReaders = new HashSet<Stack>();
 	
 	public static final Counter stackWalks = new Counter("Full stack walks");
@@ -258,14 +259,7 @@ public class Stack {
 			// Is the communication exposed?
 			if (layerModule.isPublic(writerLayerTop.methodUID, readerLayerTop.methodUID)) {
 				if (RECORD) {
-					synchronized (interfaceGraphs) {
-						if (!interfaceGraphs.containsKey(layerModule)) {
-						    Graph g = new Graph(layerModule.numInterfaceMethods());
-						    g.fill();
-							interfaceGraphs.put(layerModule, g);
-						}
-						interfaceGraphs.get(layerModule).addEdge(Spec.getMethodID(writerLayerTop.methodUID), Spec.getMethodID(readerLayerTop.methodUID));
-					}
+					recordInterface(writerLayerTop, readerLayerTop, layerModule);
 				}
 				// communication is exposed here. Must check rest of stacks.
 				return walkStacks(writerLayerTop.parent, readerLayerTop.parent, segDepth + 1);
@@ -331,17 +325,7 @@ public class Stack {
 	    	segSizeDist.add(layer.size());
 	    }
 		if (RECORD) {
-			synchronized (commGraphs) {
-				if (!commGraphs.containsKey(module)) {
-					commGraphs.put(module, new Graph(module.getMethods().length));
-				}
-				BitVectorIntSet s = commGraphs.get(module).getOutEdges(Spec.getMethodID(methodUID));
-				if (s == null) {
-					s = new BitVectorIntSet();
-					commGraphs.get(module).setOutEdges(Spec.getMethodID(methodUID), s);
-				}
-				s.addAll(layer);
-			}
+			recordLayer(layer, module);
 		}
 		if (module.allAllowed(methodUID, layer)) {
 			if (module.getId() != Spec.getModuleID(parent.methodUID)) {
@@ -356,6 +340,30 @@ public class Stack {
 			}
 		} else {
 			throw new IllegalInternalEdgeException();
+		}
+	}
+	
+	protected void recordLayer(final BitVectorIntSet layer, final ModuleSpec module) {
+		synchronized (commGraphs) {
+			if (!commGraphs.containsKey(module)) {
+				commGraphs.put(module, new ExpandableGraph(module.getMethods().length));
+			}
+			BitVectorIntSet s = commGraphs.get(module).getOutEdges(Spec.getMethodID(methodUID));
+			if (s == null) {
+				s = new BitVectorIntSet();
+				commGraphs.get(module).setOutEdges(Spec.getMethodID(methodUID), s);
+			}
+			s.addAll(layer);
+		}		
+	}
+	
+	protected static void recordInterface(Stack writerLayerTop, Stack readerLayerTop, ModuleSpec layerModule) {
+		synchronized (interfaceGraphs) {
+			if (!interfaceGraphs.containsKey(layerModule)) {
+			    ExpandableGraph g = new ExpandableGraph(layerModule.numInterfaceMethods());
+				interfaceGraphs.put(layerModule, g);
+			}
+			interfaceGraphs.get(layerModule).addEdge(Spec.getMethodID(writerLayerTop.methodUID), Spec.getMethodID(readerLayerTop.methodUID));
 		}
 	}
 	
@@ -403,7 +411,7 @@ public class Stack {
 		return idCounter;
 	}
 
-	public static void dumpGraphs(String mainClass) {
+	public static void dumpRecordedGraphs(String mainClass) {
 		if (RECORD) {
 			try {
 				final PyWriter commpy = new PyWriter("oshajava-communication-pairs.py", false);
@@ -523,7 +531,7 @@ public class Stack {
 				// End exec.
 				
 				Set<Integer> recordedNodes = new HashSet<Integer>();
-				for (Map.Entry<ModuleSpec,Graph> e : commGraphs.entrySet()) {
+				for (Map.Entry<ModuleSpec, ? extends Graph> e : commGraphs.entrySet()) {
 					ModuleSpec mod = e.getKey();
 					Graph g = e.getValue();
 					for (int i = 0; i < mod.numCommMethods(); i++) {
@@ -549,7 +557,7 @@ public class Stack {
 				}
 				
 				recordedNodes = new HashSet<Integer>();
-				for (Map.Entry<ModuleSpec,Graph> e : interfaceGraphs.entrySet()) {
+				for (Map.Entry<ModuleSpec, ? extends Graph> e : interfaceGraphs.entrySet()) {
 					ModuleSpec mod = e.getKey();
 					Graph g = e.getValue();
 					for (int i = 0; i < mod.numInterfaceMethods(); i++) {

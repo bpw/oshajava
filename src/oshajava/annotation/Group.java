@@ -10,6 +10,11 @@ public @interface Group {
 	 * The unique ID of this group.
 	 */
 	String id();
+	
+//	/**
+//	 * The module this group belongs to.
+//	 */
+//	String group() default "";
 //	
 //	/**
 //	 * List of groups this group delegates to.

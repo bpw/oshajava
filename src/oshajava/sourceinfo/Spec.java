@@ -47,7 +47,7 @@ public class Spec {
 	 */
 	protected static ModuleSpec loadModule(String qualifiedName, ClassLoader loader, String requester) throws ModuleSpecNotFoundException {
 		try {
-			final InputStream res = loader.getResourceAsStream(InstrumentationAgent.internalName(qualifiedName) + ModuleSpec.EXT);
+			final InputStream res = loader.getResourceAsStream(InstrumentationAgent.internalName(qualifiedName) + CompiledModuleSpec.EXT);
 			if (res == null) {
 			    // Module spec file legitimately not present. This is a
 			    // somewhat questionable decision, but we warn the user
@@ -58,7 +58,7 @@ public class Spec {
 			    Util.warn("No spec found for " + InstrumentationAgent.sourceName(qualifiedName) + ", using null spec.");
 			    return new NullModuleSpec(qualifiedName);
 			}
-			ModuleSpec ms = (ModuleSpec)ColdStorage.load(res);
+			CompiledModuleSpec ms = (CompiledModuleSpec)ColdStorage.load(res);
 			if (ms == null) {
 			    return new NullModuleSpec(qualifiedName);
 			}
@@ -85,10 +85,9 @@ public class Spec {
 	        return new NullModuleSpec(name);
 	    }
 	    
-		ModuleSpec module = nameToModule.get(name);
+	    ModuleSpec module = nameToModule.get(name);
 		if (module == null) {
 			module = loadModule(name, loader, requester);
-//			module.describe();
 //			synchronized (idToModule) { // not needed if this method is synchronized
 				module.setId(idToModule.size());
 				idToModule.add(module);
@@ -116,33 +115,6 @@ public class Spec {
 			throw new ModuleMapNotFoundException(className);
 		}
 	}
-	
-//	/**
-//	 * Define a new module.
-//	 * @param name
-//	 * @param module
-//	 */
-//	public static void defineModule(String name, ModuleSpec module) {
-//		Util.assertTrue(!Spec.isDefined(name), "Cannot redefine module '%s'.", name);
-//		Util.log(name);
-//		nameToModule.put(name, module);
-//	}
-//	
-//	public static boolean isDefined(String name) {
-//		return nameToModule.containsKey(name);
-//	}
-//
-//	/**
-//	 * Serialize all ModuleSpecs and dump to disk in their own files by name.
-//	 * @throws IOException
-//	 */
-//	public static void dumpModules() throws IOException {
-//		for (ModuleSpec m : nameToModule.values()) {
-//			// FIXME get the path right. Module "a.b.c.Mod" should be dumped as a file
-//			// "Mod.om" in the directory where the contents of package a.b.c are held.
-//			ColdStorage.dump(m.getName() + Spec.MODULE_FILE_EXT, m);
-//		}
-//	}
 	
 	public static int countModules() {
 		return nameToModule.size();

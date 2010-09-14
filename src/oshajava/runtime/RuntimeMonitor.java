@@ -494,7 +494,7 @@ public class RuntimeMonitor {
 			Util.log("---- Profile info ------------------------------------");
 		}    
 		if (Stack.RECORD) {
-			Stack.dumpGraphs(mainClass);
+			Stack.dumpRecordedGraphs(mainClass);
 		}
 
 		// mem and gc

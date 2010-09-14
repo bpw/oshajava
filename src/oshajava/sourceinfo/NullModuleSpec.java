@@ -8,11 +8,20 @@ import oshajava.support.acme.util.Util;
 
 public class NullModuleSpec extends ModuleSpec {
     
-    protected Vector<String> nullMethodIdToSig = new Vector<String>();
+    /**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
+
+	protected Vector<String> nullMethodIdToSig = new Vector<String>();
     
-    public NullModuleSpec(final String name) {
-        super(name, null, 0, null, null, null,
-              new HashMap<String,Integer>());
+	/**
+	 * Map from method signature to id.
+	 */
+	protected final HashMap<String,Integer> methodSigToId = new HashMap<String,Integer>();
+	
+	public NullModuleSpec(final String name) {
+        super(name);
     }
     
     @Override
@@ -56,7 +65,7 @@ public class NullModuleSpec extends ModuleSpec {
     @Override
     public CommunicationKind getCommunicationKind(final int uid) {
         Util.assertTrue(Spec.getModuleID(uid) == id, "method id " + uid + " (module=" + Spec.getModuleID(uid) + ", method=" + Spec.getMethodID(uid) + ") is not a member of module " + InstrumentationAgent.sourceName(qualifiedName)  + " (id " + id + ")");
-        return ModuleSpec.CommunicationKind.INLINE;
+        return CompiledModuleSpec.CommunicationKind.INLINE;
     }
     
     @Override

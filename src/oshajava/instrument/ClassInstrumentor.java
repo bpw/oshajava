@@ -8,9 +8,10 @@ import java.util.List;
 import java.util.Set;
 
 import oshajava.runtime.Config;
+import oshajava.sourceinfo.ModuleSpec;
 import oshajava.sourceinfo.ModuleMap;
 import oshajava.sourceinfo.ModuleMapNotFoundException;
-import oshajava.sourceinfo.ModuleSpec;
+import oshajava.sourceinfo.CompiledModuleSpec;
 import oshajava.sourceinfo.ModuleSpecNotFoundException;
 import oshajava.sourceinfo.Spec;
 import oshajava.support.acme.util.Util;
@@ -134,13 +135,13 @@ public class ClassInstrumentor extends ClassAdapter {
 		ModuleSpec module;
 		String moduleName;
 		if (methodToModule == null) {
-			moduleName = packageName + ModuleSpec.DEFAULT_NAME;
+			moduleName = packageName + CompiledModuleSpec.DEFAULT_NAME;
 		} else {
 			try {
 				moduleName = methodToModule.get(className + "." + name + desc);
 			} catch (ModuleMap.MissingEntryException e) {
 				Util.warn("Method not mapped to module: %s", InstrumentationAgent.sourceName(className) + "." + name + desc);
-				moduleName = packageName + ModuleSpec.DEFAULT_NAME;
+				moduleName = packageName + CompiledModuleSpec.DEFAULT_NAME;
 			}
 		}
 		module = Spec.getModule(moduleName, loader, InstrumentationAgent.sourceName(className) + "." + name + desc);
@@ -298,7 +299,7 @@ public class ClassInstrumentor extends ClassAdapter {
 			methodToModule = Spec.getModuleMap(className, loader);
 		} catch (ModuleMapNotFoundException e) {
 //			throw e.wrap();
-			Util.warn("No module map found for class %s. All methods assumed to be in module %s%s", InstrumentationAgent.sourceName(className), InstrumentationAgent.sourceName(packageName), ModuleSpec.DEFAULT_NAME);
+			Util.warn("No module map found for class %s. All methods assumed to be in module %s%s", InstrumentationAgent.sourceName(className), InstrumentationAgent.sourceName(packageName), CompiledModuleSpec.DEFAULT_NAME);
 		}
 
 		// TODO 5/6

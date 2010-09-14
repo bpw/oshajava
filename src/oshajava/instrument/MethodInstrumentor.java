@@ -3,6 +3,7 @@ package oshajava.instrument;
 
 import oshajava.runtime.Config;
 import oshajava.sourceinfo.ModuleSpec;
+import oshajava.sourceinfo.CompiledModuleSpec;
 import oshajava.sourceinfo.ModuleSpec.CommunicationKind;
 import oshajava.support.acme.util.Util;
 import oshajava.support.org.objectweb.asm.Label;
@@ -23,9 +24,9 @@ public class MethodInstrumentor extends AdviceAdapter {
 	
 	protected final String fullNameAndDesc;
 	
-	private final int methodUID;
+	private int methodUID;
 	
-	protected final CommunicationKind policy;
+	protected CommunicationKind policy;
 
 	protected final ClassInstrumentor inst;
 
@@ -44,30 +45,28 @@ public class MethodInstrumentor extends AdviceAdapter {
 		isClinit = name.equals("<clinit>");
 		fullNameAndDesc = inst.className + "." + name + desc;
 		
-		// Synthetic methods are, in general, not seen by the annotation
-		// processor. If they're not, then we emit a warning and inline
-		// the method.
-		methodUID = module.getMethodUID(fullNameAndDesc);
-		if (methodUID == -1 && (access & Opcodes.ACC_SYNTHETIC) != 0) {
-			policy = CommunicationKind.INLINE;
-			// Such is also the case with methods inside anonymous classes.
-		} else if (methodUID == -1 &&
-				   inst.className.matches(".*\\$\\d.*")) {
-			policy = CommunicationKind.INLINE;
-			// Raise an error for other methods that are not found.
-		} else if (methodUID == -1) {
-			if (InstrumentationAgent.ignoreMissingMethodsOption.get()) {
-				Util.log("IGNORED and INLINED: in module " + module.getName() + ", " + fullNameAndDesc + " not found");
-			} else {
-				Util.fail("Method " + fullNameAndDesc + " not found in " + module);
-			}
-			policy = CommunicationKind.INLINE; // avoid warning
+		try {
+			methodUID = module.getMethodUID(fullNameAndDesc);
 			// Set policy appropriately if method is found.
-		} else {
 			policy = module.getCommunicationKind(methodUID);
+		} catch (CompiledModuleSpec.MethodNotFoundException e) {
+			methodUID = -1;
+			if ((access & Opcodes.ACC_SYNTHETIC) != 0) {
+				// Synthetic methods are, in general, not seen by the annotation
+				// processor. If they're not, then we emit a warning and inline
+				// the method.
+				policy = CommunicationKind.INLINE;
+			} else if (inst.className.matches(".*\\$\\d.*")) {
+				// Such is also the case with methods inside anonymous classes.
+				policy = CommunicationKind.INLINE;
+			} else {
+				if (InstrumentationAgent.ignoreMissingMethodsOption.get()) {
+					Util.warn("IGNORED and INLINED: in module " + module.getName() + ", " + fullNameAndDesc + " not found");
+				} else {
+					Util.fail("Method " + fullNameAndDesc + " not found in " + module);
+				}
+			}
 		}
-		
-//		readHook = ClassInstrumentor.HOOK_READ; //RuntimeMonitor.RECORD ? ClassInstrumentor.HOOK_RECORD_READ : ClassInstrumentor.HOOK_READ;
 	}
 
 	protected void myStackSize(int size) {
