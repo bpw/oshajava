@@ -34,9 +34,7 @@ public class Graph implements Serializable, Iterable<Graph.Edge> {
 		table = new BitVectorIntSet[nodeCapacity];
 		if (fillLine > nodeCapacity) fillLine = nodeCapacity;
 		for (int i = 0; i < fillLine; i++) {
-			if (table[i] == null) {
-				table[i] = new BitVectorIntSet();
-			}
+			table[i] = new BitVectorIntSet();
 		}
 	}
 	

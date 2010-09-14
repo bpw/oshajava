@@ -3,6 +3,9 @@ package oshajava.spec;
 import java.util.HashMap;
 import java.util.Map;
 
+import oshajava.instrument.InstrumentationAgent;
+import oshajava.support.acme.util.Util;
+
 /**
  * A compile-time representation of a module.
  */
@@ -59,6 +62,7 @@ public class Module extends SpecFile {
 	
 	protected Map<String,MethodSpec> methodSpecs = new HashMap<String,MethodSpec>();
 	protected Map<String,Group> groups = new HashMap<String,Group>();
+	protected int numCommMethods = 0, numNoncommMethods = 0, numInlinedMethods = 0, numCommGroups, numIfaceGroups;
 	
 	public Module(String qualifiedName) {
 		super(qualifiedName);
@@ -74,6 +78,7 @@ public class Module extends SpecFile {
 			throw new DuplicateGroupException(this, groups.get(group));
 		}
 		groups.put(group, new Group(Group.Kind.COMM, group));
+		numCommGroups++;
 	}
 	
 	/**
@@ -86,6 +91,7 @@ public class Module extends SpecFile {
 			throw new DuplicateGroupException(this, groups.get(group));
 		}
 		groups.put(group, new Group(Group.Kind.INTERFACE, group));
+		numIfaceGroups++;
 	}
 	
 	/**
@@ -113,11 +119,32 @@ public class Module extends SpecFile {
 			throw new DuplicateMethodException(this, sig);
 		}
 		methodSpecs.put(sig, spec);
-		for (Group g : spec.readGroups()) {
-			g.addReader(sig);
-		}
-		for (Group g : spec.writeGroups()) {
-			g.addWriter(sig);
+		switch (spec.kind()) {
+		case COMM:
+			numCommMethods++;
+			final Iterable<Group> readGroups = spec.readGroups();
+			if (readGroups != null) {
+				for (Group g : spec.readGroups()) {
+					g.addReader(sig);
+				}
+			}
+			final Iterable<Group> writeGroups = spec.writeGroups();
+			if (writeGroups != null) {
+				for (Group g : spec.writeGroups()) {
+					g.addWriter(sig);
+				}
+			}
+			Util.assertTrue(readGroups != null || writeGroups != null, "Noncomm method %s not marked as comm.", sig);
+			break;
+		case INLINE:
+			numInlinedMethods++;
+			break;
+		case NONCOMM:
+			numNoncommMethods++;
+			break;
+		case ERROR:
+		default:
+			Util.fail("Bad method spec added to module.");
 		}
 	}
 	
@@ -126,7 +153,96 @@ public class Module extends SpecFile {
 	}
 	
 	public String toString() {
-		return generateSpec().toString();
+		String out = "Module " + InstrumentationAgent.sourceName(qualifiedName) + "\n";
+		out += "  Methods: " + methodSpecs.size() + "\n";
+		out += "    Communicating: " + numCommMethods + "\n";
+		for (Map.Entry<String, MethodSpec> e : methodSpecs.entrySet()) {
+			if (e.getValue().kind() == MethodSpec.Kind.COMM) {
+				out += "      " + e.getKey() + "\n";
+				out += "        Read groups: ";
+				{
+					final Iterable<Group> readers = e.getValue().readGroups();
+					if (readers != null) {
+						for (Group g : readers) {
+							out += g.getName() + "  ";
+						}
+					}
+				}
+				out += "\n";
+				out += "        Write groups: ";
+				{
+					final Iterable<Group> writers = e.getValue().writeGroups();
+					if (writers != null) {
+						for (Group g : writers) {
+							out += g.getName() + "  ";
+						}
+					}
+				}
+				out += "\n";
+			}
+		}
+		out += "    Non-communicating: " + numNoncommMethods + "\n";
+		for (Map.Entry<String, MethodSpec> e : methodSpecs.entrySet()) {
+			if (e.getValue().kind() == MethodSpec.Kind.NONCOMM) {
+				out += "      " + e.getKey() + "\n";
+			}
+		}
+		out += "    Inlined: " + numInlinedMethods + "\n";
+		for (Map.Entry<String, MethodSpec> e : methodSpecs.entrySet()) {
+			if (e.getValue().kind() == MethodSpec.Kind.INLINE) {
+				out += "      " + e.getKey() + "\n";
+			}
+		}
+		out += "  Communication Groups: " + numCommGroups + "\n";
+		for (Map.Entry<String, Group> e : groups.entrySet()) {
+			if (e.getValue().kind() == Group.Kind.COMM) {
+				out += "      " + e.getKey() + "\n";
+				out += "        Readers: \n";
+				{
+					final Iterable<String> readers = e.getValue().readers();
+					if (readers != null) {
+						for (String g : readers) {
+							out += "          " + g + "\n";
+						}
+					}
+				}
+				out += "        Writers:\n";
+				{
+					final Iterable<String> writers = e.getValue().writers();
+					if (writers != null) {
+						for (String g : writers) {
+							out += "          " + g + "\n";
+						}
+					}
+				}
+			}
+		}
+		out += "  Interface Groups: " + numIfaceGroups + "\n";
+		for (Map.Entry<String, Group> e : groups.entrySet()) {
+			if (e.getValue().kind() == Group.Kind.INTERFACE) {
+				out += "      " + e.getKey() + "\n";
+				out += "        Readers:\n";
+				{
+					final Iterable<String> readers = e.getValue().readers();
+					if (readers != null) {
+						for (String g : readers) {
+							out += "          " + g + "\n";
+						}
+					}
+				}
+				out += "        Writers:\n";
+				{
+					final Iterable<String> writers = e.getValue().writers();
+					if (writers != null) {
+						for (String g : writers) {
+							out += "          " + g + "\n";
+						}
+					}
+				}
+			}
+		}
+		return out;
 	}
+
 	
 }

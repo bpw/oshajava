@@ -76,6 +76,7 @@ public class CompiledModuleSpec extends ModuleSpec {
 			} else if (methodSpecs.get(sig) == MethodSpec.NONCOMM) {
 				noncommMethods.add(sig);
 			} else {
+				methodSigToId.put(sig, idToSig.size());
 				idToSig.add(sig);
 			}
 		}
@@ -87,20 +88,24 @@ public class CompiledModuleSpec extends ModuleSpec {
 			final MethodSpec m = methodSpecs.get(idToSig.get(i));
 			final BitVectorIntSet commReaders = commGraph.getOutEdges(i);
 			final BitVectorIntSet ifaceReaders = interfaceGraph.getOutEdges(i);
-			for (final Group g : m.writeGroups()) {
-				final BitVectorIntSet readers = g.kind() == Group.Kind.COMM ? commReaders : ifaceReaders;
-				for (String reader : g.readers()) {
-					readers.add(methodSigToId.get(reader));
+			if (m.writeGroups() != null) {
+				for (final Group g : m.writeGroups()) {
+					final BitVectorIntSet readers = g.kind() == Group.Kind.COMM ? commReaders : ifaceReaders;
+					for (String reader : g.readers()) {
+						readers.add(methodSigToId.get(reader));
+					}
 				}
 			}
 		}
 		
 		firstNoncommMethod = idToSig.size();
 		for (final String sig : noncommMethods) {
+			methodSigToId.put(sig, idToSig.size());
 			idToSig.add(sig);
 		}
 		firstInlinedMethod = idToSig.size();
 		for (final String sig : inlinedMethods) {
+			methodSigToId.put(sig, idToSig.size());
 			idToSig.add(sig);
 		}
 		
@@ -235,18 +240,19 @@ public class CompiledModuleSpec extends ModuleSpec {
 	}
 	
 	public String toString() {
-		String out = "Module " + InstrumentationAgent.sourceName(qualifiedName) + " (ID " + id + ")\n";
+		String out = "Compiled spec for module " + InstrumentationAgent.sourceName(qualifiedName) + " (ID " + id + ")\n";
 		out += "  Methods: " + methodIdToSig.length + "\n";
-		for (int i = 0; i < methodIdToSig.length; i++) {
-			out += "    " + i + ": " + methodIdToSig[i] + "\n";
+		out += "    Communicating: " + firstNoncommMethod + "\n";
+		for (int i = 0; i < firstNoncommMethod; i++) {
+			out += "      " + i + ": " + methodIdToSig[i] + "\n";
 		}
-		out += "  Noncommunicating: " + (firstInlinedMethod - firstNoncommMethod) + "\n";
+		out += "    Non-communicating: " + (firstInlinedMethod - firstNoncommMethod) + "\n";
 		for (int i = firstNoncommMethod; i < firstInlinedMethod; i++) {
-			out += "    " + i + ": " + methodIdToSig[i] + "\n";
+			out += "      " + i + ": " + methodIdToSig[i] + "\n";
 		}
-		out += "  Inlined: " + (methodIdToSig.length - firstInlinedMethod) + "\n";
+		out += "    Inlined: " + (methodIdToSig.length - firstInlinedMethod) + "\n";
 		for (int i = firstInlinedMethod; i < methodIdToSig.length; i++) {
-			out += "    " + i + ": " + methodIdToSig[i] + "\n";
+			out += "      " + i + ": " + methodIdToSig[i] + "\n";
 		}
 		out += "  Communicating Pairs:\n";
 		for (Graph.Edge e : commGraph) {

@@ -29,7 +29,7 @@
 	<property name="agent.class" value="${top.package}.instrument.InstrumentationAgent" />
 	<property name="premain.class" value="${top.package}.runtime.Config" />
 	<property name="main.class" value="${top.package}.runtime.OshaJavaMain" />
-	<property name="processor.class" value="${top.package}.sourceinfo.SpecProcessor" />
+	<property name="processor.class" value="${top.package}.spec.SpecProcessor" />
 	<property name="class.loader" value="${top.package}.instrument.InstrumentingClassLoader" />
 	
 	<!-- build targets -->

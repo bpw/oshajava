@@ -116,6 +116,7 @@ public class SpecProcessor extends AbstractProcessor {
 					CompiledModuleSpec ms = m.generateSpec();
 					moduleSpecs.save(ms);
 					if (verbose) {
+						System.out.println(m);
 						System.out.println(ms);
 					}
 				}
@@ -414,6 +415,9 @@ public class SpecProcessor extends AbstractProcessor {
 				final Module module = processedModules.get(m);
 				TypeElement cls = (TypeElement)e.getEnclosingElement();
 				String sig = DescriptorWrangler.methodDescriptor(cls, m);
+				if (verbose) {
+//					System.out.println(sig + ": " + r);
+				}
 				try {
 					module.addMethod(sig, r);
 				} catch (DuplicateMethodException e1) {

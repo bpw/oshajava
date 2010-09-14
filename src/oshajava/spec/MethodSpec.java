@@ -1,7 +1,14 @@
 package oshajava.spec;
 
+import java.io.Serializable;
 
-public class MethodSpec {
+
+public class MethodSpec implements Serializable {
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
+
 	public enum Kind { INLINE, NONCOMM, COMM, ERROR };
 	private final Iterable<Group> readGroups, writeGroups;
 	private final Kind kind;
@@ -20,5 +27,19 @@ public class MethodSpec {
 	
 	public static final MethodSpec INLINE = new MethodSpec(Kind.INLINE), NONCOMM = new MethodSpec(Kind.NONCOMM), 
 		DEFAULT = Module.DEFAULT_INLINE ? INLINE : NONCOMM, ERROR = new MethodSpec(Kind.ERROR);
+	
+	public String toString() {
+		switch (kind) {
+		case INLINE:
+			return "@Inline";
+		case NONCOMM:
+			return "@NonComm";
+		case COMM:
+			return (readGroups == null ? "" : "@Reader(" + readGroups + ")") + (writeGroups == null ? "" : "@Writer(" + writeGroups + ")");
+		case ERROR:
+		default:
+			return "Malformed";
+		}
+	}
 }
 
