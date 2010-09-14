@@ -1,4 +1,4 @@
-package oshajava.sourceinfo;
+package oshajava.spec;
 
 import java.util.HashMap;
 import java.util.Map;

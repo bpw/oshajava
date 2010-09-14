@@ -11,10 +11,10 @@ import java.util.Set;
 
 import oshajava.instrument.InstrumentationAgent;
 import oshajava.rtviz.StackCommMonitor;
-import oshajava.sourceinfo.ModuleSpec;
-import oshajava.sourceinfo.ExpandableGraph;
-import oshajava.sourceinfo.Graph;
-import oshajava.sourceinfo.Spec;
+import oshajava.spec.ExpandableGraph;
+import oshajava.spec.Graph;
+import oshajava.spec.ModuleSpec;
+import oshajava.spec.Spec;
 import oshajava.support.acme.util.Util;
 import oshajava.support.acme.util.identityhash.ConcurrentIdentityHashMap;
 import oshajava.support.acme.util.identityhash.IdentityHashSet;

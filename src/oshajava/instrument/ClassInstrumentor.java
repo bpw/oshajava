@@ -8,12 +8,12 @@ import java.util.List;
 import java.util.Set;
 
 import oshajava.runtime.Config;
-import oshajava.sourceinfo.ModuleSpec;
-import oshajava.sourceinfo.ModuleMap;
-import oshajava.sourceinfo.ModuleMapNotFoundException;
-import oshajava.sourceinfo.CompiledModuleSpec;
-import oshajava.sourceinfo.ModuleSpecNotFoundException;
-import oshajava.sourceinfo.Spec;
+import oshajava.spec.CompiledModuleSpec;
+import oshajava.spec.ModuleMap;
+import oshajava.spec.ModuleMapNotFoundException;
+import oshajava.spec.ModuleSpec;
+import oshajava.spec.ModuleSpecNotFoundException;
+import oshajava.spec.Spec;
 import oshajava.support.acme.util.Util;
 import oshajava.support.org.objectweb.asm.ClassAdapter;
 import oshajava.support.org.objectweb.asm.ClassVisitor;

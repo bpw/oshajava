@@ -1,4 +1,4 @@
-package oshajava.sourceinfo;
+package oshajava.spec;
 
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;

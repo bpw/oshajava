@@ -6,9 +6,9 @@ import java.util.Map;
 import java.util.Set;
 
 import oshajava.runtime.Stack;
-import oshajava.sourceinfo.ModuleSpec;
-import oshajava.sourceinfo.CompiledModuleSpec;
-import oshajava.sourceinfo.Spec;
+import oshajava.spec.CompiledModuleSpec;
+import oshajava.spec.ModuleSpec;
+import oshajava.spec.Spec;
 
 public abstract class StackEdgeGatherer implements StackCommMonitor {
 	

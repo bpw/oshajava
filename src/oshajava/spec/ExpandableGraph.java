@@ -1,4 +1,4 @@
-package oshajava.sourceinfo;
+package oshajava.spec;
 
 import oshajava.util.intset.BitVectorIntSet;
 

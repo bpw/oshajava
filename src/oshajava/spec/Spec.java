@@ -1,4 +1,4 @@
-package oshajava.sourceinfo;
+package oshajava.spec;
 
 import java.io.IOException;
 import java.io.InputStream;

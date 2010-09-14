@@ -1,7 +1,7 @@
-package oshajava.sourceinfo;
+package oshajava.spec;
 
 import oshajava.instrument.InstrumentationAgent;
-import oshajava.sourceinfo.CompiledModuleSpec.MethodNotFoundException;
+import oshajava.spec.CompiledModuleSpec.MethodNotFoundException;
 import oshajava.util.intset.BitVectorIntSet;
 
 public abstract class ModuleSpec extends SpecFile {

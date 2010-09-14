@@ -1,4 +1,4 @@
-package oshajava.sourceinfo;
+package oshajava.spec;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -33,9 +33,9 @@ import oshajava.annotation.InterfaceGroup;
 import oshajava.annotation.NonComm;
 import oshajava.annotation.Reader;
 import oshajava.annotation.Writer;
-import oshajava.sourceinfo.Module.DuplicateGroupException;
-import oshajava.sourceinfo.Module.DuplicateMethodException;
-import oshajava.sourceinfo.SpecFileManager.Creator;
+import oshajava.spec.Module.DuplicateGroupException;
+import oshajava.spec.Module.DuplicateMethodException;
+import oshajava.spec.SpecFileManager.Creator;
 
 @SupportedAnnotationTypes("*")
 @SupportedSourceVersion(SourceVersion.RELEASE_6)

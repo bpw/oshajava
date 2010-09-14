@@ -1,4 +1,4 @@
-package oshajava.sourceinfo;
+package oshajava.spec;
 
 @SuppressWarnings("serial")
 public class MethodNotFoundException extends Exception {

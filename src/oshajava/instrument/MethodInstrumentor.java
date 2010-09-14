@@ -2,9 +2,9 @@ package oshajava.instrument;
 
 
 import oshajava.runtime.Config;
-import oshajava.sourceinfo.ModuleSpec;
-import oshajava.sourceinfo.CompiledModuleSpec;
-import oshajava.sourceinfo.ModuleSpec.CommunicationKind;
+import oshajava.spec.CompiledModuleSpec;
+import oshajava.spec.ModuleSpec;
+import oshajava.spec.ModuleSpec.CommunicationKind;
 import oshajava.support.acme.util.Util;
 import oshajava.support.org.objectweb.asm.Label;
 import oshajava.support.org.objectweb.asm.MethodVisitor;
