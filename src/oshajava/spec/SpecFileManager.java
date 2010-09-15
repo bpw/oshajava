@@ -119,7 +119,7 @@ public class SpecFileManager<T extends SpecFile> implements Iterable<T> {
 		}
 		final String path = f.toUri().getPath();
 		f.delete();
-		return new File(path.substring(0, path.lastIndexOf(DUMMY_EXT)));
+		return new File(path.substring(0, path.lastIndexOf(DUMMY_EXT))).getAbsoluteFile();
 	}
 	
 	public int size() {

@@ -54,7 +54,7 @@ public class ModuleMap extends SpecFile {
 	}
 	
 	public String toString() {
-		return qualifiedName + EXT + ":\n" + map.toString();
+		return "Modules for methods of class " + getName() + ":\n" + map.toString();
 	}
 	
 	@SuppressWarnings("serial")
