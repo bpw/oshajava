@@ -32,7 +32,8 @@ public class CanonicalName implements Serializable {
 	}
 	
 	private void verify() {
-		if (this.pkg.endsWith(".") || this.pkg.endsWith("/")) throw new RuntimeException("Package name ends with . or /: " + this.pkg + " + " + this.simple);
+		if (pkg != null && (pkg.endsWith(".") || this.pkg.endsWith("/"))) throw new RuntimeException("Package name ends with . or /: " + this.pkg + " + " + this.simple);
+		if (this.simple == null) throw new RuntimeException("Null simple name!");
 		if (this.simple.startsWith(".") || this.simple.startsWith("$")) throw new RuntimeException("Simple name starts with . or $: " + this.pkg + " + " + this.simple);
 	}
 	
