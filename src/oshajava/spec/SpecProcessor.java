@@ -118,7 +118,7 @@ public class SpecProcessor extends AbstractProcessor {
 			try {
 				modules.flushAll();
 				for (Module m : modules) {
-					CompiledModuleSpec ms = m.generateSpec();
+					CompiledModuleSpec ms = m.compile();
 					moduleSpecs.create(ms);
 					if (verbose) {
 						System.out.println(m);
@@ -422,7 +422,7 @@ public class SpecProcessor extends AbstractProcessor {
 			} catch (Module.GroupNotFoundException e1) {
 				ms = MethodSpec.ERROR;
 			}
-			if (ms == MethodSpec.ERROR) {
+			if (ms.kind() == MethodSpec.Kind.ERROR) {
 				error(e.getSimpleName() + ": conflicting annotations. @Inline, @NonComm, and @Writer/@Reader are mutually exclusive.");
 				return null;
 			}

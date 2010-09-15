@@ -57,10 +57,6 @@ public class CompiledModuleSpec extends ModuleSpec {
 	
 	/**
 	 * Create a new ModuleSpec.
-	 * @param name module name
-	 * @param methodIdToSig map from method id (within the module) to method signature
-	 * @param interfaceGraph graph of the interface -- where communication between module methods is visible
-	 * @param methodSigToId map from method signature to method id
 	 */
 	public CompiledModuleSpec(final String name, final Map<String,MethodSpec> methodSpecs) {
 		super(InstrumentationAgent.internalName(name));
@@ -71,11 +67,14 @@ public class CompiledModuleSpec extends ModuleSpec {
 		final List<String> noncommMethods = new ArrayList<String>();
 		
 		for (final String sig : methodSpecs.keySet()) {
-			if (methodSpecs.get(sig) == MethodSpec.INLINE) {
+			switch (methodSpecs.get(sig).kind()) {
+			case INLINE:
 				inlinedMethods.add(sig);
-			} else if (methodSpecs.get(sig) == MethodSpec.NONCOMM) {
+				break;
+			case NONCOMM:
 				noncommMethods.add(sig);
-			} else {
+				break;
+			default:
 				methodSigToId.put(sig, idToSig.size());
 				idToSig.add(sig);
 			}

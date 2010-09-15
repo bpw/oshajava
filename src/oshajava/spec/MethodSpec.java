@@ -4,9 +4,6 @@ import java.io.Serializable;
 
 
 public class MethodSpec implements Serializable {
-	/**
-	 * 
-	 */
 	private static final long serialVersionUID = 1L;
 
 	public enum Kind { INLINE, NONCOMM, COMM, ERROR };

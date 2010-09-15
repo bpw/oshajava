@@ -148,7 +148,7 @@ public class Module extends SpecFile {
 		}
 	}
 	
-	public CompiledModuleSpec generateSpec() {
+	public CompiledModuleSpec compile() {
 		return new CompiledModuleSpec(getName(), methodSpecs);
 	}
 	
