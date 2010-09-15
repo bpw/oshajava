@@ -18,12 +18,17 @@ public class ModuleMap extends SpecFile {
 	 * Lists modules whose contents are affected by annotations in the source of this class.
 	 */
 	private final HashSet<String> affects = new HashSet<String>();
+	
+//	private boolean hasExplicitConstructor = false;
 
 	public ModuleMap(String className) {
 		super(className);
 	}
 	
 	public void put(String method, String module) {
+//		if (method.contains("<init>")) {
+//			hasExplicitConstructor = true;
+//		}
 		map.put(method, module);
 		affects.add(module);
 	}
@@ -35,6 +40,10 @@ public class ModuleMap extends SpecFile {
 			throw new MissingEntryException(method.toString());
 		}
 	}
+	
+//	public boolean hasExplicitConstructor() {
+//		return hasExplicitConstructor;
+//	}
 	
 	public void clear() {
 		for (Map.Entry<String, String> e : map.entrySet()) {

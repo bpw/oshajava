@@ -34,7 +34,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 
 	protected int originalMaxLocals = UNINITIALIZED, originalMaxStack = UNINITIALIZED;
 	
-	public MethodInstrumentor(MethodVisitor next, int access, String name, String desc, ClassInstrumentor inst, ModuleSpec module) {
+	public MethodInstrumentor(MethodVisitor next, int access, String name, String desc, ClassInstrumentor inst, final ModuleSpec module) {
 		super(next, access, name, desc);
 		this.inst = inst;
 		isStatic = (access & Opcodes.ACC_STATIC) != 0;
@@ -53,11 +53,11 @@ public class MethodInstrumentor extends AdviceAdapter {
 			methodUID = -1;
 			if ((access & Opcodes.ACC_SYNTHETIC) != 0) {
 				// Synthetic methods are, in general, not seen by the annotation
-				// processor. If they're not, then we emit a warning and inline
-				// the method.
+				// processor. If they're not, then we inline the method.
 				policy = CommunicationKind.INLINE;
 			} else if (inst.className.matches(".*\\$\\d.*")) {
 				// Such is also the case with methods inside anonymous classes.
+				Util.warn("Anonymous class %s has method %s not in module %s. Inlining.", inst.className, fullNameAndDesc, module.getName());
 				policy = CommunicationKind.INLINE;
 			} else {
 				if (InstrumentationAgent.ignoreMissingMethodsOption.get()) {
@@ -389,7 +389,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 	@Override
 	public void visitFieldInsn(int opcode, String owner, String name, String desc) {
 
-		if (inst.shouldInstrumentField(owner, name, desc)) {
+		if (ClassInstrumentor.shouldInstrumentField(owner, name, desc)) {
 
 			// TODO figure out how to add visitFrame where needed below (GOTOs) to
 			// avoid cost of computing the frames...?

@@ -205,7 +205,9 @@ public class CompiledModuleSpec extends ModuleSpec {
 	 * @return
 	 */
 	public CommunicationKind getCommunicationKind(final int uid) {
-		Util.assertTrue(Spec.getModuleID(uid) == id, "method id " + uid + " (module=" + Spec.getModuleID(uid) + ", method=" + Spec.getMethodID(uid) + ") is not a member of module " + InstrumentationAgent.sourceName(qualifiedName) + " (id " + id + ")");
+		Util.assertTrue(Spec.getModuleID(uid) == id, "method id " + uid + 
+				" (module=" + Spec.getModuleID(uid) + ", method=" + Spec.getMethodID(uid) + ") is not a member of module " + 
+				InstrumentationAgent.sourceName(qualifiedName) + " (id " + id + ")");
 		final int mid = Spec.getMethodID(uid);
 		if (mid >= commGraph.size()) {
 			if (mid < methodIdToSig.length && mid >= firstInlinedMethod) {

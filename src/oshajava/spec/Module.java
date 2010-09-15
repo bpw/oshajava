@@ -62,7 +62,7 @@ public class Module extends SpecFile {
 	
 	protected Map<String,MethodSpec> methodSpecs = new HashMap<String,MethodSpec>();
 	protected Map<String,Group> groups = new HashMap<String,Group>();
-	protected int numCommMethods = 0, numNoncommMethods = 0, numInlinedMethods = 0, numCommGroups, numIfaceGroups;
+	protected int numCommMethods = 0, numNoncommMethods = 0, numInlinedMethods = 0, numCommGroups = 0, numIfaceGroups = 0;
 	
 	public Module(String qualifiedName) {
 		super(qualifiedName);

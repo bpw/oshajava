@@ -36,6 +36,7 @@ import oshajava.annotation.Writer;
 import oshajava.spec.Module.DuplicateGroupException;
 import oshajava.spec.Module.DuplicateMethodException;
 import oshajava.spec.SpecFileManager.Creator;
+import oshajava.support.acme.util.Util;
 
 @SupportedAnnotationTypes("*")
 @SupportedSourceVersion(SourceVersion.RELEASE_6)
@@ -56,6 +57,8 @@ public class SpecProcessor extends AbstractProcessor {
 	private final ModuleTraversal moduleScanner = new ModuleTraversal();
 	private final GroupTraversal groupScanner = new GroupTraversal();
 	private final CommTraversal groupMembershipScanner = new CommTraversal();
+	
+	private boolean complete = false;
 	
 	private boolean verbose;
 	
@@ -106,15 +109,17 @@ public class SpecProcessor extends AbstractProcessor {
 	 */
 	@Override
 	public boolean process(Set<? extends TypeElement> annotationTypes, RoundEnvironment round) {
+		Util.assertTrue(!complete, "Egads!");
 		// Packages, classes, and interfaces to process in this round.
 		final Set<? extends Element> elements = round.getRootElements();
 		if (elements.isEmpty()) {
+			complete = true;
 			// If empty, then processing is done. Flush the spec files to disk.
 			try {
 				modules.flushAll();
 				for (Module m : modules) {
 					CompiledModuleSpec ms = m.generateSpec();
-					moduleSpecs.save(ms);
+					moduleSpecs.create(ms);
 					if (verbose) {
 						System.out.println(m);
 						System.out.println(ms);
@@ -123,31 +128,43 @@ public class SpecProcessor extends AbstractProcessor {
 				maps.flushAll();
 				note("Compiled " + modules.size() + " OSHA modules from " + maps.size() + " classes.");
 			} catch (IOException e) {
-				error("Failed to write spec to disk due to IOException.");
-				e.printStackTrace();
+				error("Could not write spec info to filesystem.");
+				throw new RuntimeException(e);
 			}
 		} else {
 			// First, establish modules.
 			for (final Element e : elements) {
 				moduleScanner.traverse(e);
 			}
-			// Map methods and constructors to their modules.
-			for (final ExecutableElement e : ElementFilter.methodsIn(processedModules.keySet())) {
-				TypeElement cls = (TypeElement)e.getEnclosingElement();
-				maps.getOrCreate(cls.getQualifiedName().toString()).put(DescriptorWrangler.methodDescriptor(cls, e), processedModules.get(e).getName());
-			}
-			for (final ExecutableElement e : ElementFilter.constructorsIn(processedModules.keySet())) {
-				TypeElement cls = (TypeElement)e.getEnclosingElement();
-				maps.getOrCreate(cls.getQualifiedName().toString()).put(DescriptorWrangler.methodDescriptor(cls, e), processedModules.get(e).getName());	
+			try {
+				// Map methods and constructors to their modules.
+				for (final ExecutableElement e : ElementFilter.methodsIn(processedModules.keySet())) {
+					TypeElement cls = (TypeElement)e.getEnclosingElement();
+					maps.getOrCreate(cls.getQualifiedName().toString()).put(DescriptorWrangler.methodDescriptor(cls, e), processedModules.get(e).getName());
+				}
+				for (final ExecutableElement e : ElementFilter.constructorsIn(processedModules.keySet())) {
+					TypeElement cls = (TypeElement)e.getEnclosingElement();
+					maps.getOrCreate(cls.getQualifiedName().toString()).put(DescriptorWrangler.methodDescriptor(cls, e), processedModules.get(e).getName());	
+				}
+			} catch (IOException ioe) {
+				error("Could not write spec info to filesystem.");
+				throw new RuntimeException(ioe);
 			}
 			// Second, establish groups.
-			for (final Element e : elements) {
+			for (final Element e : processedModules.keySet()) {
 				groupScanner.traverse(e);
 			}			
 			// Third, establish readers and writers in groups, noncomm, and inline.
-			for (final Element e : elements) {
+			for (final Element e : processedModules.keySet()) {
 				groupMembershipScanner.traverse(e);
 			}
+//			// Finally, add implicit constructors to all classes that have them.
+//			for (final TypeElement e : ElementFilter.typesIn(elements)) {
+//				final ModuleMap m = maps.getOrCreate(e.getQualifiedName().toString());
+//				if (e.getKind() == ElementKind.CLASS && !m.hasExplicitConstructor()) {
+//					m
+//				}
+//			}
 		}
 		// Let other processors see the annotations.
 		return false;
@@ -162,21 +179,28 @@ public class SpecProcessor extends AbstractProcessor {
 		 */
 		protected abstract void handle(Element e);
 		
+		protected void traverseAncestors(Element e) {
+			// If this element is not already done:
+			final Element parent = e.getEnclosingElement();
+			if (parent != null && !done(parent)) {
+				traverseAncestors(parent);
+				handle(parent);
+			}
+		}
+		
 		public void traverse(Element e) {
 			if (!done(e)) {
-				// If this element is not already done:
-				final Element parent = e.getEnclosingElement();
-				if (parent != null && !done(parent)) {
-					// Parent is unlabeled: handle parent.
-					handle(parent);
-				}
+				traverseAncestors(e);
 				handle(e);
 				// Traverse children.
 				for (Element child : e.getEnclosedElements()) {
 					traverse(child);
 				}
+				postHandle(e);
 			}
 		}
+		
+		protected void postHandle(Element e) {}
 	}
 	
 	abstract class LabelingTraversal<R> extends Traversal implements ElementVisitor<R,Object> {
@@ -242,7 +266,17 @@ public class SpecProcessor extends AbstractProcessor {
 		protected Module getLabelFromAnnotation(Element e) {
 			final oshajava.annotation.Module memberDecl = e.getAnnotation(oshajava.annotation.Module.class);
 			if (memberDecl != null) {
-				return modules.getOrCreate(memberDecl.value());
+				Module m;
+				try {
+					m = modules.getOrCreate(memberDecl.value());
+				} catch (IOException e1) {
+					error("Could not access module info on filesystem.");
+					throw new RuntimeException(e1);
+				}
+				if (verbose) {
+					System.out.println("Loaded " + m);
+				}
+				return m;
 			} else {
 				return null;
 			}
@@ -252,7 +286,7 @@ public class SpecProcessor extends AbstractProcessor {
 		protected void setLabel(Element e, Module r) {
 			processedModules.put(e, r);
 		}
-
+		
 		@Override
 		protected Module getLabel(Element e) {
 			return e == null ? null : processedModules.get(e);
@@ -260,7 +294,18 @@ public class SpecProcessor extends AbstractProcessor {
 
 		@Override
 		public Module visitPackage(PackageElement e, Object _) {
-			return modules.getOrCreate(e.isUnnamed() ? CompiledModuleSpec.DEFAULT_NAME : e.getQualifiedName() + "." + CompiledModuleSpec.DEFAULT_NAME);
+			Module m;
+			try {
+				m = modules.getOrCreate(e.isUnnamed() ? CompiledModuleSpec.DEFAULT_NAME : e.getQualifiedName() + "." + CompiledModuleSpec.DEFAULT_NAME);
+			} catch (IOException e1) {
+				error("Could not access module info on filesystem.");
+				throw new RuntimeException(e1);
+			}
+			if (verbose) {
+				System.out.println("Loaded " + m);
+			}
+			return m;
+
 		}
 
 	}

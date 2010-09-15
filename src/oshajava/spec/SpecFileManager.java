@@ -1,12 +1,12 @@
 package oshajava.spec;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
 import javax.annotation.processing.ProcessingEnvironment;
-import javax.lang.model.element.Element;
 import javax.tools.Diagnostic.Kind;
 import javax.tools.FileObject;
 import javax.tools.JavaFileManager.Location;
@@ -19,12 +19,13 @@ public class SpecFileManager<T extends SpecFile> implements Iterable<T> {
 		public U create(String qualifiedName);
 	}
 
+	private static final String DUMMY_EXT = ".dummy";
 	private final String ext;
 	private final ProcessingEnvironment env;
 	private final Location base;
 	private final Creator<T> creator;
 	private final Map<String,T> items = new HashMap<String,T>();
-	private final Map<T,FileObject> files = new HashMap<T,FileObject>();
+	private final Map<T,File> files = new HashMap<T,File>();
 	private final boolean overwrite;
 
 	public SpecFileManager(final String ext, final ProcessingEnvironment env, final Location base) {
@@ -38,67 +39,49 @@ public class SpecFileManager<T extends SpecFile> implements Iterable<T> {
 		this.overwrite = overwrite;
 	}
 	
-	public void save(T t) {
-		save(t, null);
-	}
-	public void save(T t, Element cause) {
-		final String qualifiedName = t.getName();
-		items.put(qualifiedName, t);
-		final int lastDot = qualifiedName.lastIndexOf('.');
-		final String pkg = lastDot == -1 ? "" : qualifiedName.substring(0, lastDot);
-		final String simpleName = lastDot == -1 ? qualifiedName : qualifiedName.substring(lastDot + 1);
-		try {
-			FileObject f = env.getFiler().createResource(base, pkg, simpleName + ext, cause);
-			files.put(t, f);
-			ColdStorage.store(f, t);
-		} catch (IOException e) {
-			env.getMessager().printMessage(Kind.ERROR, qualifiedName + ext + " could not be created on disk.");
-		}		
-	}
-	
-	public T getOrCreate(final String qualifiedName) {
-		return getOrCreate(qualifiedName, null);
-	}
 	@SuppressWarnings("unchecked")
-	public T getOrCreate(final String qualifiedName, final Element cause) {
+	public T getOrCreate(final String qualifiedName) throws IOException {
 		if (items.containsKey(qualifiedName)) {
 			return items.get(qualifiedName);
 		}
 		// If the resource is not yet loaded.
 		T t;
-		final int lastDot = qualifiedName.lastIndexOf('.');
-		final String pkg = lastDot == -1 ? "" : qualifiedName.substring(0, lastDot);
-		final String simpleName = lastDot == -1 ? qualifiedName : qualifiedName.substring(lastDot + 1);
-		if (!overwrite) {
+		final File f = getFile(qualifiedName);
+		if (!overwrite && f.exists()) {
 			try {
-				// If a file for this resource already exists, this will succeed.
-				t = (T)ColdStorage.load(env.getFiler().getResource(base, pkg, simpleName + ext));
-				items.put(qualifiedName, t);
-				return t;
-			} catch (IOException e) {
-				// Do nothing.  Just fail over. 
+				t = (T)ColdStorage.load(f);
 			} catch (ClassNotFoundException e) {
-				env.getMessager().printMessage(Kind.WARNING, qualifiedName + ext + " stored in outdated format on disk. Generating a new (blank) version.");
+				env.getMessager().printMessage(Kind.WARNING, qualifiedName + ext + " was stored in an outdated format. Generating a new (blank) version.");
+				t = creator.create(qualifiedName);
+				ColdStorage.store(f, t);
 			}
-		}
-		// Else we'll create a new resource and a new file for it.
-		t = creator != null ? creator.create(qualifiedName) : null;
-		try {
-			files.put(t, env.getFiler().createResource(base, pkg, simpleName + ext, cause));
-		} catch (IOException e) {
-			env.getMessager().printMessage(Kind.ERROR, qualifiedName + ext + " could not be created on disk.");
+		} else {
+			t = creator.create(qualifiedName);
+			ColdStorage.store(f, t);
 		}
 		items.put(qualifiedName, t);
+		files.put(t, f);
 		return t;
 	}
-	
-	public T create(final String qualifiedName) {
-		return create(qualifiedName, null);
-	}
-	public T create(final String qualifiedName, Element cause) {
+
+	public T create(final String qualifiedName) throws IOException {
 		T t = creator.create(qualifiedName);
-		save(t, cause);
+		create(t);
 		return t;
+	}
+	public void create(T t) throws IOException {
+		if (files.containsKey(t)) {
+			throw new IllegalStateException(t.getName() + ext + " is already registered with the SpecFileManager.");
+		} else {
+			final File f = getFile(t.getName());
+			if (!overwrite && f.exists()) {
+				throw new IllegalStateException(t.getName() + ext + " exists in the filesystem.");				
+			} else {
+				items.put(t.getName(), t);
+				files.put(t, f);
+				flush(t);
+			}
+		}
 	}
 	
 	public void flushAll() throws IOException {
@@ -107,10 +90,36 @@ public class SpecFileManager<T extends SpecFile> implements Iterable<T> {
 		}
 	}
 	public void flush(final String qualifiedName) throws IOException {
+		if (!items.containsKey(qualifiedName)) {
+			throw new IllegalStateException(qualifiedName + ext + " has not been registered with the SpecFileManager.");
+		}
 		flush(items.get(qualifiedName));
 	}
 	public void flush(final T t) throws IOException {
+		if (!files.containsKey(t)) {
+			throw new IllegalStateException(t.getName() + ext + " has not been registered with the SpecFileManager.");
+		}
 		ColdStorage.store(files.get(t), t);
+	}
+	
+	private File getFile(String qualifiedName) {
+		final int lastDot = qualifiedName.lastIndexOf('.');
+		final String pkg = lastDot == -1 ? "" : qualifiedName.substring(0, lastDot);
+		final String simpleName = lastDot == -1 ? qualifiedName : qualifiedName.substring(lastDot + 1);
+		FileObject f;
+		try {
+			f = env.getFiler().createResource(base, pkg, simpleName + ext + DUMMY_EXT);
+		} catch (IOException e) {
+			try {
+				f = env.getFiler().getResource(base, pkg, simpleName + ext + DUMMY_EXT);
+			} catch (IOException e1) {
+				env.getMessager().printMessage(Kind.ERROR, "Cannot access " + qualifiedName + ext + " on filesystem.");
+				throw new RuntimeException(e1);
+			}
+		}
+		final String path = f.toUri().getPath();
+		f.delete();
+		return new File(path.substring(0, path.lastIndexOf(DUMMY_EXT)));
 	}
 	
 	public int size() {
