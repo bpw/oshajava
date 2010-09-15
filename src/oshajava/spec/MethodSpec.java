@@ -21,8 +21,8 @@ public class MethodSpec implements Serializable {
 	}
 	
 	public Kind kind() { return kind; }
-	public Set<Group> readGroups() { return Collections.unmodifiableSet(readGroups); }
-	public Set<Group> writeGroups() { return Collections.unmodifiableSet(writeGroups); }
+	public Set<Group> readGroups() { return readGroups  == null ? null : Collections.unmodifiableSet(readGroups); }
+	public Set<Group> writeGroups() { return writeGroups  == null ? null : Collections.unmodifiableSet(writeGroups); }
 	
 	public void removeGroup(Group g) {
 		if (readGroups != null) readGroups.remove(g);
