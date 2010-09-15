@@ -106,7 +106,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * @param <K> the type of keys maintained by this map
  * @param <V> the type of mapped values 
  */
-@SuppressWarnings("unchecked")
+@SuppressWarnings({"unchecked","rawtypes"})
 public class WeakConcurrentIdentityHashMap<K, V> implements ConcurrentMap<K,V> {
 
 	/*

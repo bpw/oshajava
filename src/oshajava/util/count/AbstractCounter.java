@@ -2,8 +2,6 @@ package oshajava.util.count;
 
 import java.util.Vector;
 
-import oshajava.support.acme.util.Util;
-
 public abstract class AbstractCounter<T> {
 	
 	private static final Vector<AbstractCounter<?>> counts = new Vector<AbstractCounter<?>>();
