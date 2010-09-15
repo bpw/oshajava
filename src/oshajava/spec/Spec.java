@@ -5,7 +5,6 @@ import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Vector;
 
-import oshajava.instrument.InstrumentationAgent;
 import oshajava.support.acme.util.Util;
 import oshajava.util.ColdStorage;
 
@@ -35,7 +34,7 @@ public class Spec {
 	/**
 	 * Map module name to ModuleSpec.
 	 */
-	protected static final HashMap<String,ModuleSpec> nameToModule = new HashMap<String,ModuleSpec>();
+	protected static final HashMap<CanonicalName,ModuleSpec> nameToModule = new HashMap<CanonicalName,ModuleSpec>();
 	
 	protected static final Vector<ModuleSpec> idToModule = new Vector<ModuleSpec>();
 	
@@ -45,9 +44,9 @@ public class Spec {
 	 * @return
 	 * @throws ModuleSpecNotFoundException if there was a problem finding or loading the spec.
 	 */
-	protected static ModuleSpec loadModule(String qualifiedName, ClassLoader loader, String requester) throws ModuleSpecNotFoundException {
+	protected static ModuleSpec loadModule(CanonicalName qualifiedName, ClassLoader loader, CanonicalName requester) throws ModuleSpecNotFoundException {
 		try {
-			final InputStream res = loader.getResourceAsStream(InstrumentationAgent.internalName(qualifiedName) + CompiledModuleSpec.EXT);
+			final InputStream res = loader.getResourceAsStream(qualifiedName.toInternalString() + CompiledModuleSpec.EXT);
 			if (res == null) {
 			    // Module spec file legitimately not present. This is a
 			    // somewhat questionable decision, but we warn the user
@@ -55,7 +54,7 @@ public class Spec {
 			    // (inlined) spec. This is somewhat unsafe, but allows
 			    // use of precompiled libraries that don't have
 			    // specifications.
-			    Util.warn("No spec found for " + InstrumentationAgent.sourceName(qualifiedName) + ", using null spec.");
+			    Util.warn("No spec found for " + qualifiedName + ", using null spec.");
 			    return new NullModuleSpec(qualifiedName);
 			}
 			CompiledModuleSpec ms = (CompiledModuleSpec)ColdStorage.load(res);
@@ -78,7 +77,7 @@ public class Spec {
 	 * @return
 	 * @throws ModuleSpecNotFoundException
 	 */
-	public static synchronized ModuleSpec getModule(String name, ClassLoader loader, String requester) throws ModuleSpecNotFoundException {
+	public static synchronized ModuleSpec getModule(CanonicalName name, ClassLoader loader, CanonicalName requester) throws ModuleSpecNotFoundException {
 	    if (loader == null) {
 	    	// FIXME
 	        // Loaded by the JVM.
@@ -100,11 +99,12 @@ public class Spec {
 		return idToModule.get(Spec.getModuleID(uid));
 	}
 	
-	public static synchronized ModuleMap getModuleMap(String className, ClassLoader loader) throws ModuleMapNotFoundException {
+	public static synchronized ModuleMap getModuleMap(CanonicalName className, ClassLoader loader) throws ModuleMapNotFoundException {
 		//FIXME
 		if (loader == null) return new ModuleMap(className);
 		try {
-			final InputStream res = loader.getResourceAsStream(InstrumentationAgent.internalName(className) + ModuleMap.EXT);
+			Util.log(className.toInternalString() + ModuleMap.EXT);
+			final InputStream res = loader.getResourceAsStream(className.toInternalString() + ModuleMap.EXT);
 			if (res == null) throw new ModuleMapNotFoundException(className);
 			ModuleMap ms = (ModuleMap)ColdStorage.load(res);
 			if (ms == null) throw new ModuleMapNotFoundException(className);

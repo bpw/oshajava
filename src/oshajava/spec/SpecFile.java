@@ -6,18 +6,18 @@ public abstract class SpecFile implements Serializable {
 
 	private static final long serialVersionUID = 1L;
 	
-	protected final String qualifiedName;
+	private final CanonicalName name;
 	
-	public SpecFile(final String qualifiedName) {
-		this.qualifiedName = qualifiedName;
+	public SpecFile(final CanonicalName name) {
+		this.name = name;
 	}
 	
 	/**
-	 * Returns the module's qualified name.
+	 * Returns the module's canonical name.
 	 * @return
 	 */
-	public String getName() {
-		return qualifiedName;
+	public CanonicalName getName() {
+		return name;
 	}
 	
 }

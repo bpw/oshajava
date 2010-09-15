@@ -1,8 +1,6 @@
 package oshajava.spec;
 
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
 
 public class ModuleMap extends SpecFile {
 	
@@ -13,27 +11,27 @@ public class ModuleMap extends SpecFile {
 	/**
 	 * Maps each method signature to the qualified name of the module it belongs to.
 	 */
-	private final HashMap<String,String> map = new HashMap<String,String>();
+	private final HashMap<CanonicalName,CanonicalName> map = new HashMap<CanonicalName,CanonicalName>();
 	/**
 	 * Lists modules whose contents are affected by annotations in the source of this class.
 	 */
-	private final HashSet<String> affects = new HashSet<String>();
+//	private final HashSet<CanonicalName> affects = new HashSet<CanonicalName>();
 	
 //	private boolean hasExplicitConstructor = false;
 
-	public ModuleMap(String className) {
+	public ModuleMap(CanonicalName className) {
 		super(className);
 	}
 	
-	public void put(String method, String module) {
+	public void put(CanonicalName method, CanonicalName module) {
 //		if (method.contains("<init>")) {
 //			hasExplicitConstructor = true;
 //		}
 		map.put(method, module);
-		affects.add(module);
+//		affects.add(module);
 	}
 
-	public String get(String method) throws MissingEntryException {
+	public CanonicalName get(CanonicalName method) throws MissingEntryException {
 		if (method != null && map.containsKey(method)) {
 			return map.get(method);
 		} else {
@@ -41,16 +39,18 @@ public class ModuleMap extends SpecFile {
 		}
 	}
 	
+//	public Iterable<String> getAffected
+	
 //	public boolean hasExplicitConstructor() {
 //		return hasExplicitConstructor;
 //	}
 	
 	public void clear() {
-		for (Map.Entry<String, String> e : map.entrySet()) {
+//		for (Map.Entry<String, String> e : map.entrySet()) {
 //			TODO
-		}
+//		}
 		map.clear();
-		affects.clear();
+//		affects.clear();
 	}
 	
 	public String toString() {

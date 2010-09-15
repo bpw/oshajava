@@ -1,10 +1,10 @@
 package oshajava.spec;
 
-import java.util.Vector;
 import java.util.HashMap;
-import oshajava.util.intset.BitVectorIntSet;
-import oshajava.instrument.InstrumentationAgent;
+import java.util.Vector;
+
 import oshajava.support.acme.util.Util;
+import oshajava.util.intset.BitVectorIntSet;
 
 public class NullModuleSpec extends ModuleSpec {
     
@@ -13,28 +13,28 @@ public class NullModuleSpec extends ModuleSpec {
 	 */
 	private static final long serialVersionUID = 1L;
 
-	protected Vector<String> nullMethodIdToSig = new Vector<String>();
+	protected Vector<CanonicalName> nullMethodIdToSig = new Vector<CanonicalName>();
     
 	/**
 	 * Map from method signature to id.
 	 */
-	protected final HashMap<String,Integer> methodSigToId = new HashMap<String,Integer>();
+	protected final HashMap<CanonicalName,Integer> methodSigToId = new HashMap<CanonicalName,Integer>();
 	
-	public NullModuleSpec(final String name) {
+	public NullModuleSpec(final CanonicalName name) {
         super(name);
     }
     
     @Override
-    public String getMethodSignature(final int methodUID) {
+    public CanonicalName getMethodSignature(final int methodUID) {
         Util.assertTrue(Spec.getModuleID(methodUID) == id, 
 				"method id " + methodUID + " (module=" + Spec.getModuleID(methodUID) 
 				+ ", method=" + Spec.getMethodID(methodUID) + 
-				") is not a member of module " + InstrumentationAgent.sourceName(qualifiedName) + " (id " + id + ")");
+				") is not a member of module " + getName() + " (id " + id + ")");
 		return nullMethodIdToSig.get(Spec.getMethodID(methodUID));
     }
     
     @Override
-    public int getMethodUID(final String sig) {
+    public int getMethodUID(final CanonicalName sig) {
         int mid;
         if (methodSigToId.containsKey(sig)) {
             mid = methodSigToId.get(sig);
@@ -64,7 +64,8 @@ public class NullModuleSpec extends ModuleSpec {
     
     @Override
     public CommunicationKind getCommunicationKind(final int uid) {
-        Util.assertTrue(Spec.getModuleID(uid) == id, "method id " + uid + " (module=" + Spec.getModuleID(uid) + ", method=" + Spec.getMethodID(uid) + ") is not a member of module " + InstrumentationAgent.sourceName(qualifiedName)  + " (id " + id + ")");
+        Util.assertTrue(Spec.getModuleID(uid) == id, "method id " + uid + " (module=" + Spec.getModuleID(uid) + 
+        		", method=" + Spec.getMethodID(uid) + ") is not a member of module " + getName()  + " (id " + id + ")");
         return CompiledModuleSpec.CommunicationKind.INLINE;
     }
     
@@ -90,11 +91,11 @@ public class NullModuleSpec extends ModuleSpec {
 	
     @Override
     public String toString() {
-        return "Module " + InstrumentationAgent.sourceName(qualifiedName)  + " [null module] (ID " + id + ")";
+        return "Module " + getName()  + " [null module] (ID " + id + ")";
     }
     
-	public String[] getMethods() {
-		String[] s = new String[nullMethodIdToSig.size()];
+	public CanonicalName[] getMethods() {
+		CanonicalName[] s = new CanonicalName[nullMethodIdToSig.size()];
 		for (int i = 0; i < s.length; i++) {
 			s[i] = nullMethodIdToSig.get(i);
 		}

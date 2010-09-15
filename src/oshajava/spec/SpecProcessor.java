@@ -21,7 +21,6 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.TypeParameterElement;
 import javax.lang.model.element.UnknownElementException;
 import javax.lang.model.element.VariableElement;
-import javax.lang.model.util.ElementFilter;
 import javax.tools.Diagnostic;
 import javax.tools.Diagnostic.Kind;
 import javax.tools.JavaFileManager.Location;
@@ -66,13 +65,13 @@ public class SpecProcessor extends AbstractProcessor {
 	public synchronized void init(ProcessingEnvironment env) {
 		super.init(env);
 		modules = new SpecFileManager<Module>(Module.EXT, new Creator<Module>() {
-			public Module create(final String qualifiedName) {
+			public Module create(final CanonicalName qualifiedName) {
 				return new Module(qualifiedName);
 			}
 		}, env, OUTPUT, false); // FIXME: Why source output and not class output?  
 		// Cody switched to source output because something wasn't working.
 		maps = new SpecFileManager<ModuleMap>(ModuleMap.EXT, new Creator<ModuleMap>() {
-			public ModuleMap create(final String className) {
+			public ModuleMap create(final CanonicalName className) {
 				return new ModuleMap(className);
 			}
 		}, env, OUTPUT, true);
@@ -136,35 +135,31 @@ public class SpecProcessor extends AbstractProcessor {
 			for (final Element e : elements) {
 				moduleScanner.traverse(e);
 			}
-			try {
-				// Map methods and constructors to their modules.
-				for (final ExecutableElement e : ElementFilter.methodsIn(processedModules.keySet())) {
-					TypeElement cls = (TypeElement)e.getEnclosingElement();
-					maps.getOrCreate(cls.getQualifiedName().toString()).put(DescriptorWrangler.methodDescriptor(cls, e), processedModules.get(e).getName());
-				}
-				for (final ExecutableElement e : ElementFilter.constructorsIn(processedModules.keySet())) {
-					TypeElement cls = (TypeElement)e.getEnclosingElement();
-					maps.getOrCreate(cls.getQualifiedName().toString()).put(DescriptorWrangler.methodDescriptor(cls, e), processedModules.get(e).getName());	
-				}
-			} catch (IOException ioe) {
-				error("Could not write spec info to filesystem.");
-				throw new RuntimeException(ioe);
-			}
+//			try {
+//				// Map methods and constructors to their modules.
+//				for (final ExecutableElement e : ElementFilter.methodsIn(processedModules.keySet())) {
+//					TypeElement cls = (TypeElement)e.getEnclosingElement();
+//					// TODO: for method -> module in existing map, remove method from module.
+//					maps.getOrCreate(cls.getQualifiedName().toString()).put(DescriptorWrangler.methodDescriptor(cls, e), processedModules.get(e).getName());
+//				}
+//				for (final ExecutableElement e : ElementFilter.constructorsIn(processedModules.keySet())) {
+//					TypeElement cls = (TypeElement)e.getEnclosingElement();
+//					maps.getOrCreate(cls.getQualifiedName().toString()).put(DescriptorWrangler.methodDescriptor(cls, e), processedModules.get(e).getName());	
+//				}
+//			} catch (IOException ioe) {
+//				error("Could not write spec info to filesystem.");
+//				throw new RuntimeException(ioe);
+//			}
 			// Second, establish groups.
 			for (final Element e : processedModules.keySet()) {
 				groupScanner.traverse(e);
-			}			
+			}
+			// TODO: for modulemaps, for each class, remove from modules all groups previously declared in this class that are no longer declared in this class 
+			// (or that now belong to a diff module).
 			// Third, establish readers and writers in groups, noncomm, and inline.
 			for (final Element e : processedModules.keySet()) {
 				groupMembershipScanner.traverse(e);
 			}
-//			// Finally, add implicit constructors to all classes that have them.
-//			for (final TypeElement e : ElementFilter.typesIn(elements)) {
-//				final ModuleMap m = maps.getOrCreate(e.getQualifiedName().toString());
-//				if (e.getKind() == ElementKind.CLASS && !m.hasExplicitConstructor()) {
-//					m
-//				}
-//			}
 		}
 		// Let other processors see the annotations.
 		return false;
@@ -268,7 +263,7 @@ public class SpecProcessor extends AbstractProcessor {
 			if (memberDecl != null) {
 				Module m;
 				try {
-					m = modules.getOrCreate(memberDecl.value());
+					m = modules.getOrCreate(new CanonicalName(memberDecl.value()));
 				} catch (IOException e1) {
 					error("Could not access module info on filesystem.");
 					throw new RuntimeException(e1);
@@ -285,8 +280,17 @@ public class SpecProcessor extends AbstractProcessor {
 		@Override
 		protected void setLabel(Element e, Module r) {
 			processedModules.put(e, r);
+			if (e instanceof ExecutableElement) {
+				TypeElement cls = (TypeElement)e.getEnclosingElement();
+				try {
+					maps.getOrCreate(new CanonicalName(cls, processingEnv.getElementUtils())).put(DescriptorWrangler.methodDescriptor(cls, (ExecutableElement)e), processedModules.get(e).getName());
+				} catch (IOException ioe) {
+					error("Could not write spec info to filesystem.");
+					throw new RuntimeException(ioe);
+				}
+			}
 		}
-		
+
 		@Override
 		protected Module getLabel(Element e) {
 			return e == null ? null : processedModules.get(e);
@@ -296,7 +300,7 @@ public class SpecProcessor extends AbstractProcessor {
 		public Module visitPackage(PackageElement e, Object _) {
 			Module m;
 			try {
-				m = modules.getOrCreate(e.isUnnamed() ? CompiledModuleSpec.DEFAULT_NAME : e.getQualifiedName() + "." + CompiledModuleSpec.DEFAULT_NAME);
+				m = modules.getOrCreate(new CanonicalName((e.isUnnamed() ? "" : e.getQualifiedName().toString()), CompiledModuleSpec.DEFAULT_NAME));
 			} catch (IOException e1) {
 				error("Could not access module info on filesystem.");
 				throw new RuntimeException(e1);
@@ -459,7 +463,7 @@ public class SpecProcessor extends AbstractProcessor {
 				// Get the right module.
 				final Module module = processedModules.get(m);
 				TypeElement cls = (TypeElement)e.getEnclosingElement();
-				String sig = DescriptorWrangler.methodDescriptor(cls, m);
+				CanonicalName sig = DescriptorWrangler.methodDescriptor(cls, m);
 				if (verbose) {
 //					System.out.println(sig + ": " + r);
 				}

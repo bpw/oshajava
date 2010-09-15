@@ -2,6 +2,7 @@ package oshajava.instrument;
 
 
 import oshajava.runtime.Config;
+import oshajava.spec.CanonicalName;
 import oshajava.spec.CompiledModuleSpec;
 import oshajava.spec.ModuleSpec;
 import oshajava.spec.ModuleSpec.CommunicationKind;
@@ -20,10 +21,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 	protected final boolean isConstructor;
 	protected boolean usesThisConstructor = false;
 	protected final boolean isClinit;
-	protected final boolean isStatic;
-	
-	protected final String fullNameAndDesc;
-	
+	protected final boolean isStatic;	
 	private int methodUID;
 	
 	protected CommunicationKind policy;
@@ -43,7 +41,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 		isSynchronized = (access & Opcodes.ACC_SYNCHRONIZED) != 0;
 		isConstructor = name.equals("<init>");
 		isClinit = name.equals("<clinit>");
-		fullNameAndDesc = inst.className + "." + name + desc;
+		CanonicalName fullNameAndDesc = new CanonicalName(inst.className.getPackage(), inst.className.getSimpleName() + "." + name + desc);
 		
 		try {
 			methodUID = module.getMethodUID(fullNameAndDesc);
@@ -55,7 +53,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 				// Synthetic methods are, in general, not seen by the annotation
 				// processor. If they're not, then we inline the method.
 				policy = CommunicationKind.INLINE;
-			} else if (inst.className.matches(".*\\$\\d.*")) {
+			} else if (inst.className.toInternalString().matches(".*\\$\\d.*")) {
 				// Such is also the case with methods inside anonymous classes.
 				Util.warn("Anonymous class %s has method %s not in module %s. Inlining.", inst.className, fullNameAndDesc, module.getName());
 				policy = CommunicationKind.INLINE;

@@ -5,7 +5,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import oshajava.instrument.InstrumentationAgent;
 import oshajava.runtime.RuntimeMonitor;
 import oshajava.support.acme.util.Util;
 import oshajava.util.count.MaxRecorder;
@@ -34,12 +33,12 @@ public class CompiledModuleSpec extends ModuleSpec {
 	/**
 	 * Map from method signature to id.
 	 */
-	protected final HashMap<String,Integer> methodSigToId;
+	protected final HashMap<CanonicalName,Integer> methodSigToId;
 	
 	/**
 	 * Map from method id to signature.
 	 */
-	protected final String[] methodIdToSig;
+	protected final CanonicalName[] methodIdToSig;
 	
 //	protected final int commMethods;
 	protected final int firstNoncommMethod, firstInlinedMethod;
@@ -58,15 +57,15 @@ public class CompiledModuleSpec extends ModuleSpec {
 	/**
 	 * Create a new ModuleSpec.
 	 */
-	public CompiledModuleSpec(final String name, final Map<String,MethodSpec> methodSpecs) {
-		super(InstrumentationAgent.internalName(name));
+	public CompiledModuleSpec(final CanonicalName name, final Map<CanonicalName,MethodSpec> methodSpecs) {
+		super(name);
 		
-		final List<String> idToSig = new ArrayList<String>();
-		methodSigToId = new HashMap<String,Integer>();
-		final List<String> inlinedMethods = new ArrayList<String>();
-		final List<String> noncommMethods = new ArrayList<String>();
+		final List<CanonicalName> idToSig = new ArrayList<CanonicalName>();
+		methodSigToId = new HashMap<CanonicalName,Integer>();
+		final List<CanonicalName> inlinedMethods = new ArrayList<CanonicalName>();
+		final List<CanonicalName> noncommMethods = new ArrayList<CanonicalName>();
 		
-		for (final String sig : methodSpecs.keySet()) {
+		for (final CanonicalName sig : methodSpecs.keySet()) {
 			switch (methodSpecs.get(sig).kind()) {
 			case INLINE:
 				inlinedMethods.add(sig);
@@ -90,7 +89,7 @@ public class CompiledModuleSpec extends ModuleSpec {
 			if (m.writeGroups() != null) {
 				for (final Group g : m.writeGroups()) {
 					final BitVectorIntSet readers = g.kind() == Group.Kind.COMM ? commReaders : ifaceReaders;
-					for (String reader : g.readers()) {
+					for (CanonicalName reader : g.readers()) {
 						readers.add(methodSigToId.get(reader));
 					}
 				}
@@ -98,17 +97,17 @@ public class CompiledModuleSpec extends ModuleSpec {
 		}
 		
 		firstNoncommMethod = idToSig.size();
-		for (final String sig : noncommMethods) {
+		for (final CanonicalName sig : noncommMethods) {
 			methodSigToId.put(sig, idToSig.size());
 			idToSig.add(sig);
 		}
 		firstInlinedMethod = idToSig.size();
-		for (final String sig : inlinedMethods) {
+		for (final CanonicalName sig : inlinedMethods) {
 			methodSigToId.put(sig, idToSig.size());
 			idToSig.add(sig);
 		}
 		
-		this.methodIdToSig = idToSig.toArray(new String[0]);
+		this.methodIdToSig = idToSig.toArray(new CanonicalName[0]);
 		if (COUNT_METHODS) {
 			maxCommMethods.add(firstNoncommMethod);
 			maxInterfaceMethods.add(interfaceGraph == null ? 0 : interfaceGraph.size());
@@ -138,18 +137,18 @@ public class CompiledModuleSpec extends ModuleSpec {
 	 * @param methodUID
 	 * @return
 	 */
-	public String getMethodSignature(final int methodUID) {
+	public CanonicalName getMethodSignature(final int methodUID) {
 		Util.assertTrue(Spec.getModuleID(methodUID) == id, 
 				"method id " + methodUID + " (module=" + Spec.getModuleID(methodUID) 
 				+ ", method=" + Spec.getMethodID(methodUID) + 
-				") is not a member of module " + InstrumentationAgent.sourceName(qualifiedName) + " (id " + id + ")");
+				") is not a member of module " + getName() + " (id " + id + ")");
 		return methodIdToSig[Spec.getMethodID(methodUID)];
 	}
 	
 	@SuppressWarnings("serial")
 	public class MethodNotFoundException extends Exception {
-		protected final String sig;
-		public MethodNotFoundException(String sig) {
+		protected final CanonicalName sig;
+		public MethodNotFoundException(CanonicalName sig) {
 			super("Method " + sig + " not found in module " + CompiledModuleSpec.this.getName());
 			this.sig = sig;
 		}
@@ -162,7 +161,7 @@ public class CompiledModuleSpec extends ModuleSpec {
 	 * @return
 	 * @throws MethodNotFoundException 
 	 */
-	public int getMethodUID(final String sig) throws MethodNotFoundException {
+	public int getMethodUID(final CanonicalName sig) throws MethodNotFoundException {
 	    if (!methodSigToId.containsKey(sig)) {
 	        throw new MethodNotFoundException(sig);
 	    }
@@ -206,7 +205,7 @@ public class CompiledModuleSpec extends ModuleSpec {
 	public CommunicationKind getCommunicationKind(final int uid) {
 		Util.assertTrue(Spec.getModuleID(uid) == id, "method id " + uid + 
 				" (module=" + Spec.getModuleID(uid) + ", method=" + Spec.getMethodID(uid) + ") is not a member of module " + 
-				InstrumentationAgent.sourceName(qualifiedName) + " (id " + id + ")");
+				getName() + " (id " + id + ")");
 		final int mid = Spec.getMethodID(uid);
 		if (mid >= commGraph.size()) {
 			if (mid < methodIdToSig.length && mid >= firstInlinedMethod) {
@@ -241,7 +240,7 @@ public class CompiledModuleSpec extends ModuleSpec {
 	}
 	
 	public String toString() {
-		String out = "Compiled spec for module " + InstrumentationAgent.sourceName(qualifiedName) + " (ID " + id + ")\n";
+		String out = "Compiled spec for module " + getName() + " (ID " + id + ")\n";
 		out += "  Methods: " + methodIdToSig.length + "\n";
 		out += "    Communicating: " + firstNoncommMethod + "\n";
 		for (int i = 0; i < firstNoncommMethod; i++) {
@@ -270,7 +269,7 @@ public class CompiledModuleSpec extends ModuleSpec {
 	 * DO NOT MODIFY the array returned.
 	 * @return
 	 */
-	public String[] getMethods() {
+	public CanonicalName[] getMethods() {
 		return methodIdToSig; 
 	}
 	

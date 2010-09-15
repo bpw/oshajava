@@ -3,7 +3,6 @@ package oshajava.spec;
 import java.util.HashMap;
 import java.util.Map;
 
-import oshajava.instrument.InstrumentationAgent;
 import oshajava.support.acme.util.Util;
 
 /**
@@ -37,13 +36,13 @@ public class Module extends SpecFile {
 	@SuppressWarnings("serial")
 	static class DuplicateMethodException extends Exception {
 		protected final Module module;
-		protected final String sig;
-		public DuplicateMethodException(Module module, String sig) {
+		protected final CanonicalName sig;
+		public DuplicateMethodException(Module module, CanonicalName sig) {
 			super("Method " + sig + " is already entered in module " + module + ".");
 			this.module = module;
 			this.sig = sig;
 		}
-		public String getMethod() {
+		public CanonicalName getMethod() {
 			return sig;
 		}
 		public Module getModule() {
@@ -60,11 +59,11 @@ public class Module extends SpecFile {
 		}
 	}
 	
-	protected Map<String,MethodSpec> methodSpecs = new HashMap<String,MethodSpec>();
+	protected Map<CanonicalName,MethodSpec> methodSpecs = new HashMap<CanonicalName,MethodSpec>();
 	protected Map<String,Group> groups = new HashMap<String,Group>();
 	protected int numCommMethods = 0, numNoncommMethods = 0, numInlinedMethods = 0, numCommGroups = 0, numIfaceGroups = 0;
 	
-	public Module(String qualifiedName) {
+	public Module(CanonicalName qualifiedName) {
 		super(qualifiedName);
 	}
 	
@@ -114,7 +113,7 @@ public class Module extends SpecFile {
 	 * @throws DuplicateMethodException if a method with the same signature already exists in this module.
 	 * @throws Group.DuplicateMethodException 
 	 */
-	public void addMethod(String sig, MethodSpec spec) throws DuplicateMethodException, Group.DuplicateMethodException {
+	public void addMethod(CanonicalName sig, MethodSpec spec) throws DuplicateMethodException, Group.DuplicateMethodException {
 		if (methodSpecs.containsKey(sig)) {
 			throw new DuplicateMethodException(this, sig);
 		}
@@ -148,15 +147,33 @@ public class Module extends SpecFile {
 		}
 	}
 	
+	public void removeMethod(String sig) {
+		if (methodSpecs.containsKey(sig)) {
+			MethodSpec spec = methodSpecs.get(sig);
+			final Iterable<Group> readGroups = spec.readGroups();
+			if (readGroups != null) {
+				for (Group g : spec.readGroups()) {
+					g.removeMethod(sig);
+				}
+			}
+			final Iterable<Group> writeGroups = spec.writeGroups();
+			if (writeGroups != null) {
+				for (Group g : spec.writeGroups()) {
+					g.removeMethod(sig);
+				}
+			}
+		}
+	}
+	
 	public CompiledModuleSpec compile() {
 		return new CompiledModuleSpec(getName(), methodSpecs);
 	}
 	
 	public String toString() {
-		String out = "Module " + InstrumentationAgent.sourceName(qualifiedName) + "\n";
+		String out = "Module " + getName() + "\n";
 		out += "  Methods: " + methodSpecs.size() + "\n";
 		out += "    Communicating: " + numCommMethods + "\n";
-		for (Map.Entry<String, MethodSpec> e : methodSpecs.entrySet()) {
+		for (Map.Entry<CanonicalName, MethodSpec> e : methodSpecs.entrySet()) {
 			if (e.getValue().kind() == MethodSpec.Kind.COMM) {
 				out += "      " + e.getKey() + "\n";
 				out += "        Read groups: ";
@@ -182,13 +199,13 @@ public class Module extends SpecFile {
 			}
 		}
 		out += "    Non-communicating: " + numNoncommMethods + "\n";
-		for (Map.Entry<String, MethodSpec> e : methodSpecs.entrySet()) {
+		for (Map.Entry<CanonicalName, MethodSpec> e : methodSpecs.entrySet()) {
 			if (e.getValue().kind() == MethodSpec.Kind.NONCOMM) {
 				out += "      " + e.getKey() + "\n";
 			}
 		}
 		out += "    Inlined: " + numInlinedMethods + "\n";
-		for (Map.Entry<String, MethodSpec> e : methodSpecs.entrySet()) {
+		for (Map.Entry<CanonicalName, MethodSpec> e : methodSpecs.entrySet()) {
 			if (e.getValue().kind() == MethodSpec.Kind.INLINE) {
 				out += "      " + e.getKey() + "\n";
 			}
@@ -199,18 +216,18 @@ public class Module extends SpecFile {
 				out += "      " + e.getKey() + "\n";
 				out += "        Readers: \n";
 				{
-					final Iterable<String> readers = e.getValue().readers();
+					final Iterable<CanonicalName> readers = e.getValue().readers();
 					if (readers != null) {
-						for (String g : readers) {
+						for (CanonicalName g : readers) {
 							out += "          " + g + "\n";
 						}
 					}
 				}
 				out += "        Writers:\n";
 				{
-					final Iterable<String> writers = e.getValue().writers();
+					final Iterable<CanonicalName> writers = e.getValue().writers();
 					if (writers != null) {
-						for (String g : writers) {
+						for (CanonicalName g : writers) {
 							out += "          " + g + "\n";
 						}
 					}
@@ -223,18 +240,18 @@ public class Module extends SpecFile {
 				out += "      " + e.getKey() + "\n";
 				out += "        Readers:\n";
 				{
-					final Iterable<String> readers = e.getValue().readers();
+					final Iterable<CanonicalName> readers = e.getValue().readers();
 					if (readers != null) {
-						for (String g : readers) {
+						for (CanonicalName g : readers) {
 							out += "          " + g + "\n";
 						}
 					}
 				}
 				out += "        Writers:\n";
 				{
-					final Iterable<String> writers = e.getValue().writers();
+					final Iterable<CanonicalName> writers = e.getValue().writers();
 					if (writers != null) {
-						for (String g : writers) {
+						for (CanonicalName g : writers) {
 							out += "          " + g + "\n";
 						}
 					}

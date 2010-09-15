@@ -16,7 +16,7 @@ import oshajava.util.ColdStorage;
 public class SpecFileManager<T extends SpecFile> implements Iterable<T> {
 	
 	static interface Creator<U> {
-		public U create(String qualifiedName);
+		public U create(CanonicalName name);
 	}
 
 	private static final String DUMMY_EXT = ".dummy";
@@ -24,7 +24,7 @@ public class SpecFileManager<T extends SpecFile> implements Iterable<T> {
 	private final ProcessingEnvironment env;
 	private final Location base;
 	private final Creator<T> creator;
-	private final Map<String,T> items = new HashMap<String,T>();
+	private final Map<CanonicalName,T> items = new HashMap<CanonicalName,T>();
 	private final Map<T,File> files = new HashMap<T,File>();
 	private final boolean overwrite;
 
@@ -40,32 +40,32 @@ public class SpecFileManager<T extends SpecFile> implements Iterable<T> {
 	}
 	
 	@SuppressWarnings("unchecked")
-	public T getOrCreate(final String qualifiedName) throws IOException {
-		if (items.containsKey(qualifiedName)) {
-			return items.get(qualifiedName);
+	public T getOrCreate(final CanonicalName name) throws IOException {
+		if (items.containsKey(name)) {
+			return items.get(name);
 		}
 		// If the resource is not yet loaded.
 		T t;
-		final File f = getFile(qualifiedName);
+		final File f = getFile(name);
 		if (!overwrite && f.exists()) {
 			try {
 				t = (T)ColdStorage.load(f);
 			} catch (ClassNotFoundException e) {
-				env.getMessager().printMessage(Kind.WARNING, qualifiedName + ext + " was stored in an outdated format. Generating a new (blank) version.");
-				t = creator.create(qualifiedName);
+				env.getMessager().printMessage(Kind.WARNING, name + ext + " was stored in an outdated format. Generating a new (blank) version.");
+				t = creator.create(name);
 				ColdStorage.store(f, t);
 			}
 		} else {
-			t = creator.create(qualifiedName);
+			t = creator.create(name);
 			ColdStorage.store(f, t);
 		}
-		items.put(qualifiedName, t);
+		items.put(name, t);
 		files.put(t, f);
 		return t;
 	}
 
-	public T create(final String qualifiedName) throws IOException {
-		T t = creator.create(qualifiedName);
+	public T create(final CanonicalName name) throws IOException {
+		T t = creator.create(name);
 		create(t);
 		return t;
 	}
@@ -89,11 +89,11 @@ public class SpecFileManager<T extends SpecFile> implements Iterable<T> {
 			flush(t);
 		}
 	}
-	public void flush(final String qualifiedName) throws IOException {
-		if (!items.containsKey(qualifiedName)) {
-			throw new IllegalStateException(qualifiedName + ext + " has not been registered with the SpecFileManager.");
+	public void flush(final CanonicalName name) throws IOException {
+		if (!items.containsKey(name)) {
+			throw new IllegalStateException(name + ext + " has not been registered with the SpecFileManager.");
 		}
-		flush(items.get(qualifiedName));
+		flush(items.get(name));
 	}
 	public void flush(final T t) throws IOException {
 		if (!files.containsKey(t)) {
@@ -102,18 +102,16 @@ public class SpecFileManager<T extends SpecFile> implements Iterable<T> {
 		ColdStorage.store(files.get(t), t);
 	}
 	
-	private File getFile(String qualifiedName) {
-		final int lastDot = qualifiedName.lastIndexOf('.');
-		final String pkg = lastDot == -1 ? "" : qualifiedName.substring(0, lastDot);
-		final String simpleName = lastDot == -1 ? qualifiedName : qualifiedName.substring(lastDot + 1);
+	private File getFile(CanonicalName name) {
+//		System.out.println("    " + name + "    " + name.getPackage() + "    " + name.getSimpleName());
 		FileObject f;
 		try {
-			f = env.getFiler().createResource(base, pkg, simpleName + ext + DUMMY_EXT);
+			f = env.getFiler().createResource(base, name.getPackage(), name.getSimpleName() + ext + DUMMY_EXT);
 		} catch (IOException e) {
 			try {
-				f = env.getFiler().getResource(base, pkg, simpleName + ext + DUMMY_EXT);
+				f = env.getFiler().getResource(base, name.getPackage(), name.getSimpleName() + ext + DUMMY_EXT);
 			} catch (IOException e1) {
-				env.getMessager().printMessage(Kind.ERROR, "Cannot access " + qualifiedName + ext + " on filesystem.");
+				env.getMessager().printMessage(Kind.ERROR, "Cannot access " + name + ext + " on filesystem.");
 				throw new RuntimeException(e1);
 			}
 		}

@@ -9,8 +9,8 @@ import java.lang.instrument.IllegalClassFormatException;
  */
 @SuppressWarnings("serial")
 public class ModuleMapNotFoundException extends IllegalClassFormatException {
-	public ModuleMapNotFoundException(String name) {
-		super(name);
+	public ModuleMapNotFoundException(CanonicalName name) {
+		super(name.toSourceString());
 	}
 	
 	public Wrapper wrap() {

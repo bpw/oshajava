@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Set;
 
 import oshajava.runtime.Config;
+import oshajava.spec.CanonicalName;
 import oshajava.spec.CompiledModuleSpec;
 import oshajava.spec.ModuleMap;
 import oshajava.spec.ModuleMapNotFoundException;
@@ -113,14 +114,14 @@ public class ClassInstrumentor extends ClassAdapter {
 	/**************************************************************************/
 
 	protected int classAccess;
-	protected String className;
+	protected CanonicalName className;
 	protected String outerClassDesc = null;
 	protected String outerClassName = null;
 	protected String classDesc;
 	protected Type classType;
 	protected String superName;
 	protected Set<String> shadowedInheritedFields;
-	protected String packageName;
+	private String packageName;
 	protected final ClassLoader loader;
 	private final ArrayList<String> instanceShadowedFields = new ArrayList<String>();
 	private final ArrayList<String> staticShadowedFields = new ArrayList<String>();
@@ -133,19 +134,20 @@ public class ClassInstrumentor extends ClassAdapter {
 	
 	private ModuleSpec getModuleForMethod(String name, String desc, String sig) throws ModuleSpecNotFoundException {
 		ModuleSpec module;
-		String moduleName;
+		CanonicalName methodName = new CanonicalName(className.getPackage(), className.getSimpleName() + "." + name + desc);
+		CanonicalName moduleName;
 		if (methodToModule == null) {
-			moduleName = packageName + CompiledModuleSpec.DEFAULT_NAME;
+			moduleName = new CanonicalName(packageName, CompiledModuleSpec.DEFAULT_NAME);
 		} else {
 			try {
-				moduleName = methodToModule.get(className + "." + name + desc);
+				moduleName = methodToModule.get(methodName);
 			} catch (ModuleMap.MissingEntryException e) {
-				Util.warn("Method not mapped to module: %s", InstrumentationAgent.sourceName(className) + "." + name + desc);
-				moduleName = packageName + CompiledModuleSpec.DEFAULT_NAME;
+				Util.warn("Method not mapped to module: %s", methodName);
+				moduleName = new CanonicalName(packageName, CompiledModuleSpec.DEFAULT_NAME);
 			}
 		}
-		module = Spec.getModule(moduleName, loader, InstrumentationAgent.sourceName(className) + "." + name + desc);
-		Util.assertTrue(module != null, "No module specified for %s.%s.", InstrumentationAgent.sourceName(className), name + desc);
+		module = Spec.getModule(moduleName, loader, methodName);
+		Util.assertTrue(module != null, "No module specified for %s.", methodName);
 		return module;
 	}
 	
@@ -284,9 +286,9 @@ public class ClassInstrumentor extends ClassAdapter {
 	@Override
 	public void visit(int version, int access, String name, String signature,
 			String superName, String[] interfaces) {
-		className = name;
 		final int lastSep = name.lastIndexOf('/');
-		packageName = lastSep == -1 ? "" : name.substring(0, lastSep + 1);
+		packageName = lastSep == -1 ? "" : name.substring(0, lastSep);
+		className = new CanonicalName(packageName, name.substring(lastSep + 1));
 		classDesc = getDescriptor(name);
 		classType = Type.getObjectType(name);
 		classAccess = access;
@@ -299,7 +301,13 @@ public class ClassInstrumentor extends ClassAdapter {
 			methodToModule = Spec.getModuleMap(className, loader);
 		} catch (ModuleMapNotFoundException e) {
 //			throw e.wrap();
-			Util.warn("No module map found for class %s. All methods assumed to be in module %s%s", InstrumentationAgent.sourceName(className), InstrumentationAgent.sourceName(packageName), CompiledModuleSpec.DEFAULT_NAME);
+			if (className.getSimpleName().contains("$")) {
+				Util.warn("No module map found for anonymous inner class %s. All methods assumed to be in module %s.%s", className, 
+						InstrumentationAgent.sourceName(packageName), CompiledModuleSpec.DEFAULT_NAME);				
+			} else {
+				Util.warn("No module map found for class %s. All methods assumed to be in module %s.%s", className, 
+						InstrumentationAgent.sourceName(packageName), CompiledModuleSpec.DEFAULT_NAME);
+			}
 		}
 
 		// TODO 5/6
@@ -403,11 +411,11 @@ public class ClassInstrumentor extends ClassAdapter {
 			    // Class initializer for an interface. Inline the
 			    // initialization.
 			    visitedClinit = true;
-			    Util.debugf("clinit", "instrumenting clinit in %s.%s", packageName, className);
+			    Util.debugf("clinit", "instrumenting clinit in %s", className);
 			    return new StaticShadowInitInserter(chain, access, name, desc, classType, staticShadowedFields);
 		    } else { // <clinit> for class
 		    	visitedClinit = true;
-			    Util.debugf("clinit", "instrumenting clinit in %s.%s", packageName, className);
+			    Util.debugf("clinit", "instrumenting clinit in %s", className);
 		    	return new StaticShadowInitInserter(chain, access, name, desc, classType, null);
 		    }
 		} else {
@@ -441,7 +449,8 @@ public class ClassInstrumentor extends ClassAdapter {
 		if ((classAccess & Opcodes.ACC_INTERFACE) == 0) {
 			// instance.
 			GeneratorAdapter instance = new GeneratorAdapter(Opcodes.ACC_PROTECTED | Opcodes.ACC_SYNTHETIC, INSTANCE_SHADOW_INIT_METHOD, 
-					super.visitMethod(Opcodes.ACC_PROTECTED | Opcodes.ACC_SYNTHETIC, INSTANCE_SHADOW_INIT_METHOD.getName(), INSTANCE_SHADOW_INIT_METHOD.getDescriptor(), null, null));
+					super.visitMethod(Opcodes.ACC_PROTECTED | Opcodes.ACC_SYNTHETIC, INSTANCE_SHADOW_INIT_METHOD.getName(), 
+							INSTANCE_SHADOW_INIT_METHOD.getDescriptor(), null, null));
 			instance.visitCode();
 
 			// call super.initer()
@@ -458,14 +467,14 @@ public class ClassInstrumentor extends ClassAdapter {
 				    // Shadow field.
 					instance.loadThis();
 					instance.loadLocal(varCurrentState);
-					instance.visitFieldInsn(Opcodes.PUTFIELD, className, fieldname + SHADOW_FIELD_SUFFIX, STATE_DESC);
+					instance.visitFieldInsn(Opcodes.PUTFIELD, className.toInternalString(), fieldname + SHADOW_FIELD_SUFFIX, STATE_DESC);
 					
 					// Traceback field.
 					if (Config.stackTracesOption.get()) {
 					    instance.loadThis();
 					    instance.push(0);
 					    instance.newArray(STACKTRACE_TYPE.getElementType());
-					    instance.visitFieldInsn(Opcodes.PUTFIELD, className, fieldname + STACKTRACE_FIELD_SUFFIX, STACKTRACE_DESC);
+					    instance.visitFieldInsn(Opcodes.PUTFIELD, className.toInternalString(), fieldname + STACKTRACE_FIELD_SUFFIX, STACKTRACE_DESC);
 					}
 				}
 				instance.visitInsn(Opcodes.RETURN);
@@ -489,13 +498,13 @@ public class ClassInstrumentor extends ClassAdapter {
 					for (String fieldname : staticShadowedFields) {
 					    // Shadow field.
 						stat.loadLocal(varCurrentState);
-						stat.visitFieldInsn(Opcodes.PUTSTATIC, className, fieldname + SHADOW_FIELD_SUFFIX, STATE_DESC);
+						stat.visitFieldInsn(Opcodes.PUTSTATIC, className.toInternalString(), fieldname + SHADOW_FIELD_SUFFIX, STATE_DESC);
 						
 						// Traceback field.
     					if (Config.stackTracesOption.get()) {
     					    stat.push(0);
     					    stat.newArray(STACKTRACE_TYPE.getElementType());
-    					    stat.visitFieldInsn(Opcodes.PUTSTATIC, className, fieldname + STACKTRACE_FIELD_SUFFIX, STACKTRACE_DESC);
+    					    stat.visitFieldInsn(Opcodes.PUTSTATIC, className.toInternalString(), fieldname + STACKTRACE_FIELD_SUFFIX, STACKTRACE_DESC);
     					}
 					}
 					stat.visitInsn(Opcodes.RETURN);

@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import oshajava.instrument.InstrumentationAgent;
+import oshajava.spec.CanonicalName;
 import oshajava.support.acme.util.Util;
 
 public class Desc {
@@ -11,8 +12,8 @@ public class Desc {
 	public final String cls, method, ret;
 	public final List<String> params = new ArrayList<String>();
 	
-	public Desc(String desc) {
-		String[] parts = desc.split("\\.");
+	public Desc(CanonicalName desc) {
+		String[] parts = desc.toInternalString().split("\\.");
 		this.cls = InstrumentationAgent.sourceName(parts[0]);
 		
 		int descIndex = parts[1].indexOf('(') + 1;

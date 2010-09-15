@@ -125,23 +125,26 @@ public class DescriptorWrangler {
 	/**
 	 * Construct the JVM method descriptor for an ExecutableElement.
 	 */
-	public static String methodDescriptor(TypeElement cls, ExecutableElement m) {
+	public static CanonicalName methodDescriptor(TypeElement cls, ExecutableElement m) {
 		// Container name.
-		String out = typeDescriptor(cls.asType());
+		String className = cls.getQualifiedName().toString(); //typeDescriptor(cls.asType());
 		// Remove L and ; from container class.
-		out = out.substring(1, out.length() - 1);
+//		className = className.substring(1, className.length() - 1);
+		int i = className.lastIndexOf('.');
+		String packageName = i == -1 ? "" : className.substring(0, i);
+		String methodName = className.substring(i + 1);
 
 		// Method name.
-		out += "." + m.getSimpleName();
+		methodName += "." + m.getSimpleName();
 
 		// Parameter and return types.
-		out += "(";
+		methodName += "(";
 		// Special case for enumeration constructors.
 		if (cls.getKind() == ElementKind.ENUM &&
 				m.getSimpleName().toString().equals("<init>")) {
 			// For some reason, the annotation processing system seems
 			// to miss some enum constructor parameters!
-			out += "Ljava/lang/String;I";
+			methodName += "Ljava/lang/String;I";
 		}
 		// Special case for non-static inner class constructors.
 		if (cls.getNestingKind() == NestingKind.MEMBER &&
@@ -149,14 +152,14 @@ public class DescriptorWrangler {
 				m.getSimpleName().toString().equals("<init>")) {
 			// Annotation processing is also not aware that inner class
 			// constructors get their outer class passed as a parameter.
-			out += typeDescriptor(cls.getEnclosingElement().asType());
+			methodName += typeDescriptor(cls.getEnclosingElement().asType());
 			// TODO Print out inner classes here.
 		}
 		for (VariableElement ve : m.getParameters()) {
-			out += typeDescriptor(ve.asType());
+			methodName += typeDescriptor(ve.asType());
 		}
-		out += ")" + typeDescriptor(m.getReturnType());
-		return out;
+		methodName += ")" + typeDescriptor(m.getReturnType());
+		return new CanonicalName(packageName, methodName);
 	}
 
 

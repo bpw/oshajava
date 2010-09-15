@@ -9,8 +9,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import oshajava.instrument.InstrumentationAgent;
 import oshajava.rtviz.StackCommMonitor;
+import oshajava.spec.CanonicalName;
 import oshajava.spec.ExpandableGraph;
 import oshajava.spec.Graph;
 import oshajava.spec.ModuleSpec;
@@ -451,10 +451,10 @@ public class Stack {
 					modulesRecorded++;
 //					execXml.singleton("module", "id", m.getId(), "name", InstrumentationAgent.sourceName(m.getName()));
 //					specXml.start("module", /*"id", m.getId(),*/ "name", InstrumentationAgent.sourceName(m.getName()));
-					specXml.start("module", "id", m.getId(), "name", InstrumentationAgent.sourceName(m.getName()));
+					specXml.start("module", "id", m.getId(), "name", m.getName());
 					specXml.start("methods");
 
-					String[] methods = m.getMethods();
+					CanonicalName[] methods = m.getMethods();
 					for (int i = 0; i < methods.length; i++) {
 						final Desc d = new Desc(methods[i]);
 						specXml.start("method", "uid", Spec.makeUID(m.getId(), i), 
