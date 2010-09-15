@@ -6,7 +6,6 @@ import java.util.Map;
 import java.util.Set;
 
 import oshajava.runtime.Stack;
-import oshajava.spec.CompiledModuleSpec;
 import oshajava.spec.ModuleSpec;
 import oshajava.spec.Spec;
 

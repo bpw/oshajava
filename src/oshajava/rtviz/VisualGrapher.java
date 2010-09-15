@@ -14,7 +14,6 @@ import java.util.logging.Logger;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 
-import oshajava.spec.CompiledModuleSpec;
 import oshajava.spec.ModuleSpec;
 import prefuse.Constants;
 import prefuse.Display;

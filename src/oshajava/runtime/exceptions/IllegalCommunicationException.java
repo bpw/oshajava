@@ -3,7 +3,6 @@ package oshajava.runtime.exceptions;
 import oshajava.instrument.InstrumentationAgent;
 import oshajava.runtime.RuntimeMonitor;
 import oshajava.runtime.State;
-import oshajava.runtime.ThreadState;
 
 
 

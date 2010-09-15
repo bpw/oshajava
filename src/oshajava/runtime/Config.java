@@ -148,6 +148,7 @@ public class Config {
 		Thread.currentThread().setName(TOOL_NAME);
 		configure(agentArgs == null ? new String[0] : agentArgs.replace('#', ' ').split(","));
 		if (visualizeOption.get()) {
+			@SuppressWarnings("unused")
 			Object _ = StackCommMonitor.def; // Initialize real-time visualization system.
 		}
 		if( !CommandLine.javaArgs.get().replaceAll(" ", "").isEmpty()) {
