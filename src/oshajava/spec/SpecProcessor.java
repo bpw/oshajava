@@ -389,45 +389,47 @@ public class SpecProcessor extends AbstractProcessor {
 			final Module module = processedModules.get(e);
 			MethodSpec ms;
 			try {
-			if (inline != null) {
-				if (noncomm == null && reader == null && writer == null) {
-					ms = MethodSpec.INLINE;
-				} else {
-					ms = MethodSpec.ERROR;
-				}
-			} else if (noncomm != null) {
-				if (reader == null && writer == null) {
-					ms = MethodSpec.NONCOMM;
-				} else {
-					ms = MethodSpec.ERROR;
-				}
-			} else if (reader != null || writer != null) {
-				Set<Group> readGroups = null, writeGroups = null;
-				if (reader != null) {
-					readGroups = new HashSet<Group>();
-					for (String readGroup : reader.value()) {
-						readGroups.add(module.getGroup(readGroup));
+				if (inline != null) {
+					if (noncomm == null && reader == null && writer == null) {
+						ms = MethodSpec.INLINE;
+					} else {
+						ms = MethodSpec.ERROR;
 					}
-				}
-				if (writer != null) {
-					 writeGroups = new HashSet<Group>();
-					 for (String writeGroup : writer.value()) {
-						writeGroups.add(module.getGroup(writeGroup));
+				} else if (noncomm != null) {
+					if (reader == null && writer == null) {
+						ms = MethodSpec.NONCOMM;
+					} else {
+						ms = MethodSpec.ERROR;
 					}
-				}
-				if ((readGroups == null || readGroups.isEmpty()) && (writeGroups == null || writeGroups.isEmpty())) {
-					ms = MethodSpec.NONCOMM;
+				} else if (reader != null || writer != null) {
+					Set<Group> readGroups = null, writeGroups = null;
+					if (reader != null) {
+						readGroups = new HashSet<Group>();
+						for (String readGroup : reader.value()) {
+							readGroups.add(module.getGroup(readGroup));
+						}
+					}
+					if (writer != null) {
+						writeGroups = new HashSet<Group>();
+						for (String writeGroup : writer.value()) {
+							writeGroups.add(module.getGroup(writeGroup));
+						}
+					}
+					if ((readGroups == null || readGroups.isEmpty()) && (writeGroups == null || writeGroups.isEmpty())) {
+						ms = MethodSpec.NONCOMM;
+					} else {
+						ms = new MethodSpec(MethodSpec.Kind.COMM, readGroups, writeGroups);
+					}
 				} else {
-					ms = new MethodSpec(MethodSpec.Kind.COMM, readGroups, writeGroups);
+					ms = MethodSpec.DEFAULT;
 				}
-			} else {
-				ms = MethodSpec.DEFAULT;
-			}
+				if (ms.kind() == MethodSpec.Kind.ERROR) {
+					error(e.getSimpleName() + ": conflicting annotations. @Inline, @NonComm, and @Writer/@Reader are mutually exclusive.");
+					return null;
+				}
 			} catch (Module.GroupNotFoundException e1) {
 				ms = MethodSpec.ERROR;
-			}
-			if (ms.kind() == MethodSpec.Kind.ERROR) {
-				error(e.getSimpleName() + ": conflicting annotations. @Inline, @NonComm, and @Writer/@Reader are mutually exclusive.");
+				error(e.getSimpleName() + ": " + e1.group + " not found in module " + module.getName());
 				return null;
 			}
 			return ms;
