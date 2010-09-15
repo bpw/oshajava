@@ -9,7 +9,6 @@ import java.lang.instrument.Instrumentation;
 import java.security.ProtectionDomain;
 import java.util.HashMap;
 
-import oshajava.runtime.Config;
 import oshajava.spec.ModuleSpecNotFoundException;
 import oshajava.support.acme.util.Util;
 import oshajava.support.acme.util.option.CommandLine;

@@ -10,6 +10,7 @@ package oshajava.instrument;
 
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.List;
 
 import oshajava.support.org.objectweb.asm.MethodVisitor;
 import oshajava.support.org.objectweb.asm.tree.MethodNode;
@@ -31,10 +32,11 @@ public class HandlerSorterAdapter extends MethodNode {
         this.mv = mv;
     }
     
-    public void visitEnd() {
+    @SuppressWarnings("unchecked")
+	public void visitEnd() {
         TryCatchBlockLengthComparator comp =
                 new TryCatchBlockLengthComparator(this);
-        Collections.sort(tryCatchBlocks, comp);
+        Collections.sort((List<TryCatchBlockNode>)tryCatchBlocks, comp);
         
         if (mv != null) {
             accept(mv);
@@ -43,7 +45,7 @@ public class HandlerSorterAdapter extends MethodNode {
     
 }
 
-class TryCatchBlockLengthComparator implements Comparator {
+class TryCatchBlockLengthComparator implements Comparator<TryCatchBlockNode> {
     
     private final MethodNode meth;
     
@@ -51,9 +53,9 @@ class TryCatchBlockLengthComparator implements Comparator {
         this.meth = meth;
     }
     
-    public int compare(Object o1, Object o2) {
-        int len1 = blockLength((TryCatchBlockNode)o1);
-        int len2 = blockLength((TryCatchBlockNode)o2);
+    public int compare(TryCatchBlockNode o1, TryCatchBlockNode o2) {
+        int len1 = blockLength(o1);
+        int len2 = blockLength(o2);
         return len1 - len2;
     }
     
