@@ -104,6 +104,7 @@ public class SpecProcessor extends AbstractProcessor {
 		} else {
 			throw new IllegalArgumentException(DEFAULT_ANN_OPTION + "=" + defaultAnn);
 		}
+		note("Default oshajava annotation set to " + (MethodSpec.DEFAULT == MethodSpec.NONCOMM ? "@NonComm" : "@Inline") + ".");
 		verbose = env.getOptions().containsKey(DEBUG_OPTION);
 		if (env.getOptions().containsKey(HELP_OPTION)) {
 			justHelp = true;
