@@ -1,8 +1,9 @@
 syntax: glob
 
 *.class
-*.omb
-*.omg
+*.omi
+*.oms
+*.omm
 .DS_Store
 *.pyc
 

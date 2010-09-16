@@ -1,5 +1,4 @@
-import oshajava.annotation.*;
-
+package test.bytecode;
 public class WaitNotify {
 	static Object LOCK = new Object();
 	static int iterations = 0;

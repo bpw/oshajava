@@ -1,3 +1,4 @@
+package test.bytecode;
 public class Locals {
 
 	public void foo(String[] args, int x, long y, boolean z) {

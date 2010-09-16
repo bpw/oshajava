@@ -1,3 +1,4 @@
+package test.bytecode;
 
 public class Constructors {
 	int x;

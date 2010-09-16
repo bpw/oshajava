@@ -1,3 +1,4 @@
+package test.compile;
 import oshajava.annotation.*;
 import java.util.Set;
 

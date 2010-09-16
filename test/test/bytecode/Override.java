@@ -1,3 +1,4 @@
+package test.bytecode;
 
 public class Override {
 	public Override() {

@@ -1,3 +1,4 @@
+package test.bytecode;
 
 public class Initializers {
 	protected Object obj = new Object();
