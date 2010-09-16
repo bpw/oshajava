@@ -18,8 +18,9 @@ public class CanonicalName implements Serializable {
 	}
 	public CanonicalName(final TypeElement type, final Elements util) {
 		String qn = type.getQualifiedName().toString();
-		this.pkg = util.getPackageOf(type).getQualifiedName().toString().replace('.', '/');
-		this.simple = qn.substring(pkg.length() + 1).replace('.', '$');
+		String p = util.getPackageOf(type).getQualifiedName().toString().replace('.', '/');
+		this.pkg = p == null || p.isEmpty() ? null : p;
+		this.simple = (pkg == null ? qn : qn.substring(pkg.length() + 1)).replace('.', '$');
 		verify();
 	}
 	
@@ -32,9 +33,15 @@ public class CanonicalName implements Serializable {
 	}
 	
 	private void verify() {
-		if (pkg != null && (pkg.endsWith(".") || this.pkg.endsWith("/"))) throw new RuntimeException("Package name ends with . or /: " + this.pkg + " + " + this.simple);
-		if (this.simple == null) throw new RuntimeException("Null simple name!");
-		if (this.simple.startsWith(".") || this.simple.startsWith("$")) throw new RuntimeException("Simple name starts with . or $: " + this.pkg + " + " + this.simple);
+		if (pkg != null && (pkg.endsWith(".") || this.pkg.endsWith("/"))) {
+			throw new RuntimeException("Package name ends with . or /: " + this.pkg + " + " + this.simple);
+		}
+		if (this.simple == null) {
+			throw new RuntimeException("Null simple name!");
+		}
+		if (this.simple.startsWith(".") || this.simple.startsWith("$")) {
+			throw new RuntimeException("Simple name starts with . or $: " + this.pkg + " + " + this.simple);
+		}
 	}
 	
 	public String getPackage() {
