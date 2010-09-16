@@ -338,34 +338,6 @@ public class ClassInstrumentor extends ClassAdapter {
 		
 	}
 	
-//	// TODO allow READER/WRITER annotations on a class... just send to all methods...
-//	@Override
-//	public AnnotationVisitor visitAnnotation(String desc, boolean visible) {
-//		if (ANNOT_MODULE_MEMBER_DESC.equals(desc)) {
-//			return new AnnotationVisitor() {
-//				public void visit(String name, Object value) { // throws ModuleSpecNotFoundException
-//					try {
-//					    String modName = (String)value;
-//					    if (modName.contains(".")) {
-//                            modName = modName.replace('.', '/');
-//					    } else {
-//    					    modName = packageName + modName;
-//                    	}
-//						ClassInstrumentor.this.module = Spec.getModule(modName, loader, className.replace('/','.'));
-//					} catch (ModuleSpecNotFoundException e) {
-//						throw e.wrap();
-//					}
-//				}
-//				public AnnotationVisitor visitAnnotation(String name, String desc) { return null; }
-//				public AnnotationVisitor visitArray(String name) { return null; }
-//				public void visitEnd() { }
-//				public void visitEnum(String name, String desc, String value) { }
-//			};
-//		} else {
-//			return null;
-//		}
-//	}
-	
 	@Override
 	public void visitOuterClass(String owner, String name, String desc) {
 	    outerClassName = owner;
