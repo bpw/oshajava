@@ -84,7 +84,7 @@ public class InstrumentationAgent implements ClassFileTransformer {
 	};
 
 	public static final CommandLineOption<Boolean> fullJDKInstrumentationOption =
-		CommandLine.makeBoolean("instrumentFullJDK", false, "Instrument deep into the JDK.");
+		CommandLine.makeBoolean("instrumentFullJDK", false, "Instrument deep into the JDK. (Experimental)");
 	
 	public static final CommandLineOption<Boolean> bytecodeDumpOption =
 		CommandLine.makeBoolean("bytecodeDump", false, "Dump instrumented bytecode.");
@@ -97,10 +97,10 @@ public class InstrumentationAgent implements ClassFileTransformer {
 		CommandLine.makeBoolean("verify", false, "Run an extra debugging verification pass on instrumented bytecode before loading.");
 	
 	public static final CommandLineOption<Boolean> preVerifyOption =
-		CommandLine.makeBoolean("preVerify", false, "Verify classes read from disk before instrumenting.");
+		CommandLine.makeBoolean("verifySanity", false, "Verify classes read from disk before instrumenting.");
 	
 	public static final CommandLineOption<Boolean> framesOption =
-		CommandLine.makeBoolean("frames", false, "Handle frames intelligently.");
+		CommandLine.makeBoolean("frames", false, "Handle frames intelligently. (Experimental)");
 	
 	public static final CommandLineOption<Boolean> ignoreMissingMethodsOption =
 		CommandLine.makeBoolean("ignoreMissingMethods", false, "Ignore and inline methods missing from their modules.");

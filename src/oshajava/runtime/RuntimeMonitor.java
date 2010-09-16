@@ -32,7 +32,7 @@ public class RuntimeMonitor {
 	/**
 	 * Record profiling information.
 	 */
-	public static final boolean PROFILE = Config.profileOption.get();
+	public static final boolean PROFILE = Config.profileOption.get() == Config.ProfileLevel.DEEP;
  	public static final boolean CREATE = Config.createOption.get();
  	public static final boolean INTRA_THREAD = Config.intraThreadOption.get();
 
@@ -507,42 +507,44 @@ public class RuntimeMonitor {
 			peakMem += b.getPeakUsage().getUsed();
 		}
 
-		// dump profile
-		try {
-			final PyWriter py = new PyWriter(mainClass + Config.profileExtOption.get(), !Util.quietOption.get() && Config.summaryOption.get());
+		if (Config.profileOption.get() != Config.ProfileLevel.NONE) {
+			// dump profile
 			try {
-				py.startMap();
-				py.writeMapKey("options");
-				py.startMap();
-				for (Option<?> o : Option.all()) {
-					py.writeMapPair(o.getId(), Py.quote(o.get()));
+				final PyWriter py = new PyWriter(mainClass + Config.profileExtOption.get(), !Util.quietOption.get() && Config.summaryOption.get());
+				try {
+					py.startMap();
+					py.writeMapKey("options");
+					py.startMap();
+					for (Option<?> o : Option.all()) {
+						py.writeMapPair(o.getId(), Py.quote(o.get()));
+					}
+					py.endMap();
+					py.writeMapPair("threads", ThreadState.lastID() + 1);
+					py.writeMapPair("frequently communicating stacks", Stack.lastID() + 1);
+					for (final AbstractCounter<?> c : AbstractCounter.all()) {
+						py.writeCounterAsMapPair(c);
+					}
+					py.writeMapPair("Memory peak", peakMem);
+					py.writeMapPair("Memory used", bean.getHeapMemoryUsage().getUsed());
+					py.writeMapPair("Memory max", bean.getHeapMemoryUsage().getMax());
+					if (cbean!=null) {
+						py.writeMapPair("Compile time", cbean.getTotalCompilationTime());
+					}
+					long gcTime = 0;
+					for (GarbageCollectorMXBean gcb : ManagementFactory.getGarbageCollectorMXBeans()) {
+						gcTime += gcb.getCollectionTime();
+					}
+					py.writeMapPair("GC time", gcTime);
+					// times
+					py.endMap();
+					// END PY
+				} finally {
+					py.close();
 				}
-				py.endMap();
-				py.writeMapPair("threads", ThreadState.lastID() + 1);
-				py.writeMapPair("frequently communicating stacks", Stack.lastID() + 1);
-				for (final AbstractCounter<?> c : AbstractCounter.all()) {
-					py.writeCounterAsMapPair(c);
-				}
-				py.writeMapPair("Memory peak", peakMem);
-				py.writeMapPair("Memory used", bean.getHeapMemoryUsage().getUsed());
-				py.writeMapPair("Memory max", bean.getHeapMemoryUsage().getMax());
-				if (cbean!=null) {
-					py.writeMapPair("Compile time", cbean.getTotalCompilationTime());
-				}
-				long gcTime = 0;
-				for (GarbageCollectorMXBean gcb : ManagementFactory.getGarbageCollectorMXBeans()) {
-					gcTime += gcb.getCollectionTime();
-				}
-				py.writeMapPair("GC time", gcTime);
-				// times
-				py.endMap();
-				// END PY
-			} finally {
-				py.close();
+			} catch (IOException e) {
+				Util.fail("Failed to dump py.");
+				//FIXME
 			}
-		} catch (IOException e) {
-			Util.fail("Failed to dump py.");
-			//FIXME
 		}
 		
 		if (PROFILE) {

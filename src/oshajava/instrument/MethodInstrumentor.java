@@ -465,7 +465,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 				    super.storeLocal(traceVar);
 			    }
 				// if profiling, count the read! SLOOOOOOW
-				if (Config.profileOption.get()) {
+				if (Config.profileOption.get() == Config.ProfileLevel.DEEP) {
 					super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_COUNT_READ);
 				}
 				// dup the target. stack -> obj | obj
@@ -487,7 +487,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 				// Fairly Fast Path
 				
 				// if profiling, count the communication! SLOW
-				if (Config.profileOption.get()) {
+				if (Config.profileOption.get() == Config.ProfileLevel.DEEP) {
 					super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_COUNT_COMM);
 				}
 				// stack -> obj | state state    <------ TODO maybe don't dup and just reload from field later if needed.
@@ -531,7 +531,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 				myStackSize(3);
 				Label sHomeFree = super.newLabel();
 				// if profiling, count the read! SLOOOOOOW
-				if (Config.profileOption.get()) {
+				if (Config.profileOption.get() == Config.ProfileLevel.DEEP) {
 					super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_COUNT_READ);
 				}
 				// Get the State for this field. stack -> state
@@ -552,7 +552,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 				// Fairly Fast Path
 				
 				// if profiling, count the communication! SLOW
-				if (Config.profileOption.get()) {
+				if (Config.profileOption.get() == Config.ProfileLevel.DEEP) {
 					super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_COUNT_COMM);
 				}
 				// stack -> state state    <------ TODO maybe don't dup and just reload from field later if needed.

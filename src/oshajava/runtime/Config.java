@@ -42,20 +42,23 @@ public class Config {
 		CommandLine.makeString("java", "java", "JVM to use.");
 	
 	public static final CommandLineOption<Boolean> intraThreadOption =
-		CommandLine.makeBoolean("intraThread", false, "Track all (intra- and inter-thread) communication.");
+		CommandLine.makeBoolean("intraThread", false, "Track all (intra- and inter-thread) communication. (Experimental)");
 
 	public enum Granularity { FINE, COARSE };
 	public static final CommandLineOption<Granularity> arrayTrackingOption =
 		CommandLine.makeEnumChoice("arrayTracking", Granularity.FINE, "Set array tracking granularity.", Granularity.class);
 	
 	public static final CommandLineOption<Granularity> objectTrackingOption = 
-		CommandLine.makeEnumChoice("objectTracking", Granularity.FINE, "Set object tracking granularity. (Experimental)", Granularity.class);
+		CommandLine.makeEnumChoice("objectTracking", Granularity.FINE, "Set object tracking granularity. (COARSE is not fully implemented.)", Granularity.class);
 	
 	public static final CommandLineOption<Boolean> noInstrumentOption =
 		CommandLine.makeBoolean("noInstrument", false, "Turn off instrumentation.");
 	
-	public static final CommandLineOption<Boolean> profileOption =
-		CommandLine.makeBoolean("profile", false, "Report tool profiling information.");
+	public enum ProfileLevel { NONE, PERF, DEEP }
+	public static final CommandLineOption<ProfileLevel> profileOption =
+		CommandLine.makeEnumChoice("profile", ProfileLevel.NONE, "Report tool profiling information. " + 
+				"PERF reports timing and memory use, causing no additional overhead. " + 
+				"DEEP reports many internal counters, causing significant performance overhead.", ProfileLevel.class);
 	
 	public static final CommandLineOption<Integer> arrayCacheSizeOption =
 		CommandLine.makeInteger("arrayCacheSize", 16, "Set the array state (or array state array) cache size.");
@@ -77,7 +80,7 @@ public class Config {
     		CommandLine.makeBoolean("record", false, "Record exercised graph.");
     
 	public static final CommandLineOption<Boolean> visualizeOption =
-		CommandLine.makeBoolean("visualize", false, "Visualize communications in real-time.");
+		CommandLine.makeBoolean("visualize", false, "Visualize communications in real-time. (Partly broken)");
     
     public static final CommandLineOption<String> profileExtOption =
     	CommandLine.makeString("profileExt", "-oshajava-profile.py", "Extension on profile file (prefixed by main class)");
