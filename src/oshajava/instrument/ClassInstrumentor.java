@@ -293,7 +293,7 @@ public class ClassInstrumentor extends ClassAdapter {
 		classType = Type.getObjectType(name);
 		classAccess = access;
 		this.superName = superName;
-		if (Config.objectStatesOption.get() && (access & Opcodes.ACC_INTERFACE) == 0 && (superName == null || superName.equals("java/lang/Object"))) {
+		if (Config.objectTrackingOption.get() == Config.Granularity.COARSE && (access & Opcodes.ACC_INTERFACE) == 0 && (superName == null || superName.equals("java/lang/Object"))) {
 			superName = Type.getType(oshajava.runtime.ObjectWithState.class).getInternalName();
 		}
 		
@@ -375,7 +375,7 @@ public class ClassInstrumentor extends ClassAdapter {
 	
 	@Override
 	public FieldVisitor visitField(int access, String name, String desc, String signature, Object value) {
-		if (  (!Config.objectStatesOption.get() || (access & Opcodes.ACC_STATIC) != 0)) {
+		if (  (Config.objectTrackingOption.get() == Config.Granularity.FINE || (access & Opcodes.ACC_STATIC) != 0)) {
 			// TODO option to ignore final fields. how?
 			// We make all state fields non-final to be able to set them from outside a constructor
         	if (!shadowedInheritedFields.contains(name)) {

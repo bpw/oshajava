@@ -250,7 +250,8 @@ public class MethodInstrumentor extends AdviceAdapter {
 
 	private void xastore(int opcode, int local, int width) {
 		// stack == array index value |
-		if (!Config.arrayIndexStatesOption.get()) {
+		switch (Config.arrayTrackingOption.get()) {
+		case COARSE:
 			myStackSize(3 - width);
 			Label afterHook = super.newLabel();
 			// stack -> array index _ |
@@ -277,7 +278,8 @@ public class MethodInstrumentor extends AdviceAdapter {
 			super.swap();
 			// stack -> array index value |
 			super.loadLocal(local);
-		} else {
+			break;
+		case FINE:
 			myStackSize(4 - width);
 			// stack -> array index _ |
 			super.storeLocal(local);
@@ -290,6 +292,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 			super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_ARRAY_STORE);
 			// stack -> array index value |
 			super.loadLocal(local);
+			break;
 		}
 
 	}
@@ -395,7 +398,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 			final Type ownerType = Type.getType(ClassInstrumentor.getDescriptor(owner));
 			final String stateFieldName;
             final String stacktraceFieldName;
-			if (Config.objectStatesOption.get() && (opcode == Opcodes.PUTFIELD || opcode == Opcodes.GETFIELD)){
+			if (Config.objectTrackingOption.get() == Config.Granularity.COARSE && (opcode == Opcodes.PUTFIELD || opcode == Opcodes.GETFIELD)){
 				stateFieldName = ClassInstrumentor.SHADOW_FIELD_SUFFIX;
 				stacktraceFieldName = ClassInstrumentor.STACKTRACE_FIELD_SUFFIX;
 			} else {
@@ -609,7 +612,8 @@ public class MethodInstrumentor extends AdviceAdapter {
 		case Opcodes.IALOAD:
 		case Opcodes.LALOAD:			
 		case Opcodes.SALOAD:
-			if (!Config.arrayIndexStatesOption.get()) {
+			switch (Config.arrayTrackingOption.get()) {
+			case COARSE:
 				myStackSize(3);
 				// stack -> index array
 				super.swap();
@@ -621,7 +625,8 @@ public class MethodInstrumentor extends AdviceAdapter {
 				pushWriterCache();
 				// call the hook. stack -> array index
 				super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_COARSE_ARRAY_LOAD);
-			} else {
+				break;
+			case FINE:
 				myStackSize(4);
 				// stack -> array index array index
 				super.dup2();
@@ -631,6 +636,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 				pushWriterCache();
 				// stack -> array index _
 				super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_ARRAY_LOAD);
+				break;
 			}
 			super.visitInsn(opcode);
 			break;

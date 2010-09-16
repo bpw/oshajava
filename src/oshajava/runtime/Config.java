@@ -44,15 +44,12 @@ public class Config {
 	public static final CommandLineOption<Boolean> intraThreadOption =
 		CommandLine.makeBoolean("intraThread", false, "Track all (intra- and inter-thread) communication.");
 
-	public static final CommandLineOption<Boolean> arrayIndexStatesOption =
-		CommandLine.makeBoolean("arrayIndexStates", false, "Track individual array slots instead of whole arrays.");
+	public enum Granularity { FINE, COARSE };
+	public static final CommandLineOption<Granularity> arrayTrackingOption =
+		CommandLine.makeEnumChoice("arrayTracking", Granularity.FINE, "Set array tracking granularity.", Granularity.class);
 	
-	public static final CommandLineOption<Boolean> objectStatesOption = 
-		CommandLine.makeBoolean("objectStates", false, "Track whole objects instead of individual fields.");
-	
-	// FIXME belongs in the static processor.
-//	public static final CommandLineOption<Boolean> nonCommAsDefaultOption =
-//		CommandLine.makeBoolean("defaultToNonComm", false, "Make methods non-communicating by default (instead of inlined).");
+	public static final CommandLineOption<Granularity> objectTrackingOption = 
+		CommandLine.makeEnumChoice("objectTracking", Granularity.FINE, "Set object tracking granularity. (Experimental)", Granularity.class);
 	
 	public static final CommandLineOption<Boolean> noInstrumentOption =
 		CommandLine.makeBoolean("noInstrument", false, "Turn off instrumentation.");
@@ -101,8 +98,8 @@ public class Config {
 
 		cl.addGroup("Tracking");
 		
-		cl.add(arrayIndexStatesOption);
-		cl.add(objectStatesOption);
+		cl.add(arrayTrackingOption);
+		cl.add(objectTrackingOption);
 		cl.add(intraThreadOption);
 		
 		cl.addGroup("Profiling");

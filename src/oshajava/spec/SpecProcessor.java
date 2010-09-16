@@ -450,8 +450,6 @@ public class SpecProcessor extends AbstractProcessor {
 				} else {
 					return label;
 				}
-//			case DEFAULT: // TODO reinstate with @Default?
-//				return defaultAnnotation();
 			default:
 				return defaultAnnotation(); // FIXME correct?
 			}
