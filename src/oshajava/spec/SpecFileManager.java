@@ -106,10 +106,10 @@ public class SpecFileManager<T extends SpecFile> implements Iterable<T> {
 //		System.out.println("    " + name + "    " + name.getPackage() + "    " + name.getSimpleName());
 		FileObject f;
 		try {
-			f = env.getFiler().createResource(base, name.getPackage(), name.getSimpleName() + ext + DUMMY_EXT);
+			f = env.getFiler().createResource(base, name.getSourcePackage(), name.getSimpleName() + ext + DUMMY_EXT);
 		} catch (IOException e) {
 			try {
-				f = env.getFiler().getResource(base, name.getPackage(), name.getSimpleName() + ext + DUMMY_EXT);
+				f = env.getFiler().getResource(base, name.getSourcePackage(), name.getSimpleName() + ext + DUMMY_EXT);
 			} catch (IOException e1) {
 				env.getMessager().printMessage(Kind.ERROR, "Cannot access " + name + ext + " on filesystem.");
 				throw new RuntimeException(e1);

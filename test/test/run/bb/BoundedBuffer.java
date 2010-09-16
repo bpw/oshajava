@@ -66,7 +66,6 @@ public class BoundedBuffer {
 	}
 
 	// Simple Node class for internal linked list structure.
-	@Module("test.run.bb.BoundedBuffer")
 	@Inline
 	private class Node {
 		public int data;

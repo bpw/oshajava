@@ -30,7 +30,8 @@ public class MethodSpec implements Serializable {
 	}
 	
 	public static final MethodSpec INLINE = new MethodSpec(Kind.INLINE), NONCOMM = new MethodSpec(Kind.NONCOMM), 
-		DEFAULT = Module.DEFAULT_INLINE ? INLINE : NONCOMM, ERROR = new MethodSpec(Kind.ERROR);
+		ERROR = new MethodSpec(Kind.ERROR);
+	public static MethodSpec DEFAULT = NONCOMM;
 	
 	public String toString() {
 		switch (kind) {

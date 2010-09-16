@@ -103,7 +103,7 @@ public class Spec {
 		//FIXME
 		if (loader == null) return new ModuleMap(className);
 		try {
-			Util.log(className.toInternalString() + ModuleMap.EXT);
+//			Util.log(className.toInternalString() + ModuleMap.EXT);
 			final InputStream res = loader.getResourceAsStream(className.toInternalString() + ModuleMap.EXT);
 			if (res == null) throw new ModuleMapNotFoundException(className);
 			ModuleMap ms = (ModuleMap)ColdStorage.load(res);

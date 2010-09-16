@@ -39,13 +39,26 @@ import oshajava.support.acme.util.Util;
 
 @SupportedAnnotationTypes("*")
 @SupportedSourceVersion(SourceVersion.RELEASE_6)
-@SupportedOptions({SpecProcessor.DEFAULT_ANN_OPTION, SpecProcessor.DEBUG_OPTION})
+@SupportedOptions({SpecProcessor.HELP_OPTION, SpecProcessor.DEFAULT_ANN_OPTION, SpecProcessor.DEBUG_OPTION})
 public class SpecProcessor extends AbstractProcessor {
 	
 	public static final String DEFAULT_ANN_OPTION = "oshajava.annotation.default",
-		DEBUG_OPTION = "oshajava.verbose";
-	
+		DEBUG_OPTION = "oshajava.verbose",
+		HELP_OPTION = "oshajava.help";
 	private static final String INLINE_ANN = "inline", NONCOMM_ANN = "noncomm";
+	
+	public static final String[][] OPTIONS = {
+		{ HELP_OPTION, "Display this help message." },
+		{ DEBUG_OPTION, "Print lots of information about the spec compilation process." },
+		{ DEFAULT_ANN_OPTION, "One of [" + NONCOMM_ANN + ", " + INLINE_ANN + "]. Set the default annotation for methods." }
+	};
+	
+	public static void usage() {
+		System.out.println("oshajava.spec.SpecProcessor options");
+		for (String[] option : OPTIONS) {
+			System.out.println("  -A" + option[0] + "        " + option[1]);
+		}
+	}
 	
 	private static final Location OUTPUT = StandardLocation.SOURCE_OUTPUT;
 
@@ -58,6 +71,8 @@ public class SpecProcessor extends AbstractProcessor {
 	private final CommTraversal groupMembershipScanner = new CommTraversal();
 	
 	private boolean complete = false;
+	
+	private boolean justHelp = false;
 	
 	private boolean verbose;
 	
@@ -80,14 +95,19 @@ public class SpecProcessor extends AbstractProcessor {
 		// Set the default annotation to @Inline or @NonComm.
 		// e.g. -Aoshajava.annotation.default=noncomm
 		final String defaultAnn = env.getOptions().get(DEFAULT_ANN_OPTION);
-		if (defaultAnn == null || defaultAnn.toLowerCase().equals(INLINE_ANN)) {
-			Module.setDefaultInline(true);
+		if (defaultAnn == null) {
+			// Do nothing. MethodSpec.DEFAULT is preset to the standard default.
 		} else if (defaultAnn.toLowerCase().equals(NONCOMM_ANN)) {
-			Module.setDefaultInline(false);			
+			MethodSpec.DEFAULT = MethodSpec.NONCOMM;
+		} else if (defaultAnn.toLowerCase().equals(INLINE_ANN)) {
+			MethodSpec.DEFAULT = MethodSpec.INLINE;
 		} else {
 			throw new IllegalArgumentException(DEFAULT_ANN_OPTION + "=" + defaultAnn);
 		}
 		verbose = env.getOptions().containsKey(DEBUG_OPTION);
+		if (env.getOptions().containsKey(HELP_OPTION)) {
+			justHelp = true;
+		}
 	}
 
 	/**
@@ -95,6 +115,9 @@ public class SpecProcessor extends AbstractProcessor {
 	 */
 	public void error(String message) {
 		processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, message);
+	}
+	public void error(String message, Element e) {
+		processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, message, e);
 	}
 	public void note(String message) {
 		processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE, message);
@@ -108,6 +131,7 @@ public class SpecProcessor extends AbstractProcessor {
 	 */
 	@Override
 	public boolean process(Set<? extends TypeElement> annotationTypes, RoundEnvironment round) {
+		if (justHelp) return false;
 		Util.assertTrue(!complete, "Egads!");
 		// Packages, classes, and interfaces to process in this round.
 		final Set<? extends Element> elements = round.getRootElements();
@@ -189,7 +213,9 @@ public class SpecProcessor extends AbstractProcessor {
 				handle(e);
 				// Traverse children.
 				for (Element child : e.getEnclosedElements()) {
-					traverse(child);
+					if (child instanceof ExecutableElement || child instanceof PackageElement || child instanceof TypeElement) {
+						traverse(child);
+					}
 				}
 				postHandle(e);
 			}
@@ -387,7 +413,7 @@ public class SpecProcessor extends AbstractProcessor {
 			Inline inline = e.getAnnotation(Inline.class);
 			NonComm noncomm = e.getAnnotation(NonComm.class);
 			final Module module = processedModules.get(e);
-			MethodSpec ms;
+			MethodSpec ms = null;
 			try {
 				if (inline != null) {
 					if (noncomm == null && reader == null && writer == null) {
@@ -421,16 +447,19 @@ public class SpecProcessor extends AbstractProcessor {
 						ms = new MethodSpec(MethodSpec.Kind.COMM, readGroups, writeGroups);
 					}
 				} else {
-					ms = MethodSpec.DEFAULT;
-				}
-				if (ms.kind() == MethodSpec.Kind.ERROR) {
-					error(e.getSimpleName() + ": conflicting annotations. @Inline, @NonComm, and @Writer/@Reader are mutually exclusive.");
 					return null;
+				}
+				if (ms != null && ms.kind() == MethodSpec.Kind.ERROR) {
+					String x = "";
+					if (inline != null) x += inline + "  ";
+					if (noncomm != null) x += noncomm + "  ";
+					if (reader != null) x += reader + "  ";
+					if (writer != null) x += writer + "  ";
+					error("Conflicting annotations on " + e.getSimpleName() + ":  " + x, e);
 				}
 			} catch (Module.GroupNotFoundException e1) {
 				ms = MethodSpec.ERROR;
 				error(e.getSimpleName() + ": " + e1.group + " not found in module " + module.getName());
-				return null;
 			}
 			return ms;
 		}
@@ -451,12 +480,13 @@ public class SpecProcessor extends AbstractProcessor {
 					return label;
 				}
 			default:
-				return defaultAnnotation(); // FIXME correct?
+				return MethodSpec.DEFAULT;
 			}
 		}
 
 		@Override
 		protected void setLabel(Element e, MethodSpec r) {
+//			note("setLabel " + e.getSimpleName());
 			defaultMethodSpecs.put(e, r);
 			if (e instanceof ExecutableElement) {
 				final ExecutableElement m = (ExecutableElement)e;
@@ -487,10 +517,7 @@ public class SpecProcessor extends AbstractProcessor {
 
 		@Override
 		public MethodSpec visitPackage(PackageElement e, Object _) {
-			return defaultAnnotation();
-		}
-		private MethodSpec defaultAnnotation() {
-			return Module.DEFAULT_INLINE ? MethodSpec.INLINE : MethodSpec.NONCOMM;
+			return MethodSpec.DEFAULT;
 		}
 	}
 

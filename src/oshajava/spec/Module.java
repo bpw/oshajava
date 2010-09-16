@@ -14,12 +14,6 @@ public class Module extends SpecFile {
 
 	public static final String EXT = ".omi"; // Osha Module Incremental
 	
-	public static boolean DEFAULT_INLINE;
-	
-	public static void setDefaultInline(boolean b) {
-		DEFAULT_INLINE = b;
-	}
-	
 	/****************************/
 	
 	@SuppressWarnings("serial")

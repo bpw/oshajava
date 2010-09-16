@@ -1,9 +1,8 @@
 run: clean compile
-	oshajava -quiet -record -errorAction=NONE -- BoundedBufferMain
+	oshajava -- test.run.bb.BoundedBufferMain
 
-compile: BoundedBuffer.java BoundedBufferMain.java
-	oshajavac -Aoshajava.annotation.default=noncomm BoundedBuffer.java
-	oshajavac -Aoshajava.annotation.default=noncomm BoundedBufferMain.java
+compile: test/run/bb/BoundedBuffer.java test/run/bb/BoundedBufferMain.java
+	oshajavac test/run/bb/*.java
 
 
 clean:
