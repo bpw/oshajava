@@ -2,7 +2,7 @@
 package test.compile;
 import oshajava.annotation.*;
 
-@NonComm // Should cascade
+@Reader("G") // Should cascade
 @Groups(communication={@Group(id="G2")}, intfc={@InterfaceGroup(id="IT2")})
 @Group(id="G")
 @InterfaceGroup(id="IT")

@@ -1,6 +1,7 @@
 package oshajava.spec;
 
 import java.util.HashMap;
+import java.util.Map;
 
 public class ModuleMap extends SpecFile {
 	
@@ -54,7 +55,11 @@ public class ModuleMap extends SpecFile {
 	}
 	
 	public String toString() {
-		return "Modules for methods of class " + getName() + ":\n" + map.toString();
+		String out = "Modules for methods of class " + getName() + ":\n";
+		for (Map.Entry<CanonicalName, CanonicalName> e : map.entrySet()) {
+			out += "  " + e.getKey() + " : " + e.getValue() + "\n";
+		}
+		return out;
 	}
 	
 	@SuppressWarnings("serial")
