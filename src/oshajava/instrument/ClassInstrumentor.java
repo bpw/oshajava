@@ -302,11 +302,11 @@ public class ClassInstrumentor extends ClassAdapter {
 		} catch (ModuleMapNotFoundException e) {
 //			throw e.wrap();
 			if (className.getSimpleName().contains("$")) {
-				Util.warn("No module map found for anonymous inner class %s. All methods assumed to be in module %s.%s", className, 
-						InstrumentationAgent.sourceName(packageName), CompiledModuleSpec.DEFAULT_NAME);				
+				Util.warn("No module map found for anonymous inner class %s. All methods assumed to be in module %s.", className, 
+						new CanonicalName(packageName, CompiledModuleSpec.DEFAULT_NAME));
 			} else {
-				Util.warn("No module map found for class %s. All methods assumed to be in module %s.%s", className, 
-						InstrumentationAgent.sourceName(packageName), CompiledModuleSpec.DEFAULT_NAME);
+				Util.warn("No module map found for class %s. All methods assumed to be in module %s.", className, 
+						new CanonicalName(packageName, CompiledModuleSpec.DEFAULT_NAME));
 			}
 		}
 
