@@ -1,9 +1,9 @@
 /******************************************************************************
 
-Copyright (c) 2009, Cormac Flanagan (University of California, Santa Cruz)
+Copyright (c) 2010, Cormac Flanagan (University of California, Santa Cruz)
                     and Stephen Freund (Williams College) 
 
-All rights reserved.
+All rights reserved.  Revision 7939 (Wed Aug 11 12:11:58 EDT 2010)
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are
@@ -40,14 +40,17 @@ package oshajava.support.acme.util.decorations;
 
 import java.io.Serializable;
 import java.util.Arrays;
-import java.util.List;
 
+/**
+ * Extend this class by classes that you wish to be able to decorate.
+ */
 public class Decoratable implements Serializable {
 
+	/** Internal array of decoration values.  NEVER ACCESS THIS DIRECTLY. */
 	Object decorations[] = new Object[2];
 		
-	public List<Object> getDecorations() {
-		return Arrays.asList(decorations);
+	public String getDecorationsAsString() {
+		return Arrays.asList(decorations).toString();
 	}
 
 }

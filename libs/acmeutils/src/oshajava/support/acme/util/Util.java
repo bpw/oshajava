@@ -1,9 +1,9 @@
 /******************************************************************************
 
-Copyright (c) 2009, Cormac Flanagan (University of California, Santa Cruz)
+Copyright (c) 2010, Cormac Flanagan (University of California, Santa Cruz)
                     and Stephen Freund (Williams College) 
 
-All rights reserved.
+All rights reserved.  Revision 7939 (Wed Aug 11 12:11:58 EDT 2010)
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are
@@ -43,123 +43,94 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.io.Writer;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
-import java.util.Iterator;
-import java.util.Map;
 import java.util.Vector;
-import java.util.Map.Entry;
 
-import oshajava.support.acme.util.collections.ArrayIterator;
 import oshajava.support.acme.util.io.NamedFileWriter;
 import oshajava.support.acme.util.io.SplitOutputWriter;
 import oshajava.support.acme.util.option.CommandLine;
 import oshajava.support.acme.util.option.CommandLineOption;
-import oshajava.support.acme.util.time.SuppressTimedStmt;
+import oshajava.support.acme.util.time.PeriodicTaskStmt;
 import oshajava.support.acme.util.time.TimedExpr;
 import oshajava.support.acme.util.time.TimedStmt;
 
 
+
+/**
+ * Various utility routines.
+ */
 public class Util {
 
-	private static class ThreadStatus {
+	static private class ThreadStatus {
 		int logLevel = 0;
 		int newLineCount = 0;
-		int suppressLevel = 0;
 	}
 
-	private static final ThreadLocal<ThreadStatus> threadStatus = new ThreadLocal<ThreadStatus>() {
+	static final ThreadLocal<ThreadStatus> threadStatus = new ThreadLocal<ThreadStatus>() {
 		@Override
 		protected ThreadStatus initialValue() {
 			return new ThreadStatus();
 		}
 	};
 
-	private static int numWarnings = 0;
-	private static int numYikes = 0;
-	private static boolean failed = false;
-
 	public static final String ERROR_PREFIX = "## ";
-	private static final int YIKES_MAX = 1;
-
 	public static final CommandLineOption<Boolean> quietOption = 
-		CommandLine.makeBoolean("quiet", false, "Quiet mode.  Will not print debugging or logging messages.");
+		CommandLine.makeBoolean("quiet", false, CommandLineOption.Kind.STABLE, "Quiet mode.  Will not print debugging or logging messages.");
 
-	public static final CommandLineOption<ArrayList<String>> debugKeysOption = 
-		CommandLine.makeStringList("d", "Turn on the given debugging key.  Messages printed by Util.debugf(key, ...) will only be printed if the key is turned on.");
-
+	
 	public static CommandLineOption<String> outputPathOption = 
-		CommandLine.makeString("logs", "log", "The path to the directory where log files will be stored.");
+		CommandLine.makeString("logs", "log", CommandLineOption.Kind.STABLE, "The path to the directory where log files will be stored.");
 
 	public static CommandLineOption<String> outputFileOption = 
-		CommandLine.makeString("out", "", "Log file name for Util.out.",
+		CommandLine.makeString("out", "", CommandLineOption.Kind.STABLE, "Log file name for Util.out.",
 				new Runnable() { public void run() {  
 					String errFile = errorFileOption.get();
 					String outFile = outputFileOption.get();
 					if (errFile.equals(outFile)) {
 						Util.out = Util.err;
 					} else {
-						assertTrue(outFile.length() > 0, "Bad File");
+						Assert.assertTrue(outFile.length() > 0, "Bad File");
 						setOut(new PrintWriter(new SplitOutputWriter(out, Util.openLogFile(outFile)), true));
 					} 
 				} } );
 
 	public static CommandLineOption<String> errorFileOption = 
-		CommandLine.makeString("err", "", "Log file name for Util.err.",
+		CommandLine.makeString("err", "", CommandLineOption.Kind.STABLE, "Log file name for Util.err.",
 				new Runnable() { public void run() {  
 					String errFile = errorFileOption.get();
 					String outFile = outputFileOption.get();
 					if (errFile.equals(outFile)) {
 						Util.err = Util.out;
 					} else {
-						assertTrue(errFile.length() > 0, "Bad File");
+						Assert.assertTrue(errFile.length() > 0, "Bad File");
 						setErr(new PrintWriter(new SplitOutputWriter(err, Util.openLogFile(errFile)), true));
 					}
 				} } );
+	
 
-	public static void debug(String key, String s) {
-		if (debugKeysOption.get().contains(key)) {
-			log(key + "-- " + s);
-		}
-	}
-
-	public static void debugf(String key, String format, Object... args) {
-		if (debugKeysOption.get().contains(key)) {
-			logf(key + "-- " + format, args);
-		}
-	}
-
-	public static void debug(String key, boolean guard, String s) {
-		if (guard && debugKeysOption.get().contains(key)) {
-			log(key + "-- " + s);  
-		}
-	}
-
-	public static boolean debugOn(String key) {
-		return debugKeysOption.get().contains(key);
-	}
-
-	public static void debug(String key, Runnable op) {
-		if (debugKeysOption.get().contains(key)) {
-			op.run();
-		}
-	}
-
+	/**
+	 * Print a message to the err stream, preceeded by ##
+	 */
 	public static void error(String format, Object... args) {
 		synchronized(Util.class) {
 			Util.err.println(String.format(ERROR_PREFIX + format, args).replaceAll("\n", "\n" + ERROR_PREFIX));
 		}
 	}
 
+	/**
+	 * Print a message to the err stream, preceeded by ##
+	 */
 	public static void error(Object o) {
 		error("%s", o);
 	}
 
+	/**
+	 * Print a message to the out stream.
+	 */
 	public static void printf(String format, Object... args) {
 		synchronized(Util.class) {
-			ThreadStatus status = threadStatus.get();
-			pad(status);
+			pad();
 			String msg = String.format(format, args);
 			if (!msg.endsWith("\n")) {
 				msg += "\n";
@@ -168,227 +139,18 @@ public class Util {
 		}
 	}
 
-
+	/**
+	 * Print a message to the out stream.
+	 */
 	public static void println(Object s) {
 		Util.printf("%s\n", s);
 	}
 
-	public static void warn(String format, Object... args) {
-		synchronized(Util.class) {
-			ThreadStatus status = threadStatus.get();
-			pad(status);
-			error("WARNING: " + format, args);
-			Util.err.println();
-			numWarnings++;
-		}
-	}
-
-
-	private static HashMap<String, Integer> yikesMessages = new HashMap<String,Integer>();
-
-	public static boolean yikes(String format, Object... args) {
-		synchronized(Util.class) {
-			String msg = String.format(format, args);
-			Integer n = yikesMessages.get(msg);
-			if (n == null) {
-				n = 1;
-			} else {
-				n++;
-			}
-			yikesMessages.put(msg, n);
-			if (n < YIKES_MAX) {
-				ThreadStatus status = threadStatus.get();
-				pad(status);
-				error("YIKES: " + msg);
-				if (n== YIKES_MAX - 1) {
-					error("Suppressing further yikes messages like that one."); 
-				}
-				Util.err.println();	 
-				return true;
-			} else {
-				return false;
-			}
-		}
-	}
-
-	public static boolean yikes(Throwable e) {
-		return yikes(e.toString(), e);
-	}
-
-	public static boolean yikes(Object o) {
-		return yikes("%s", o.toString());
-	}
-
-	public static boolean yikes(String s, Throwable e) {
-		synchronized(Util.class) {
-			boolean b = yikes("%s ", s);
-			if (b) {
-				error("\n");
-				printStack(Util.err, e, ERROR_PREFIX);
-				Throwable cause = e.getCause();
-				if (cause != null) {
-					error("Caused by...\n %s \n", cause.getMessage());
-					printStack(Util.err, cause, ERROR_PREFIX);
-				}
-				Util.err.flush();
-			}
-			return b;
-		}
-	}
-
-
-	public static void assertTrue(boolean b) {
-		if (!b) {
-			fail("Assertion Failure");
-		}
-	}
-
-	public static void assertTrue(boolean b, String s) {
-		if (!b) {
-			fail("Assertion Failure: %s", s);
-		}
-	}
-
-	public static void assertTrue(boolean b, String s, Object... args) {
-		if (!b) {
-			fail("Assertion Failure: " + s, args);
-		}
-	}
-
-	public static void assertHoldsLock(Object l) {
-		Util.assertTrue(Thread.holdsLock(l));
-	}
-
-	public static void assertHoldsLock(Object l, String s, Object args) {
-		Util.assertTrue(Thread.holdsLock(l), s, args);
-	}
-
-	public static void fail(Throwable e) {
-		fail(e.toString(), e);
-	}
-
-	public static void fail(String s, Object... args) {
-		fail(String.format(s, args), new Throwable()); 
-	}
-
-	public static void fail(String s, Throwable e) {
-		failed = true;
-		synchronized(Util.class) {
-			error("\n");
-			error("%s ", s);
-			error("\n");
-			printStack(Util.err, e, ERROR_PREFIX);
-			Throwable cause = e.getCause();
-			if (cause != null) {
-				error("Caused by...\n %s \n", cause.getMessage());
-				printStack(Util.err, cause, ERROR_PREFIX);
-			}
-			Util.err.flush();
-		}
-		Util.exit(1);
-	}
-
-	public static void panic(String s) {
-		failed = true;
-		error("\n");
-		error("PANIC %s\n", s);
-		printStack(Util.err, new Throwable(), ERROR_PREFIX);
-		error("\n");
-		Runtime.getRuntime().halt(17);
-	}
-
-	public static void panic(String s, Object... args) {
-		panic(String.format(s, args)); 
-	}
-
-	public static void panic(Throwable e) {
-		failed = true;
-		error("\n");
-		error("PANIC %s\n", e.toString());
-		printStack(Util.err, e, ERROR_PREFIX);
-		Throwable cause = e.getCause();
-		if (cause != null) {
-			error("Caused by...\n");
-			error("%s\n", cause.getMessage());
-			printStack(Util.err, cause, ERROR_PREFIX);
-		}
-		Util.err.flush();
-		Runtime.getRuntime().halt(17);
-	}
-
-
-	public static boolean failed() {
-		return failed;
-	}
-
-
-	/*****************/
-
-	public static int getNumWarnings() {
-		return numWarnings;
-	}
-
-	public static boolean getFailed() {
-		return failed;
-	}
-
-	public static int getNumYikes() {
-		return numYikes;
-	}
-
-	/*****************/
-
-	public static void printStack(PrintWriter out) {
-		printStack(out, new Throwable(), "");
-	}
-
-	public static void printStack(PrintWriter out, Throwable e, String prefix) {
-		Iterator<StackTraceElement> iter = new ArrayIterator<StackTraceElement>(e.getStackTrace());
-		out.println(prefix);
-		while (iter.hasNext()) {
-			StackTraceElement t = iter.next();
-			if (!t.getClassName().equals("acme.util.Util")) {
-				out.print(prefix);
-				out.println("    " + t);
-				break;
-			}
-		}
-		while (iter.hasNext()) {
-			StackTraceElement t = iter.next();
-			out.print(prefix);
-			out.println("    " + t);
-		}
-	}
-
-	public void printStack() {
-		printStack(Util.out);
-	}
-
-	public static void printAllStacks(int depth, PrintWriter out) {
-		Map<Thread, StackTraceElement[]> stacks = Thread.getAllStackTraces();
-		out.println("----------");			
-		for (Entry<Thread,StackTraceElement[]> t : stacks.entrySet()) {
-			Thread thread = t.getKey();
-			StackTraceElement[] elems = t.getValue();
-			out.printf("%-35s      state = %10s   depth = %5d \n", thread, thread.getState(), elems.length);
-			int max = depth;
-			for (StackTraceElement ste : elems) {
-				out.println("    " + ste);
-				if (max-- == 0) break;
-			}
-			out.println("----------");
-		}
-	}
-
-	public static void printAllStacks(int depth) {
-		printAllStacks(depth, Util.out);
-	}
-
-	/****************/
-
-
-	private static void pad(ThreadStatus status) {
-
+	/**
+	 * Indent a message, given what has been previously printed by that thread.
+	 */
+	static void pad() {
+		Util.ThreadStatus status = Util.threadStatus.get();
 		if (status.newLineCount != 0) {
 			out.println();
 		}
@@ -398,6 +160,9 @@ public class Util {
 		}
 	}
 
+	/**
+	 * Run the timed expression, reporting how long it took.
+	 */
 	public static <T> T log(TimedExpr<T> lo) throws Exception {
 		ThreadStatus status = threadStatus.get();
 		log(lo.toString());
@@ -411,6 +176,9 @@ public class Util {
 		}
 	}
 
+	/**
+	 * Run the timed statement, reporting how long it took.
+	 */
 	public static void log(TimedStmt lo) throws Exception {
 		ThreadStatus status = threadStatus.get();
 		log(lo.toString());
@@ -424,6 +192,9 @@ public class Util {
 		}
 	}
 
+	/**
+	 * Run the timed expression, but don't repot the time.
+	 */
 	public static <T> T eval(TimedExpr<T> lo) throws Exception {
 		ThreadStatus status = threadStatus.get();
 		log(lo.toString());
@@ -435,6 +206,9 @@ public class Util {
 		}
 	}
 
+	/**
+	 * Run the timed statement, but don't report the time.
+	 */
 	public static void eval(TimedStmt lo) throws Exception {
 		ThreadStatus status = threadStatus.get();
 		log(lo.toString());
@@ -443,21 +217,6 @@ public class Util {
 			lo.run();
 		} finally {
 			status.logLevel--;			
-		}
-	}
-
-	public static void log(SuppressTimedStmt lo) {
-		ThreadStatus status = threadStatus.get();
-		log(lo.toString());
-		status.logLevel++;
-		status.suppressLevel++;
-		long time = System.currentTimeMillis();
-		try {
-			lo.run();
-		} finally {
-			status.logLevel--;
-			status.suppressLevel--;
-			logf("%.3g sec",(System.currentTimeMillis() - time) / 1000.0);
 		}
 	}
 
@@ -472,45 +231,60 @@ public class Util {
 		return prefix;
 	}
 
+	/**
+	 * Log to out, unless -quiet is specified.
+	 */
 	public static void logf(String s, Object... ops) {
 		ThreadStatus status = threadStatus.get();
-		if (quietOption.get() || status.suppressLevel > 0) {
+		if (quietOption.get()) {
 			return;
 		}
 		synchronized(Util.class) {
-			pad(status);
+			pad();
 			out.printf("[" + prefix() + s + "]\n", ops);
 		}
 	}
 
+	/**
+	 * Log to out, unless -quiet is specified.
+	 */
 	public static synchronized void log(String s) {
 		logf("%s", s);
 	}
 
+	/**
+	 * Log to out, unless -quiet is specified.
+	 */
 	public static synchronized void log(Object o) {
 		log(o == null ? "null" : o.toString());
 	}
 
+	/**
+	 * Log to out, unless -quiet is specified.  Add a new line afterword 8 calls to newline.  Used in Monitor.
+	 */
 	public static void lognl(String s) {
 		ThreadStatus status = threadStatus.get();
-		if (quietOption.get() || status.suppressLevel > 0) {
+		if (quietOption.get()) {
 			return;
 		}
 		synchronized(Util.class) {
 			if (status.newLineCount == 0) {
-				pad(status);
+				pad();
 			} else if (status.newLineCount == 8) {
-				pad(status);
+				pad();
 			}
 			status.newLineCount++;
 			out.print(s);
 		}
 	}
 
+	/**
+	 * Log to out, regardless of whether -quiet is on.
+	 */
 	public static void message(String s, Object... ops) {
 		ThreadStatus status = threadStatus.get();
 		synchronized(Util.class) {
-			pad(status);
+			pad();
 			out.printf("[" + prefix() + s + "]\n", ops);
 		}
 	}
@@ -520,8 +294,12 @@ public class Util {
 
 	private static IdentityHashMap<Object,String> ids = new IdentityHashMap<Object,String>();
 
+	/**
+	 * Return identity string for any object.
+	 */
 	public static String objectToIdentityString(Object target) {
-		if (false) {
+		if (target == null) return "null";
+		if (true) {
 			return String.format("0x%08X (%s)", Util.identityHashCode(target), target.getClass());
 		} else {
 			synchronized(Util.class) {
@@ -535,6 +313,9 @@ public class Util {
 		}
 	}
 
+	/**
+	 * Return printable value string for any boxed value or object.
+	 */
 	public static String boxedValueToValueString(Object x) {
 		if (x == null) {
 			return "null";
@@ -549,64 +330,18 @@ public class Util {
 		}
 	}
 
-
+	/**
+	 * Return the identity hashcode for an object.
+	 */
 	public static int identityHashCode(Object o) {
 		return System.identityHashCode(o);
 	}
 
-	/*******/
-
-	public static String stackDump() {
-		return stackDump(Thread.currentThread(), null);
-	}
-
-	public static String stackDump(Thread thread) {
-		return stackDump(thread, null);
-	}
-
-
-	public static String stackDump(Thread thread, StringMatcher systemCode) {
-		String res = "";
-		boolean inUser = false;
-		for (StackTraceElement ste: thread.getStackTrace()) {
-			String n = ste.getClassName();
-			if (systemCode == null || systemCode.test(n) != StringMatchResult.ACCEPT) {
-				inUser = true;
-			}
-			if (inUser) { 
-				res += ste.toString().trim();
-				res += "\n";
-			}
-		}
-		return res;
-	}
-
-	public static String stackDump(Throwable t) {
-		return stackDump(t, null);
-	}
-
-	public static String stackDump(Throwable t, StringMatcher systemCode) {
-		String res = "";
-		boolean inUser = false;
-		if (t == null) {
-			return "<no stack>";
-		}
-		for (StackTraceElement ste: t.getStackTrace()) {
-			String n = ste.getClassName();
-			if (systemCode == null || systemCode.test(n) != StringMatchResult.ACCEPT) {
-				inUser = true;
-			}
-			if (inUser) { 
-				res += ste.toString().trim();
-				res += "\n";
-			}
-		}
-		return res;
-	}
-
-
 	/******************/
-
+ 
+	/**
+	 * Get an environment variable, or the defaultVal if it is not defined.
+	 */
 	public static String getenv(String name, String defaultVal) {
 		String p = System.getenv(name);
 		if (p == null) {
@@ -618,7 +353,7 @@ public class Util {
 
 	/*****************/
 
-	protected static class SyncPrintWriter extends PrintWriter {
+	private static class SyncPrintWriter extends PrintWriter {
 
 		public SyncPrintWriter(PrintStream out) {
 			super(out, true);
@@ -634,13 +369,22 @@ public class Util {
 
 	}
 
-	static private PrintWriter out;
-	static private PrintWriter err;
+	/** Do not modify directly. */
+	static PrintWriter out;
 
+	/** Do not modify directly. */
+	static PrintWriter err;
+
+	/**
+	 * Redirect out.
+	 */
 	static public void setOut(PrintWriter out) {
 		Util.out = new SyncPrintWriter(out);
 	}
 
+	/**
+	 * Redirect err.
+	 */
 	static public void setErr(PrintWriter err) {
 		Util.err = new SyncPrintWriter(err);
 	}
@@ -655,6 +399,9 @@ public class Util {
 
 	private static HashMap<String, Integer> counter = new HashMap<String, Integer>();
 
+	/**
+	 * Method to generate sequenced file names.
+	 */
 	public static synchronized String nextFileNameInSeries(String prefix, String suffix) {
 		Integer i = counter.get(prefix);
 		if (i == null) {
@@ -667,7 +414,10 @@ public class Util {
 
 	/******************/
 
-	static public String makeLogFileName(String relName) {
+	/**
+	 * Method to generate sequenced file names.
+	 */
+	static private String makeLogFileName(String relName) {
 		String path = outputPathOption.get();
 		if (!path.equals("") && path.charAt(path.length() - 1) != File.separatorChar) {
 			path += File.separatorChar;
@@ -675,12 +425,15 @@ public class Util {
 		return path + relName;
 	}
 
+	/**
+	 * Open a file, at the end of the output path option.
+	 */
 	static public NamedFileWriter openLogFile(String name) {
 		try {	
 			new File(outputPathOption.get()).mkdirs();
 			return new NamedFileWriter(makeLogFileName(name));
 		} catch (IOException e) {
-			Util.fail(e);
+			Assert.fail(e);
 			return null;
 		}
 	}		
@@ -689,7 +442,9 @@ public class Util {
 
 	private static final Vector<PeriodicTaskStmt> periodicTasks = new Vector<PeriodicTaskStmt>();
 
-
+	/**
+	 * Install a periodically running task.
+	 */
 	public static void addToPeriodicTasks(PeriodicTaskStmt s) {
 		periodicTasks.add(s);
 		if (periodicTasks.size() == 1) periodic.start();
@@ -712,7 +467,7 @@ public class Util {
 						}
 					});
 				} catch (Exception e) {
-					panic(e);
+					Assert.panic(e);
 				}
 
 			}
@@ -727,6 +482,10 @@ public class Util {
 	private static boolean runningQueueAlready = false;
 	private static int THREADS = 1;
 
+	
+	/**
+	 * Add a routine to run when runtime exits.
+	 */
 	public static void addToExitRunQueue(TimedStmt s) {
 		runQueue.add(s);
 	}
@@ -747,7 +506,7 @@ public class Util {
 						try {
 							st.run();
 						} catch (Exception e) {
-							Util.panic(e);
+							Assert.panic(e);
 						}
 					}
 				}})).start();
@@ -756,15 +515,16 @@ public class Util {
 			try {
 				t.join();
 			} catch (InterruptedException e) {
-				Util.fail(e);
+				Assert.fail(e);
 			}
 		}  
 	}	
 
+	/**
+	 * Call this instead of System.exit.
+	 */
 	public static void exit(int code) {
 		Util.logf("Exiting: %d", code);
-		//		Util.logf("Called From:");
-		//		Util.printStack(Util.out, new Throwable(), "");
 		if (!runningQueueAlready) {
 			runningQueueAlready = true;
 			runExitQueue();

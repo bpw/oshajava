@@ -1,9 +1,9 @@
 /******************************************************************************
 
-Copyright (c) 2009, Cormac Flanagan (University of California, Santa Cruz)
+Copyright (c) 2010, Cormac Flanagan (University of California, Santa Cruz)
                     and Stephen Freund (Williams College) 
 
-All rights reserved.
+All rights reserved.  Revision 7939 (Wed Aug 11 12:11:58 EDT 2010)
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are
@@ -38,30 +38,45 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 package oshajava.support.acme.util.option;
 
+import oshajava.support.acme.util.Assert;
 import oshajava.support.acme.util.Strings;
-import oshajava.support.acme.util.Util;
-import oshajava.support.acme.util.io.XMLWriter;
 
+/**
+ * An option configurable on the command line.
+ */
 public abstract class CommandLineOption<T> extends Option<T> {
 
+	/**
+	 *  Whether the options is stable or still being developed.
+	 */
+	public enum Kind { STABLE, EXPERIMENTAL, DEPRECATED };
+	
+	/** Does the option require an argument when specified.  Ie, -X vs -X=Y. */
 	final protected boolean hasArg;
+	
+	/** String to describe the option */
 	final protected String usage;
 	
+	/** stable or not? */
+	final protected Kind kind;
+	
+	/** The command line to which the option belongs */
 	protected CommandLine container;
 
-	public CommandLineOption(String id, T dV, boolean hasArg, String usage) {
+	public CommandLineOption(String id, T dV, boolean hasArg, Kind kind, String usage) {
 		super(id, dV);
 		this.hasArg = hasArg;
 		this.usage = usage;
+		this.kind = kind;
 	}
 
 	protected abstract void apply(String arg);
 
 	public void checkAndApply(String arg) {
 		if (hasArg && arg == null) {
-			Util.fail("Command Line Option '%s' requires a value", id);
+			Assert.fail("Command Line Option '%s' requires a value", id);
 		} else if (!hasArg && arg != null) {
-			Util.fail("Command Line Option '%s' does not take a value", id);
+			Assert.fail("Command Line Option '%s' does not take a value", id);
 		} else {
 			apply(arg);
 		}
@@ -81,18 +96,21 @@ public abstract class CommandLineOption<T> extends Option<T> {
 	}
 	
 	public String getUsage() {
-		String args = "    -" + id;
+		String args = " -" + id;
 		if (hasArg) {
 			args += "={" + getType() + "}";
 		}
-		args = Strings.pad(args, 35, ' ');
-		String prepend = Strings.pad("", 35, ' ');
+		args = Strings.pad(args, 30, ' ');
+		String prepend = Strings.pad("", 40, ' ');
+		args += (kind == Kind.STABLE ?       "STABLE     " :
+			     kind == Kind.EXPERIMENTAL ? "UNSTABLE   " :
+			    	 						 "DEPRECATED ");
 		return String.format("%s%s\n", args, Strings.wordWrap(usage(), 80, "\n", "",prepend));
 	}
 	
 	void setCommandLine(CommandLine cl) {
 		if (this.container != null) {
-			Util.fail("Command Line Option %s already contained in a command line.", this.id);
+			Assert.fail("Command Line Option %s already contained in a command line.", this.id);
 		}
 		this.container = cl;
 	}
@@ -101,3 +119,5 @@ public abstract class CommandLineOption<T> extends Option<T> {
 		return container;
 	}
 }
+
+	

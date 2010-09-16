@@ -1,9 +1,9 @@
 /******************************************************************************
 
-Copyright (c) 2009, Cormac Flanagan (University of California, Santa Cruz)
+Copyright (c) 2010, Cormac Flanagan (University of California, Santa Cruz)
                     and Stephen Freund (Williams College) 
 
-All rights reserved.
+All rights reserved.  Revision 7939 (Wed Aug 11 12:11:58 EDT 2010)
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are
@@ -39,19 +39,21 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 package oshajava.support.acme.util.io;
 
 import java.io.File;
-import java.net.MalformedURLException;
 import java.net.URL;
 
-import oshajava.support.acme.util.Util;
+import oshajava.support.acme.util.Assert;
 
 
+/**
+ * Helper methods for processing URLS.
+ */
 public class URLUtils {
 
 	public static URL getURLFromString(String base, String url) {
 		try {
 			return new File((url.startsWith(java.io.File.separator) ? "" : (base + java.io.File.separator)) + url).toURI().toURL();
 		} catch (Exception e) {
-			Util.fail(e); 
+			Assert.fail(e); 
 			return null;
 		}
 	}

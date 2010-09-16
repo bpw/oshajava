@@ -10,9 +10,12 @@ import java.security.ProtectionDomain;
 import java.util.HashMap;
 
 import oshajava.spec.ModuleSpecNotFoundException;
+import oshajava.support.acme.util.Assert;
+import oshajava.support.acme.util.Debug;
 import oshajava.support.acme.util.Util;
 import oshajava.support.acme.util.option.CommandLine;
 import oshajava.support.acme.util.option.CommandLineOption;
+import oshajava.support.acme.util.option.CommandLineOption.Kind;
 import oshajava.support.acme.util.option.Option;
 import oshajava.support.org.objectweb.asm.ClassReader;
 import oshajava.support.org.objectweb.asm.ClassVisitor;
@@ -34,7 +37,7 @@ import oshajava.util.count.ConcurrentTimer;
  * TODO pair with OshaJavaMain and InstrumentingClassLoader.
  * If it's an ICL trying to load something from javacopy.*, then it's
  * the application, and it should be instrumented.
- * If it's not, then it's asm or oshajava or acme loading something
+ * If it's not, then it's asm or oshajava or oshajava.support.acme loading something
  * and it should not be instrumented.
  * 
  * TODO When instrumenting a class, the java.* types it uses should be rewritten as follows:
@@ -84,29 +87,29 @@ public class InstrumentationAgent implements ClassFileTransformer {
 	};
 
 	public static final CommandLineOption<Boolean> fullJDKInstrumentationOption =
-		CommandLine.makeBoolean("instrumentFullJDK", false, "Instrument deep into the JDK. (Experimental)");
+		CommandLine.makeBoolean("instrumentFullJDK", false, Kind.EXPERIMENTAL, "Instrument deep into the JDK.");
 	
 	public static final CommandLineOption<Boolean> bytecodeDumpOption =
-		CommandLine.makeBoolean("bytecodeDump", false, "Dump instrumented bytecode.");
+		CommandLine.makeBoolean("bytecodeDump", false, Kind.STABLE, "Dump instrumented bytecode.");
 	
 	public static final CommandLineOption<String> bytecodeDumpDirOption =
 		CommandLine.makeString("bytecodeDumpDir", 
-				Util.outputPathOption.get() + File.separator + "bytecode-dump", "Location of instrumented bytecode dump.");
+				Util.outputPathOption.get() + File.separator + "bytecode-dump", Kind.STABLE, "Location of instrumented bytecode dump.");
 	
 	public static final CommandLineOption<Boolean> verifyOption =
-		CommandLine.makeBoolean("verify", false, "Run an extra debugging verification pass on instrumented bytecode before loading.");
+		CommandLine.makeBoolean("verify", false, Kind.STABLE, "Run an extra debugging verification pass on instrumented bytecode before loading.");
 	
 	public static final CommandLineOption<Boolean> preVerifyOption =
-		CommandLine.makeBoolean("verifySanity", false, "Verify classes read from disk before instrumenting.");
+		CommandLine.makeBoolean("verifySanity", false, Kind.STABLE, "Verify classes read from disk before instrumenting.");
 	
 	public static final CommandLineOption<Boolean> framesOption =
-		CommandLine.makeBoolean("frames", false, "Handle frames intelligently. (Experimental)");
+		CommandLine.makeBoolean("frames", false, Kind.EXPERIMENTAL, "Handle frames intelligently.");
 	
 	public static final CommandLineOption<Boolean> ignoreMissingMethodsOption =
-		CommandLine.makeBoolean("ignoreMissingMethods", false, "Ignore and inline methods missing from their modules.");
+		CommandLine.makeBoolean("ignoreMissingMethods", false, Kind.STABLE, "Ignore and inline methods missing from their modules.");
 	
 	public static final CommandLineOption<Boolean> volatileShadowOption =
-		CommandLine.makeBoolean("volatileShadows", false, "Make shadow fields volatile");
+		CommandLine.makeBoolean("volatileShadows", false, Kind.EXPERIMENTAL, "Make shadow fields volatile");
 	
 	private static final ConcurrentTimer insTimer = new ConcurrentTimer("Instrumentation time");
 		
@@ -129,7 +132,7 @@ public class InstrumentationAgent implements ClassFileTransformer {
 			if (preVerifyOption.get()) {
 				chain = new CheckClassAdapter(chain);
 			}
-			Util.debugf(DEBUG_KEY, "Instrumenting %s", className);
+			Debug.debugf(DEBUG_KEY, "Instrumenting %s", className);
 			in.accept(chain, ClassReader.SKIP_FRAMES); // FIXME frames
 			return out.toByteArray();
 		} catch (ModuleSpecNotFoundException.Wrapper e) {
@@ -143,12 +146,12 @@ public class InstrumentationAgent implements ClassFileTransformer {
 
 	public static void install(Instrumentation inst) {
 		try {
-			Util.debug(DEBUG_KEY, "Installing instrumentation agent.");
+			Debug.debug(DEBUG_KEY, "Installing instrumentation agent.");
 			// Register the instrumentor with the jvm as a class file transformer.
 			InstrumentationAgent agent = new InstrumentationAgent();
 
-			Util.debug(DEBUG_KEY, "Recording previously loaded classes.");
-			// TODO do we miss anything loaded later by asm, acme this way?
+			Debug.debug(DEBUG_KEY, "Recording previously loaded classes.");
+			// TODO do we miss anything loaded later by asm, oshajava.support.acme this way?
 			synchronized(uninstrumentedLoadedClasses) {
 				for (Class<?> c : inst.getAllLoadedClasses()) {
 					String name = c.getCanonicalName();
@@ -162,8 +165,7 @@ public class InstrumentationAgent implements ClassFileTransformer {
 			}
 			inst.addTransformer(agent);
 		} catch (Throwable e) {
-			Util.log("Problem installing oshajava instrumentor");
-			Util.fail(e);
+			Assert.fail("Problem installing oshajava instrumentor", e);
 		}
 	}
 
@@ -171,12 +173,12 @@ public class InstrumentationAgent implements ClassFileTransformer {
 	private static String mainClassInternalName;
 	private static final Option<String> mainClassOption = new Option<String>("mainClass", "");
 	public static void setMainClass(String cl) {
-		Util.debugf(DEBUG_KEY, "Setting main application class to %s.", cl);
+		Debug.debugf(DEBUG_KEY, "Setting main application class to %s.", cl);
 		mainClassInternalName = internalName(cl);
 		mainClassOption.set(sourceName(cl));
 	}
 	public static void stopInstrumentation() {
-		Util.debug(DEBUG_KEY, "Turning off instrumentation");
+		Debug.debug(DEBUG_KEY, "Turning off instrumentation");
 		instrumentationOn = false;
 	}
 	private static ThreadGroup appThreadGroupRoot;
@@ -188,7 +190,7 @@ public class InstrumentationAgent implements ClassFileTransformer {
 			ProtectionDomain pd, byte[] bytecode) throws IllegalClassFormatException {
 		if (loader == null) {
 			if (shouldTransform(className)) {
-				Util.warn("Should have instrumented %s, but bootstrap class loader in use.", className);
+				Assert.warn("Should have instrumented %s, but bootstrap class loader in use.", className);
 			}
 //			if (!shouldInstrument(className)) {
 //				System.out.print('.');
@@ -197,7 +199,7 @@ public class InstrumentationAgent implements ClassFileTransformer {
 		}
 		try {
 			if (!shouldTransform(className)) {
-				Util.warn("Not transforming %s, even though it has a non-null classloader.", className);
+				Assert.warn("Not transforming %s, even though it has a non-null classloader.", className);
 				return null;
 			}
 
@@ -214,11 +216,10 @@ public class InstrumentationAgent implements ClassFileTransformer {
 			}
 			return instrumentedBytecode;
 		} catch (ModuleSpecNotFoundException e) {
-			Util.fail(e);
+			Assert.fail(e);
 			return null;
 		} catch (Throwable e) {
-		    e.printStackTrace();
-			Util.fail("Problem running oshajava instrumentor: " + e);
+			Assert.fail("Problem running oshajava instrumentor: " + e);
 			return null;
 		} finally {
 			insTimer.stop();
@@ -229,7 +230,7 @@ public class InstrumentationAgent implements ClassFileTransformer {
 		if (!instrumentationOn) {
 			if(className.equals(mainClassInternalName)) {
 				instrumentationOn = true;
-				Util.debugf(DEBUG_KEY, "Loading main class (%s) and starting instrumentation.", mainClassInternalName);
+				Debug.debugf(DEBUG_KEY, "Loading main class (%s) and starting instrumentation.", mainClassInternalName);
 				return true;
 			}
 			//				Util.logf("Ignoring %s (Instrumentation not started yet.)", className);
@@ -240,7 +241,7 @@ public class InstrumentationAgent implements ClassFileTransformer {
 			// TODO this loses finalize methods, called by GC, probably not in an app thread.
 			return true;
 		} else {
-			Util.debugf(DEBUG_KEY, "Ignoring %s", className);
+			Debug.debugf(DEBUG_KEY, "Ignoring %s", className);
 		}
 		return false;
 	}

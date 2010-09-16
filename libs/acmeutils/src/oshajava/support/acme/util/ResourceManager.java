@@ -1,9 +1,9 @@
 /******************************************************************************
 
-Copyright (c) 2009, Cormac Flanagan (University of California, Santa Cruz)
+Copyright (c) 2010, Cormac Flanagan (University of California, Santa Cruz)
                     and Stephen Freund (Williams College) 
 
-All rights reserved.
+All rights reserved.  Revision 7939 (Wed Aug 11 12:11:58 EDT 2010)
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are
@@ -38,8 +38,15 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 package oshajava.support.acme.util;
 
+import java.util.Set;
+
 import oshajava.support.acme.util.identityhash.ConcurrentIdentityHashMap;
 
+
+/**
+ * A generic, threadsafe lookup table that knows how to allocate an entry
+ * for a key that has not been looked up before. 
+ */
 public abstract class ResourceManager<K,V> {
 
 	private final ConcurrentIdentityHashMap<K,V> table;
@@ -58,7 +65,7 @@ public abstract class ResourceManager<K,V> {
 		if (v == null) {
 			V z = table.putIfAbsent(key, v = make(key), hash);
 			if (z != null) {
-				Util.yikes("Concurrent " + z.getClass() + " resource creation in ResourceManager");
+				Yikes.yikes("Concurrent " + z.getClass() + " resource creation in ResourceManager");
 				v = z;
 			}
 		}
@@ -66,5 +73,9 @@ public abstract class ResourceManager<K,V> {
 	}
 	
 	protected abstract V make(K k);
+	
+	public Set<K> keys() {
+		return table.keySet();
+	}
 	
 }

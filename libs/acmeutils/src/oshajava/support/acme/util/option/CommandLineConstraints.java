@@ -1,23 +1,23 @@
 /******************************************************************************
 
-Copyright (c) 2009, Cormac Flanagan (University of California, Santa Cruz)
+Copyright (c) 2010, Cormac Flanagan (University of California, Santa Cruz)
                     and Stephen Freund (Williams College) 
 
-All rights reserved.
+All rights reserved.  Revision 7939 (Wed Aug 11 12:11:58 EDT 2010)
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are
 met:
 
-    * Redistributions of source code must retain the above copyright
+ * Redistributions of source code must retain the above copyright
       notice, this list of conditions and the following disclaimer.
 
-    * Redistributions in binary form must reproduce the above
+ * Redistributions in binary form must reproduce the above
       copyright notice, this list of conditions and the following
       disclaimer in the documentation and/or other materials provided
       with the distribution.
 
-    * Neither the names of the University of California, Santa Cruz
+ * Neither the names of the University of California, Santa Cruz
       and Williams College nor the names of its contributors may be
       used to endorse or promote products derived from this software
       without specific prior written permission.
@@ -34,26 +34,34 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-******************************************************************************/
+ ******************************************************************************/
 
 package oshajava.support.acme.util.option;
 
 import java.util.List;
 import java.util.Vector;
 
-import oshajava.support.acme.util.Util;
 import oshajava.support.acme.util.collections.Pair;
 
 
 
+/**
+ * A class to manage ordering requirements between command line options.
+ */
 public class CommandLineConstraints {
 
 	private Vector<Pair<CommandLineOption<?>,CommandLineOption<?>>> constraints = new Vector<Pair<CommandLineOption<?>,CommandLineOption<?>>>();
 
+	/**
+	 * Indicate that before must be before after on the command line.
+	 */
 	public void addConstraint(CommandLineOption<?> before, CommandLineOption<?> after) {
 		constraints.add(new Pair<CommandLineOption<?>,CommandLineOption<?>>(before, after));
 	}
 
+	/**
+	 * Return a command line option appearing before next that shouldn't have appeared there.
+	 */
 	public CommandLineOption<?> findOutOfOrder(List<CommandLineOption<?>> preceding, CommandLineOption<?> next) {
 		for (Pair<CommandLineOption<?>,CommandLineOption<?>> p : constraints) {
 			if (p.fst() == next) {

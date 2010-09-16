@@ -1,9 +1,9 @@
 /******************************************************************************
 
-Copyright (c) 2009, Cormac Flanagan (University of California, Santa Cruz)
+Copyright (c) 2010, Cormac Flanagan (University of California, Santa Cruz)
                     and Stephen Freund (Williams College) 
 
-All rights reserved.
+All rights reserved.  Revision 7939 (Wed Aug 11 12:11:58 EDT 2010)
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are
@@ -36,32 +36,59 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************/
 
-package acme.util.time;
+package oshajava.support.acme.util;
 
-import acme.util.Util;
+import java.util.ArrayList;
 
-public class Monitor extends Thread {
+import oshajava.support.acme.util.option.CommandLine;
+import oshajava.support.acme.util.option.CommandLineOption;
 
-	private Monitorable m;
-	private boolean done = false;
+
+/**
+ * Various routines to print debugging messages, depending on whether a key is enable with the "-d" command line option.  
+ * So, if you run a program with option
+ * <pre>
+ * -d=moo
+ * </pre>
+ * the routine
+ * <pre>
+ * Debug.debug("moo", "hello");
+ * </pre> 
+ * will print that message.  WIthout the option, it is a no-op.
+ *
+ */
+public class Debug {
+
+	public static final CommandLineOption<ArrayList<String>> debugKeysOption = 
+		CommandLine.makeStringList("d", CommandLineOption.Kind.STABLE, "Turn on the given debugging key.  Messages printed by Util.debugf(key, ...) will only be printed if the key is turned on.");
 	
-	Monitor(Monitorable m) {
-		this.m = m;
-	}
 	
-	public void run() {
-		while (!done) {
-			try {
-				Util.lognl(" " + m.progress() + "%");
-				Thread.sleep(5000);
-			} catch (InterruptedException e) {
-				// Util.fail(e);
-			} 
+	public static void debug(String key, String s) {
+		if (debugKeysOption.get().contains(key)) {
+			Util.log(key + "-- " + s);
 		}
 	}
 
-	public void done() {
-		done = true;
-		this.interrupt();
+	public static void debugf(String key, String format, Object... args) {
+		if (debugKeysOption.get().contains(key)) {
+			Util.logf(key + "-- " + format, args);
+		}
 	}
+
+	public static void debug(String key, boolean guard, String s) {
+		if (guard && debugKeysOption.get().contains(key)) {
+			Util.log(key + "-- " + s);  
+		}
+	}
+
+	public static boolean debugOn(String key) {
+		return debugKeysOption.get().contains(key);
+	}
+
+	public static void debug(String key, Runnable op) {
+		if (debugKeysOption.get().contains(key)) {
+			op.run();
+		}
+	}
+
 }

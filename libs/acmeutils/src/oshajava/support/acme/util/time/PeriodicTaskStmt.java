@@ -1,9 +1,9 @@
 /******************************************************************************
 
-Copyright (c) 2009, Cormac Flanagan (University of California, Santa Cruz)
+Copyright (c) 2010, Cormac Flanagan (University of California, Santa Cruz)
                     and Stephen Freund (Williams College) 
 
-All rights reserved.
+All rights reserved.  Revision 7939 (Wed Aug 11 12:11:58 EDT 2010)
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are
@@ -36,26 +36,38 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ******************************************************************************/
 
-package acme.util.io;
+package oshajava.support.acme.util.time;
 
-import java.io.FileWriter;
-import java.io.IOException;
+import oshajava.support.acme.util.Assert;
+import oshajava.support.acme.util.Util;
 
-public class NamedFileWriter extends FileWriter {
+/**
+ * Encapsulates a unit of work to be performed at a specified interval.  See Util.addPeriodicTask.
+ */
+public abstract class PeriodicTaskStmt extends TimedStmt {
 
-	protected final String name;
+	/** ms between calls */
+	protected long interval;
 	
-	public NamedFileWriter(String name) throws IOException {
+	/** time of last execution */
+	protected long last;
+	
+	public PeriodicTaskStmt(String name, long interval) {
 		super(name);
-		this.name = name;
-	}
-
-	public NamedFileWriter(String name, boolean arg1) throws IOException {
-		super(name, arg1);
-		this.name = name;
+		this.interval = interval;
+		last = System.currentTimeMillis();
 	}
 	
-	public final String getName() {
-		return name;
+	public final boolean wantsToRunTask() {
+		return System.currentTimeMillis() - last > interval;
+	}
+	
+	public final void runTask() {
+		try {
+			Util.log(this);
+		} catch(Exception e) {
+			Assert.panic(e);
+		}
+		last = System.currentTimeMillis();		
 	}
 }

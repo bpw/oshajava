@@ -13,6 +13,8 @@ import java.util.Set;
 import oshajava.runtime.exceptions.IllegalCommunicationException;
 import oshajava.runtime.exceptions.IllegalSharingException;
 import oshajava.runtime.exceptions.IllegalSynchronizationException;
+import oshajava.support.acme.util.Assert;
+import oshajava.support.acme.util.Debug;
 import oshajava.support.acme.util.Util;
 import oshajava.support.acme.util.option.Option;
 import oshajava.util.Py;
@@ -215,16 +217,16 @@ public class RuntimeMonitor {
 	public static void release(final Object lock, final ThreadState holder) {
 		try {
 			final LockState ls = holder.lockStateCache.get(lock);
-			Util.assertTrue(ls.getDepth() >= 0, "Bad lock scoping");
+			Assert.assertTrue(ls.getDepth() >= 0, "Bad lock scoping");
     	    ls.decrementDepth();
 		} catch (Exception t) {
-			Util.fail(t);
+			Assert.fail(t);
 		}
 	}
 	public static void release(final ObjectWithState lock, final ThreadState holder) {
 	    lock.__osha_lock_state.decrementDepth();
 		final int depth = lock.__osha_lock_state.getDepth();
-		if (depth < 0) Util.fail("Bad lock scoping");
+		if (depth < 0) Assert.fail("Bad lock scoping");
 	}
 
 	/**
@@ -244,14 +246,14 @@ public class RuntimeMonitor {
 			if (lockState == null) {
 				final LockState ls = new LockState(holder.state);
 				ls.setDepth(1);
-				Util.assertTrue(
+				Assert.assertTrue(
 						holder.lockStateCache.putIfAbsent(lock, ls) == null);					
 				return;
 			}
 			
 			// check and update the lock state.
 			if (lockState.getDepth() < 0) {
-				Util.fail("Bad lock scoping.");
+				Assert.fail("Bad lock scoping.");
 			} else if (lockState.getDepth() == 0) {
 				// First (non-reentrant) acquire by this thread.
 				// NOTE: this is atomic, because we hold lock and no other thread can call
@@ -291,7 +293,7 @@ public class RuntimeMonitor {
 		} catch (IllegalCommunicationException e) {
 			throw e;
 		} catch (Throwable t) {
-			Util.fail(t);
+			Assert.fail(t);
 		}
 	}
 //	public static void acquire(final ObjectWithState lock, final ThreadState holder, final State holderState) {
@@ -337,7 +339,7 @@ public class RuntimeMonitor {
 	 */
 	public static int prewait(final Object lock, final ThreadState holder) {
 		final LockState lockState = holder.lockStateCache.get(lock);
-		Util.assertTrue(lockState.getDepth() > 0, "Bad prewait");
+		Assert.assertTrue(lockState.getDepth() > 0, "Bad prewait");
 		final int depth = lockState.getDepth();
 		lockState.setDepth(0);
 		return depth;
@@ -352,7 +354,7 @@ public class RuntimeMonitor {
 			lockCounter.inc();
 		}
 		final LockState lockState = ts.lockStateCache.get(lock);
-		Util.assertTrue(lockState.getDepth() == 0, "Bad postwait");
+		Assert.assertTrue(lockState.getDepth() == 0, "Bad postwait");
 		lockState.setDepth(resumeDepth);
 		final State lastHolderState = lockState.lastHolder;
 		if (lastHolderState != currentState) { // necessary because of the timeout versions of wait.
@@ -428,7 +430,7 @@ public class RuntimeMonitor {
 
 	public static <T extends Throwable> T fudgeTrace(T t) {
 		if (Config.fudgeExceptionTracesOption.get()) {
-			Util.debugf("fudge", "Fudging. package name is %s", RuntimeMonitor.class.getPackage().getName());
+			Debug.debugf("fudge", "Fudging. package name is %s", RuntimeMonitor.class.getPackage().getName());
 			StackTraceElement[] stack = t.getStackTrace();
 			int i = 0;
 			while (i < stack.length && (stack[i].getClassName().startsWith(RuntimeMonitor.class.getPackage().getName()))) {
@@ -463,19 +465,19 @@ public class RuntimeMonitor {
 	        Util.log("EDGE: " + edge);
 	    }
         } catch (Throwable t) {
-            Util.fail(t);
+            Assert.fail(t);
         }
 	}
 	
 	private static void error(IllegalCommunicationException ice) {
 		switch (Config.errorActionOption.get()) {
 		case HALT:
-			Util.fail(ice);
+			Assert.fail(ice);
 			break;
 		case THROW:
 			throw ice;
 		case WARN:
-			Util.warn(ice.toString());
+			Assert.warn(ice.toString());
 			break;
 		case NONE:
 			break;
@@ -542,7 +544,7 @@ public class RuntimeMonitor {
 					py.close();
 				}
 			} catch (IOException e) {
-				Util.fail("Failed to dump py.");
+				Assert.fail("Failed to dump py.");
 				//FIXME
 			}
 		}

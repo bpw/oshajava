@@ -15,7 +15,8 @@ import oshajava.spec.ModuleMapNotFoundException;
 import oshajava.spec.ModuleSpec;
 import oshajava.spec.ModuleSpecNotFoundException;
 import oshajava.spec.Spec;
-import oshajava.support.acme.util.Util;
+import oshajava.support.acme.util.Assert;
+import oshajava.support.acme.util.Debug;
 import oshajava.support.org.objectweb.asm.ClassAdapter;
 import oshajava.support.org.objectweb.asm.ClassVisitor;
 import oshajava.support.org.objectweb.asm.FieldVisitor;
@@ -142,12 +143,12 @@ public class ClassInstrumentor extends ClassAdapter {
 			try {
 				moduleName = methodToModule.get(methodName);
 			} catch (ModuleMap.MissingEntryException e) {
-				Util.warn("Method not mapped to module: %s", methodName);
+				Assert.warn("Method not mapped to module: %s", methodName);
 				moduleName = new CanonicalName(packageName, CompiledModuleSpec.DEFAULT_NAME);
 			}
 		}
 		module = Spec.getModule(moduleName, loader, methodName);
-		Util.assertTrue(module != null, "No module specified for %s.", methodName);
+		Assert.assertTrue(module != null, "No module specified for %s.", methodName);
 		return module;
 	}
 	
@@ -162,7 +163,7 @@ public class ClassInstrumentor extends ClassAdapter {
 		try {
 			cls.getField(name + SHADOW_FIELD_SUFFIX);
 		} catch (SecurityException e) {
-			Util.fail(e);
+			Assert.fail(e);
 			return false;
 		} catch (NoSuchFieldException e) {
 			return false;
@@ -302,10 +303,10 @@ public class ClassInstrumentor extends ClassAdapter {
 		} catch (ModuleMapNotFoundException e) {
 //			throw e.wrap();
 			if (className.getSimpleName().contains("$")) {
-				Util.warn("No module map found for anonymous inner class %s. All methods assumed to be in module %s.", className, 
+				Assert.warn("No module map found for anonymous inner class %s. All methods assumed to be in module %s.", className, 
 						new CanonicalName(packageName, CompiledModuleSpec.DEFAULT_NAME));
 			} else {
-				Util.warn("No module map found for class %s. All methods assumed to be in module %s.", className, 
+				Assert.warn("No module map found for class %s. All methods assumed to be in module %s.", className, 
 						new CanonicalName(packageName, CompiledModuleSpec.DEFAULT_NAME));
 			}
 		}
@@ -322,7 +323,7 @@ public class ClassInstrumentor extends ClassAdapter {
 			// Get this class' superclass to find inherited fields that need to be shadowed.
 			Class<?> superclass = classForName(Type.getObjectType(superName).getClassName());
 			if (superclass == null) {
-				Util.fail("superclass not found: " + Type.getObjectType(superName).getClassName());
+				Assert.fail("superclass not found: " + Type.getObjectType(superName).getClassName());
 			}
 			
 			// Shadow any unshadowed inherited fields. Keep track of which fields we shadow here
@@ -383,11 +384,11 @@ public class ClassInstrumentor extends ClassAdapter {
 			    // Class initializer for an interface. Inline the
 			    // initialization.
 			    visitedClinit = true;
-			    Util.debugf("clinit", "instrumenting clinit in %s", className);
+			    Debug.debugf("clinit", "instrumenting clinit in %s", className);
 			    return new StaticShadowInitInserter(chain, access, name, desc, classType, staticShadowedFields);
 		    } else { // <clinit> for class
 		    	visitedClinit = true;
-			    Util.debugf("clinit", "instrumenting clinit in %s", className);
+		    	Debug.debugf("clinit", "instrumenting clinit in %s", className);
 		    	return new StaticShadowInitInserter(chain, access, name, desc, classType, null);
 		    }
 		} else {

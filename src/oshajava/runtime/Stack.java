@@ -15,9 +15,9 @@ import oshajava.spec.ExpandableGraph;
 import oshajava.spec.Graph;
 import oshajava.spec.ModuleSpec;
 import oshajava.spec.Spec;
+import oshajava.support.acme.util.Assert;
 import oshajava.support.acme.util.Util;
 import oshajava.support.acme.util.identityhash.ConcurrentIdentityHashMap;
-import oshajava.support.acme.util.identityhash.IdentityHashSet;
 import oshajava.util.Desc;
 import oshajava.util.Py;
 import oshajava.util.PyWriter;
@@ -94,7 +94,7 @@ public class Stack {
 	 */
 	public transient final BitVectorIntSet writerCache = new BitVectorIntSet();
 	
-	private final IdentityHashSet<Stack> writerMemoTable = new IdentityHashSet<Stack>();
+	private final HashSet<Stack> writerMemoTable = new HashSet<Stack>();
 	
 	private Stack(final int methodUID, final Stack parent) {
 		this.methodUID = methodUID;
@@ -243,7 +243,7 @@ public class Stack {
 			// Find the reader layer.
 			final BitVectorIntSet layer = new BitVectorIntSet();
 			final Stack readerLayerTop = reader.expandLayer(layer, writerMod, 0);
-			Util.assertTrue(!layer.isEmpty());
+			Assert.assertTrue(!layer.isEmpty());
 			// Find the writer layer and check the layer mapping.
 			final ModuleSpec layerModule = Spec.getModule(writer.methodUID);
 			if (COUNT_STACKS) {
@@ -293,7 +293,7 @@ public class Stack {
 	private Stack expandLayer(final BitVectorIntSet layer, final int moduleID, final int depth) {
 	    // Should only be called on a stack with at least one method from
 	    // the module.
-	    Util.assertTrue(moduleID == Spec.getModuleID(methodUID));
+	    Assert.assertTrue(moduleID == Spec.getModuleID(methodUID));
 	        
         layer.add(Spec.getMethodID(methodUID));
         if (moduleID != Spec.getModuleID(parent.methodUID)) {
@@ -319,7 +319,7 @@ public class Stack {
 	 * @throws IllegalInternalEdgeException if there was an illegal internal edge
 	 */
 	private Stack checkLayer(final BitVectorIntSet layer, final ModuleSpec module, int depth) throws IllegalInternalEdgeException {
-	    Util.assertTrue(module.getId() == Spec.getModuleID(methodUID));
+	    Assert.assertTrue(module.getId() == Spec.getModuleID(methodUID));
 	    
 	    if (COUNT_STACKS) {
 	    	segSizeDist.add(layer.size());

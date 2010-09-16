@@ -1,9 +1,9 @@
 /******************************************************************************
 
-Copyright (c) 2009, Cormac Flanagan (University of California, Santa Cruz)
+Copyright (c) 2010, Cormac Flanagan (University of California, Santa Cruz)
                     and Stephen Freund (Williams College) 
 
-All rights reserved.
+All rights reserved.  Revision 7939 (Wed Aug 11 12:11:58 EDT 2010)
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are
@@ -38,6 +38,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 package oshajava.support.acme.util.collections;
 
+/**
+ * A generic pair of values.
+ */
 public class Pair<T,U> {
 	private final T fst;
 	private final U snd;
@@ -47,12 +50,16 @@ public class Pair<T,U> {
 	}
 	public T fst() { return fst; }
 	public U snd() { return snd; }
+	@Override
 	public String toString() { return "(" + fst + "," + snd + ")"; }
+	@Override
 	public int hashCode() {
 		return fst.hashCode()+snd.hashCode();
 	}
+	@Override
 	public boolean equals(Object o) {
 		Pair p = (Pair)o;
 		return fst.equals(p.fst) && snd.equals(p.snd);
 	}
 }
+

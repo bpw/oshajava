@@ -1,9 +1,9 @@
 /******************************************************************************
 
-Copyright (c) 2009, Cormac Flanagan (University of California, Santa Cruz)
+Copyright (c) 2010, Cormac Flanagan (University of California, Santa Cruz)
                     and Stephen Freund (Williams College) 
 
-All rights reserved.
+All rights reserved.  Revision 7939 (Wed Aug 11 12:11:58 EDT 2010)
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are
@@ -39,7 +39,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 package oshajava.support.acme.util.count;
 
 
-
+/**
+ * A counter that works like a stopwatch.  
+ * Call start followed by stop, and it adds the interval to the total time.
+ * Can be used multiple times in a row.
+ */
 final public class Timer extends AbstractCounter {
 
 	private long totalTime;
@@ -56,9 +60,6 @@ final public class Timer extends AbstractCounter {
 	
 	public final long start() {
 		return System.nanoTime(); 
-	}
-
-	final synchronized public void stop() {
 	}
 
 	final synchronized public void stop(long startTime) {

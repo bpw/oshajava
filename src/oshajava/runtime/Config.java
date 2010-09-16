@@ -7,6 +7,7 @@ import oshajava.rtviz.StackCommMonitor;
 import oshajava.support.acme.util.Util;
 import oshajava.support.acme.util.option.CommandLine;
 import oshajava.support.acme.util.option.CommandLineOption;
+import oshajava.support.acme.util.option.CommandLineOption.Kind;
 import oshajava.util.count.ConcurrentTimer;
 import oshajava.util.count.SequentialTimer;
 
@@ -36,63 +37,63 @@ public class Config {
 	// -- Options ---------------------------------------------------------
 	
 	public static final CommandLineOption<Boolean> helpOption =
-		CommandLine.makeBoolean("help", false, "Show help.");
+		CommandLine.makeBoolean("help", false, Kind.STABLE, "Show help.");
 	
 	public static final CommandLineOption<String> jvmOption =
-		CommandLine.makeString("java", "java", "JVM to use.");
+		CommandLine.makeString("java", "java", Kind.STABLE, "JVM to use. (Handled by wrapper script.)");
 	
 	public static final CommandLineOption<Boolean> intraThreadOption =
-		CommandLine.makeBoolean("intraThread", false, "Track all (intra- and inter-thread) communication. (Experimental)");
+		CommandLine.makeBoolean("intraThread", false, Kind.EXPERIMENTAL, "Track all (intra- and inter-thread) communication.");
 
 	public enum Granularity { FINE, COARSE };
 	public static final CommandLineOption<Granularity> arrayTrackingOption =
-		CommandLine.makeEnumChoice("arrayTracking", Granularity.FINE, "Set array tracking granularity.", Granularity.class);
+		CommandLine.makeEnumChoice("arrayTracking", Granularity.FINE, Kind.STABLE, "Set array tracking granularity.", Granularity.class);
 	
 	public static final CommandLineOption<Granularity> objectTrackingOption = 
-		CommandLine.makeEnumChoice("objectTracking", Granularity.FINE, "Set object tracking granularity. (COARSE is not fully implemented.)", Granularity.class);
+		CommandLine.makeEnumChoice("objectTracking", Granularity.FINE, Kind.EXPERIMENTAL, "Set object tracking granularity. (COARSE is not fully implemented.)", Granularity.class);
 	
 	public static final CommandLineOption<Boolean> noInstrumentOption =
-		CommandLine.makeBoolean("noInstrument", false, "Turn off instrumentation.");
+		CommandLine.makeBoolean("noInstrument", false, Kind.STABLE, "Turn off instrumentation.");
 	
 	public enum ProfileLevel { NONE, PERF, DEEP }
 	public static final CommandLineOption<ProfileLevel> profileOption =
-		CommandLine.makeEnumChoice("profile", ProfileLevel.NONE, "Report tool profiling information. " + 
+		CommandLine.makeEnumChoice("profile", ProfileLevel.NONE, Kind.STABLE, "Report tool profiling information. " + 
 				"PERF reports timing and memory use, causing no additional overhead. " + 
 				"DEEP reports many internal counters, causing significant performance overhead.", ProfileLevel.class);
 	
 	public static final CommandLineOption<Integer> arrayCacheSizeOption =
-		CommandLine.makeInteger("arrayCacheSize", 16, "Set the array state (or array state array) cache size.");
+		CommandLine.makeInteger("arrayCacheSize", 16, Kind.STABLE, "Set the array state (or array state array) cache size.");
 
 	public static final CommandLineOption<Integer> lockCacheSizeOption =
-		CommandLine.makeInteger("lockCacheSize", 4, "Set the lock state cache size.");
+		CommandLine.makeInteger("lockCacheSize", 4, Kind.STABLE, "Set the lock state cache size.");
 	
 	public static final CommandLineOption<Boolean> fudgeExceptionTracesOption =
-		CommandLine.makeBoolean("fudgeExceptionStackTraces", true, "Make communication exceptions look like they occur directly in user code.");
+		CommandLine.makeBoolean("fudgeExceptionStackTraces", true, Kind.STABLE, "Make communication exceptions look like they occur directly in user code.");
 
     public static final CommandLineOption<Boolean> stackTracesOption =
-        CommandLine.makeBoolean("traces", false, "Save writer stack traces for debugging violations.");
+        CommandLine.makeBoolean("traces", false, Kind.STABLE, "Snapshot and store the current stack trace for debugging on every write.");
     
     public enum ErrorAction { HALT, THROW, WARN, NONE }
     public static final CommandLineOption<ErrorAction> errorActionOption =
-        CommandLine.makeEnumChoice("errorAction", ErrorAction.HALT, "What to do when illegal communication occurs.", ErrorAction.class);
+        CommandLine.makeEnumChoice("errorAction", ErrorAction.HALT, Kind.STABLE, "What to do when illegal communication occurs.", ErrorAction.class);
     
     public static final CommandLineOption<Boolean> recordOption =
-    		CommandLine.makeBoolean("record", false, "Record exercised graph.");
+    		CommandLine.makeBoolean("record", false, Kind.STABLE, "Record exercised graph and dump an XML file.");
     
 	public static final CommandLineOption<Boolean> visualizeOption =
-		CommandLine.makeBoolean("visualize", false, "Visualize communications in real-time. (Partly broken)");
+		CommandLine.makeBoolean("visualize", false, Kind.EXPERIMENTAL, "Visualize communications in real-time.");
     
     public static final CommandLineOption<String> profileExtOption =
-    	CommandLine.makeString("profileExt", "-oshajava-profile.py", "Extension on profile file (prefixed by main class)");
+    	CommandLine.makeString("profileExt", "-oshajava-profile.py", Kind.STABLE, "Extension on profile file (prefixed by main class)");
     
     public static final CommandLineOption<Boolean> createOption =
-    		CommandLine.makeBoolean("create", false, "Create a full execution graph.");
+    		CommandLine.makeBoolean("create", false, Kind.STABLE, "Create a full execution graph (text).");
     
     public static final CommandLineOption<Boolean> summaryOption =
-		CommandLine.makeBoolean("summary", false, "Print summary.");
+		CommandLine.makeBoolean("summary", false, Kind.STABLE, "Print summary.");
     
     public static final CommandLineOption<String> idOption =
-    	CommandLine.makeString("id", Long.toString(System.currentTimeMillis()), "ID for this run.");
+    	CommandLine.makeString("id", Long.toString(System.currentTimeMillis()), Kind.STABLE, "ID for this run.");
 
     public static final CommandLine cl = new CommandLine(TOOL_NAME, "[ -javaOptions java options ] -- Class [ class args ]", helpOption, jvmOption);
 	

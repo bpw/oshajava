@@ -6,7 +6,7 @@ import java.io.PrintWriter;
 import java.io.Writer;
 import java.util.Stack;
 
-import oshajava.support.acme.util.Util;
+import oshajava.support.acme.util.Assert;
 
 public class XMLWriter {
 	
@@ -25,7 +25,7 @@ public class XMLWriter {
 	}
 	
 	private void tag(final String tag, final Object... attributes) throws IOException {
-		Util.assertTrue(attributes.length % 2 == 0, "Unbalanced key/value in attributes.");
+		Assert.assertTrue(attributes.length % 2 == 0, "Unbalanced key/value in attributes.");
 		xml.write(tag);
 		boolean key = true;
 		for (final Object s : attributes) {
@@ -43,7 +43,7 @@ public class XMLWriter {
 	}
 	
 	public void singleton(final String tag, final Object... attributes) throws IOException {
-		Util.assertTrue(attributes.length % 2 == 0, "Unbalanced key/value in attributes.");
+		Assert.assertTrue(attributes.length % 2 == 0, "Unbalanced key/value in attributes.");
 		indent();
 		xml.write('<');
 		tag(tag, attributes);
@@ -51,7 +51,7 @@ public class XMLWriter {
 	}
 
 	public void start(final String tag, final Object... attributes) throws IOException {
-		Util.assertTrue(attributes.length % 2 == 0, "Unbalanced key/value in attributes.");
+		Assert.assertTrue(attributes.length % 2 == 0, "Unbalanced key/value in attributes.");
 		indent();
 		xml.write('<');
 		tag(tag, attributes);
@@ -60,9 +60,9 @@ public class XMLWriter {
 	}
 
 	public void end(final String tag) throws IOException {
-		Util.assertTrue(!scope.isEmpty(), "No open start tag to match end tag </" + tag + ">.");
+		Assert.assertTrue(!scope.isEmpty(), "No open start tag to match end tag </" + tag + ">.");
 		final String startTag = scope.pop();
-		Util.assertTrue(tag.equals(startTag), "End tag </" + tag + "> does not match start tag <" + startTag + ">.");
+		Assert.assertTrue(tag.equals(startTag), "End tag </" + tag + "> does not match start tag <" + startTag + ">.");
 		indent();
 		xml.write("</" + tag + ">\n");
 	}
@@ -70,7 +70,7 @@ public class XMLWriter {
 	public void close() throws IOException {
 		xml.close();
 		if (!scope.isEmpty()) {
-			Util.warn("Missing end tags: " + scope + ".  Closed anyway.");
+			Assert.warn("Missing end tags: " + scope + ".  Closed anyway.");
 		}
 	}
 

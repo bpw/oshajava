@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Map;
 
 import oshajava.runtime.RuntimeMonitor;
-import oshajava.support.acme.util.Util;
+import oshajava.support.acme.util.Assert;
 import oshajava.util.count.MaxRecorder;
 import oshajava.util.intset.BitVectorIntSet;
 /**
@@ -138,7 +138,7 @@ public class CompiledModuleSpec extends ModuleSpec {
 	 * @return
 	 */
 	public CanonicalName getMethodSignature(final int methodUID) {
-		Util.assertTrue(Spec.getModuleID(methodUID) == id, 
+		Assert.assertTrue(Spec.getModuleID(methodUID) == id, 
 				"method id " + methodUID + " (module=" + Spec.getModuleID(methodUID) 
 				+ ", method=" + Spec.getMethodID(methodUID) + 
 				") is not a member of module " + getName() + " (id " + id + ")");
@@ -175,11 +175,11 @@ public class CompiledModuleSpec extends ModuleSpec {
 	 * @return
 	 */
 	public boolean isAllowed(final int w, final int r) {
-		Util.assertTrue(Spec.getModuleID(w) == id && Spec.getModuleID(r) == id);
+		Assert.assertTrue(Spec.getModuleID(w) == id && Spec.getModuleID(r) == id);
 		return commGraph.containsEdge(Spec.getMethodID(w), Spec.getMethodID(r));
 	}
 	public boolean allAllowed(final int w, final BitVectorIntSet readers) {
-		Util.assertTrue(Spec.getModuleID(w) == id); //FIXME && Spec.getModuleID(r) == id);
+		Assert.assertTrue(Spec.getModuleID(w) == id); //FIXME && Spec.getModuleID(r) == id);
 		final BitVectorIntSet edges = commGraph.getOutEdges(Spec.getMethodID(w));
 		if (edges == null) return false;
 		return edges.containsAll(readers);
@@ -192,7 +192,7 @@ public class CompiledModuleSpec extends ModuleSpec {
 	 * @return
 	 */
 	public boolean isPublic(final int w, final int r) {
-		Util.assertTrue(Spec.getModuleID(w) == id && Spec.getModuleID(r) == id);
+		Assert.assertTrue(Spec.getModuleID(w) == id && Spec.getModuleID(r) == id);
 		return interfaceGraph.containsEdge(Spec.getMethodID(w), Spec.getMethodID(r));
 	}
 	
@@ -203,7 +203,7 @@ public class CompiledModuleSpec extends ModuleSpec {
 	 * @return
 	 */
 	public CommunicationKind getCommunicationKind(final int uid) {
-		Util.assertTrue(Spec.getModuleID(uid) == id, "method id " + uid + 
+		Assert.assertTrue(Spec.getModuleID(uid) == id, "method id " + uid + 
 				" (module=" + Spec.getModuleID(uid) + ", method=" + Spec.getMethodID(uid) + ") is not a member of module " + 
 				getName() + " (id " + id + ")");
 		final int mid = Spec.getMethodID(uid);

@@ -3,7 +3,7 @@ package oshajava.spec;
 import java.util.HashMap;
 import java.util.Map;
 
-import oshajava.support.acme.util.Util;
+import oshajava.support.acme.util.Assert;
 
 /**
  * A compile-time representation of a module.
@@ -127,7 +127,7 @@ public class Module extends SpecFile {
 					g.addWriter(sig);
 				}
 			}
-			Util.assertTrue(readGroups != null || writeGroups != null, "Noncomm method %s not marked as comm.", sig);
+			Assert.assertTrue(readGroups != null || writeGroups != null, "Noncomm method %s not marked as comm.", sig);
 			break;
 		case INLINE:
 			numInlinedMethods++;
@@ -137,7 +137,7 @@ public class Module extends SpecFile {
 			break;
 		case ERROR:
 		default:
-			Util.fail("Bad method spec added to module.");
+			Assert.fail("Bad method spec added to module.");
 		}
 	}
 	

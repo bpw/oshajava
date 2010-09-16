@@ -6,7 +6,7 @@ import oshajava.spec.CanonicalName;
 import oshajava.spec.CompiledModuleSpec;
 import oshajava.spec.ModuleSpec;
 import oshajava.spec.ModuleSpec.CommunicationKind;
-import oshajava.support.acme.util.Util;
+import oshajava.support.acme.util.Assert;
 import oshajava.support.org.objectweb.asm.Label;
 import oshajava.support.org.objectweb.asm.MethodVisitor;
 import oshajava.support.org.objectweb.asm.Opcodes;
@@ -55,13 +55,13 @@ public class MethodInstrumentor extends AdviceAdapter {
 				policy = CommunicationKind.INLINE;
 			} else if (inst.className.toInternalString().matches(".*\\$\\d.*")) {
 				// Such is also the case with methods inside anonymous classes.
-				Util.warn("Anonymous class %s has method %s not in module %s. Inlining.", inst.className, fullNameAndDesc, module.getName());
+				Assert.warn("Anonymous class %s has method %s not in module %s. Inlining.", inst.className, fullNameAndDesc, module.getName());
 				policy = CommunicationKind.INLINE;
 			} else {
 				if (InstrumentationAgent.ignoreMissingMethodsOption.get()) {
-					Util.warn("IGNORED and INLINED: in module " + module.getName() + ", " + fullNameAndDesc + " not found");
+					Assert.warn("IGNORED and INLINED: in module " + module.getName() + ", " + fullNameAndDesc + " not found");
 				} else {
-					Util.fail("Method " + fullNameAndDesc + " not found in " + module);
+					Assert.fail("Method " + fullNameAndDesc + " not found in " + module);
 				}
 			}
 		}
@@ -778,7 +778,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 	@Override
 	public void visitVarInsn(int opcode, int var) {
 		if (opcode == Opcodes.RET) {
-			Util.fail("RET not supported.");
+			Assert.fail("RET not supported.");
 		} else {
 			super.visitVarInsn(opcode, var);
 		}
@@ -787,7 +787,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 	@Override
 	public void visitJumpInsn(int opcode, Label label) {
 		if (opcode == Opcodes.JSR) {
-			Util.fail("JSR not supported.");
+			Assert.fail("JSR not supported.");
 		} else {
 			super.visitJumpInsn(opcode, label);
 		}
@@ -843,7 +843,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 		        super.storeLocal(intArg);
 		        super.storeLocal(longArg);
 		    } else {
-		        Util.fail("wait() call with unknown descriptor");
+		    	Assert.fail("wait() call with unknown descriptor");
 		    }
 		    
 		    // stack -> lock lock

@@ -1,9 +1,9 @@
 /******************************************************************************
 
-Copyright (c) 2009, Cormac Flanagan (University of California, Santa Cruz)
+Copyright (c) 2010, Cormac Flanagan (University of California, Santa Cruz)
                     and Stephen Freund (Williams College) 
 
-All rights reserved.
+All rights reserved.  Revision 7939 (Wed Aug 11 12:11:58 EDT 2010)
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are
@@ -38,7 +38,10 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 package oshajava.support.acme.util.count;
 
-
+/**
+ * A resettable counter that remembers the largest value it ever takes on.
+ *
+ */
 final public class HighWaterMark extends AbstractCounter {
 
 	private long count;
@@ -68,7 +71,8 @@ final public class HighWaterMark extends AbstractCounter {
 		count--;
 	}
 	
+	@Override
 	public String get() {
-		return "max = " + max;
+		return "" + max;
 	}	
 }

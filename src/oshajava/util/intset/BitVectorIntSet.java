@@ -6,7 +6,7 @@ import java.util.Set;
 import java.util.HashSet;
 
 import oshajava.runtime.RuntimeMonitor;
-import oshajava.support.acme.util.Util;
+import oshajava.support.acme.util.Assert;
 import oshajava.util.ArrayUtil;
 import oshajava.util.count.MaxRecorder;
 
@@ -70,12 +70,12 @@ public class BitVectorIntSet extends IntSet implements Serializable, Iterable<In
 		final int slot = member / SLOT_SIZE;
 		// resize if necessary.
 		if (slot >= bits.length) {
-			Util.assertTrue(slot < MAX_SLOTS);
+			Assert.assertTrue(slot < MAX_SLOTS);
 			bits = ArrayUtil.copy(bits, slot + 1);
 			if (COUNT_SLOTS) maxSlots.add(slot + 1);
 		}
 		bits[slot] |= (1 << (member % SLOT_SIZE));
-		Util.assertTrue(bits[slot] != 0);
+		Assert.assertTrue(bits[slot] != 0);
 	}
 	
 	public synchronized void addAll(final BitVectorIntSet set) {
@@ -97,7 +97,7 @@ public class BitVectorIntSet extends IntSet implements Serializable, Iterable<In
 		while (newBitsSize >= 0 && bits[newBitsSize] == 0) {
 			newBitsSize--;
 		}
-		Util.assertTrue(newBitsSize >= 0); // TODO This assertion can fail...
+		Assert.assertTrue(newBitsSize >= 0); // TODO This assertion can fail...
 		bits = ArrayUtil.copy(bits, newBitsSize);
 	}
 

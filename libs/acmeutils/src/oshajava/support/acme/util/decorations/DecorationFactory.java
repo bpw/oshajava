@@ -1,9 +1,9 @@
 /******************************************************************************
 
-Copyright (c) 2009, Cormac Flanagan (University of California, Santa Cruz)
+Copyright (c) 2010, Cormac Flanagan (University of California, Santa Cruz)
                     and Stephen Freund (Williams College) 
 
-All rights reserved.
+All rights reserved.  Revision 7939 (Wed Aug 11 12:11:58 EDT 2010)
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are
@@ -41,21 +41,36 @@ package oshajava.support.acme.util.decorations;
 import java.io.Serializable;
 import java.util.HashMap;
 
-import oshajava.support.acme.util.Util;
+import oshajava.support.acme.util.Assert;
 
 
-
+/**
+ * A factory to generate Decorations for a specific type of Decoratable object.
+ */
 public class DecorationFactory<T extends Decoratable> implements Serializable {
 
+	/** 
+	 * Indicates whether multiple decorations can have the same name. If not
+	 * only a single decoration with that name is created.
+	 */
 	public static enum Type { SINGLE, MULTIPLE }; 
 	
 	protected int allocated;
-	HashMap<String,Decoration<T,?>> map = new HashMap<String,Decoration<T,?>>(); 
+	
+	private HashMap<String,Decoration<T,?>> map = new HashMap<String,Decoration<T,?>>(); 
 
 	public DecorationFactory() {
 		allocated = 0;
 	}
 
+	/** 
+	 * Create a new decoration
+	 * @param <V>  Type of values stored
+	 * @param decorationName  Name of decoration
+	 * @param type Single or Multiple occurrences with same name?
+	 * @param defaultValue Value for a T object that hasn't been explicitly decorated.
+	 * @return
+	 */
 	public synchronized <V> Decoration<T,V> make(String decorationName, Type type, DefaultValue<T,V> defaultValue) {
 		if (type == Type.MULTIPLE) {
 			decorationName += allocated;
@@ -65,12 +80,13 @@ public class DecorationFactory<T extends Decoratable> implements Serializable {
 			d = new Decoration<T,V>(this, decorationName, allocated++, defaultValue);
 			map.put(decorationName, d);
 		} else {
-			Util.warn("Decoration '%s' previous created.", decorationName);
+			Assert.warn("Decoration '%s' previous created.", decorationName);
 		}
 		return d;
 	}
 
-	protected int allocated() {
+	/** INTERNAL */
+	int allocated() {
 		return allocated;
 	}
 }

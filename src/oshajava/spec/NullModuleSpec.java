@@ -3,7 +3,7 @@ package oshajava.spec;
 import java.util.HashMap;
 import java.util.Vector;
 
-import oshajava.support.acme.util.Util;
+import oshajava.support.acme.util.Assert;
 import oshajava.util.intset.BitVectorIntSet;
 
 public class NullModuleSpec extends ModuleSpec {
@@ -26,7 +26,7 @@ public class NullModuleSpec extends ModuleSpec {
     
     @Override
     public CanonicalName getMethodSignature(final int methodUID) {
-        Util.assertTrue(Spec.getModuleID(methodUID) == id, 
+        Assert.assertTrue(Spec.getModuleID(methodUID) == id, 
 				"method id " + methodUID + " (module=" + Spec.getModuleID(methodUID) 
 				+ ", method=" + Spec.getMethodID(methodUID) + 
 				") is not a member of module " + getName() + " (id " + id + ")");
@@ -64,7 +64,7 @@ public class NullModuleSpec extends ModuleSpec {
     
     @Override
     public CommunicationKind getCommunicationKind(final int uid) {
-        Util.assertTrue(Spec.getModuleID(uid) == id, "method id " + uid + " (module=" + Spec.getModuleID(uid) + 
+        Assert.assertTrue(Spec.getModuleID(uid) == id, "method id " + uid + " (module=" + Spec.getModuleID(uid) + 
         		", method=" + Spec.getMethodID(uid) + ") is not a member of module " + getName()  + " (id " + id + ")");
         return CompiledModuleSpec.CommunicationKind.INLINE;
     }

@@ -1,23 +1,23 @@
 /******************************************************************************
 
-Copyright (c) 2009, Cormac Flanagan (University of California, Santa Cruz)
+Copyright (c) 2010, Cormac Flanagan (University of California, Santa Cruz)
                     and Stephen Freund (Williams College) 
 
-All rights reserved.
+All rights reserved.  Revision 7939 (Wed Aug 11 12:11:58 EDT 2010)
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are
 met:
 
-    * Redistributions of source code must retain the above copyright
+ * Redistributions of source code must retain the above copyright
       notice, this list of conditions and the following disclaimer.
 
-    * Redistributions in binary form must reproduce the above
+ * Redistributions in binary form must reproduce the above
       copyright notice, this list of conditions and the following
       disclaimer in the documentation and/or other materials provided
       with the distribution.
 
-    * Neither the names of the University of California, Santa Cruz
+ * Neither the names of the University of California, Santa Cruz
       and Williams College nor the names of its contributors may be
       used to endorse or promote products derived from this software
       without specific prior written permission.
@@ -34,17 +34,29 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-******************************************************************************/
+ ******************************************************************************/
 
 package oshajava.support.acme.util.identityhash;
- 
+
 import java.io.Serializable;
-import java.util.*;
+import java.util.AbstractCollection;
+import java.util.AbstractMap;
+import java.util.AbstractSet;
+import java.util.Collection;
+import java.util.ConcurrentModificationException;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.Set;
 import java.util.concurrent.locks.ReentrantLock;
 
 import oshajava.support.acme.util.Util;
 
 
+/**
+ * A modified version of the Java library class that uses 
+ * Util.identityHashcode.
+ */
 
 /**
  * A hash table supporting full concurrency of retrievals and
@@ -185,7 +197,7 @@ public class ConcurrentIdentityHashMap<K, V> extends AbstractMap<K, V> {
 	 * @return the hash code
 	 */
 	static int hash(Object x) {
-		if (x == null) throw new NullPointerException();
+		if (x == null) throw new NullPointerException(); // Added by bpw for more obvious error reporting.
 		int h = Util.identityHashCode(x);
 		return h;
 	}
@@ -386,7 +398,7 @@ public class ConcurrentIdentityHashMap<K, V> extends AbstractMap<K, V> {
 					e = e.next) {
 						V v = e.value;
 						if (v == null) // recheck
-						v = readValueUnderLock(e);
+							v = readValueUnderLock(e);
 						if (value.equals(v))
 							return true;
 					}
@@ -670,6 +682,7 @@ public class ConcurrentIdentityHashMap<K, V> extends AbstractMap<K, V> {
 	}
 
 	// inherit Map javadoc
+	@Override
 	public boolean isEmpty() {
 		final Segment[] segments = this.segments;
 		/*
@@ -703,6 +716,7 @@ public class ConcurrentIdentityHashMap<K, V> extends AbstractMap<K, V> {
 	}
 
 	// inherit Map javadoc
+	@Override
 	public int size() {
 		final Segment[] segments = this.segments;
 		long sum = 0;
@@ -756,6 +770,7 @@ public class ConcurrentIdentityHashMap<K, V> extends AbstractMap<K, V> {
 	 * @throws  NullPointerException  if the key is
 	 *               <tt>null</tt>.
 	 */
+	@Override
 	public V get(Object key) {
 		int hash = hash(key); // throws NullPointerException if key null
 		return segmentFor(hash).get(key, hash);
@@ -765,7 +780,7 @@ public class ConcurrentIdentityHashMap<K, V> extends AbstractMap<K, V> {
 		return segmentFor(hash).get(key, hash);
 	}
 
-	
+
 	/**
 	 * Tests if the specified object is a key in this table.
 	 *
@@ -776,6 +791,7 @@ public class ConcurrentIdentityHashMap<K, V> extends AbstractMap<K, V> {
 	 * @throws  NullPointerException  if the key is
 	 *               <tt>null</tt>.
 	 */
+	@Override
 	public boolean containsKey(Object key) {
 		int hash = hash(key); // throws NullPointerException if key null
 		return segmentFor(hash).containsKey(key, hash);
@@ -792,6 +808,7 @@ public class ConcurrentIdentityHashMap<K, V> extends AbstractMap<K, V> {
 	 * specified value.
 	 * @throws  NullPointerException  if the value is <tt>null</tt>.
 	 */
+	@Override
 	public boolean containsValue(Object value) {
 		if (value == null)
 			throw new NullPointerException();
@@ -873,6 +890,7 @@ public class ConcurrentIdentityHashMap<K, V> extends AbstractMap<K, V> {
 	 * @throws  NullPointerException  if the key or value is
 	 *               <tt>null</tt>.
 	 */
+	@Override
 	public V put(K key, V value) {
 		if (value == null)
 			throw new NullPointerException();
@@ -920,6 +938,7 @@ public class ConcurrentIdentityHashMap<K, V> extends AbstractMap<K, V> {
 	 *
 	 * @param t Mappings to be stored in this map.
 	 */
+	@Override
 	public void putAll(Map<? extends K, ? extends V> t) {
 		for (Iterator<? extends Map.Entry<? extends K, ? extends V>> it = t.entrySet().iterator(); it.hasNext(); ) {
 			Entry<? extends K, ? extends V> e = it.next();
@@ -937,6 +956,7 @@ public class ConcurrentIdentityHashMap<K, V> extends AbstractMap<K, V> {
 	 * @throws  NullPointerException  if the key is
 	 *               <tt>null</tt>.
 	 */
+	@Override
 	public V remove(Object key) {
 		int hash = hash(key);
 		return segmentFor(hash).remove(key, hash, null);
@@ -1015,6 +1035,7 @@ public class ConcurrentIdentityHashMap<K, V> extends AbstractMap<K, V> {
 	/**
 	 * Removes all mappings from this map.
 	 */
+	@Override
 	public void clear() {
 		for (int i = 0; i < segments.length; ++i)
 			segments[i].clear();
@@ -1036,6 +1057,7 @@ public class ConcurrentIdentityHashMap<K, V> extends AbstractMap<K, V> {
 	 *
 	 * @return a set view of the keys contained in this map.
 	 */
+	@Override
 	public Set<K> keySet() {
 		Set<K> ks = keySet;
 		return (ks != null) ? ks : (keySet = new KeySet());
@@ -1058,6 +1080,7 @@ public class ConcurrentIdentityHashMap<K, V> extends AbstractMap<K, V> {
 	 *
 	 * @return a collection view of the values contained in this map.
 	 */
+	@Override
 	public Collection<V> values() {
 		Collection<V> vs = values;
 		return (vs != null) ? vs : (values = new Values());
@@ -1081,9 +1104,10 @@ public class ConcurrentIdentityHashMap<K, V> extends AbstractMap<K, V> {
 	 *
 	 * @return a collection view of the mappings contained in this map.
 	 */
+	@Override
 	public Set<Map.Entry<K,V>> entrySet() {
 		Set<Map.Entry<K,V>> es = entrySet;
-		return (es != null) ? es : (entrySet = (Set) new EntrySet());
+		return (es != null) ? es : (entrySet = new EntrySet());
 	}
 
 
@@ -1207,6 +1231,7 @@ public class ConcurrentIdentityHashMap<K, V> extends AbstractMap<K, V> {
 			return ConcurrentIdentityHashMap.this.put(lastReturned.key, value);
 		}
 
+		@Override
 		public boolean equals(Object o) {
 			// If not acting as entry, just use default.
 			if (lastReturned == null)
@@ -1217,6 +1242,7 @@ public class ConcurrentIdentityHashMap<K, V> extends AbstractMap<K, V> {
 			return eq(getKey(), e.getKey()) && eq(getValue(), e.getValue());
 		}
 
+		@Override
 		public int hashCode() {
 			// If not acting as entry, just use default.
 			if (lastReturned == null)
@@ -1224,10 +1250,11 @@ public class ConcurrentIdentityHashMap<K, V> extends AbstractMap<K, V> {
 
 			Object k = getKey();
 			Object v = getValue();
-			return ((k == null) ? 0 : k.hashCode()) ^
-			((v == null) ? 0 : v.hashCode());
+			return ((k == null) ? 0 : Util.identityHashCode(k)) ^
+			((v == null) ? 0 : Util.identityHashCode(v));
 		}
 
+		@Override
 		public String toString() {
 			// If not acting as entry, just use default.
 			if (lastReturned == null)
@@ -1243,45 +1270,57 @@ public class ConcurrentIdentityHashMap<K, V> extends AbstractMap<K, V> {
 	}
 
 	final class KeySet extends AbstractSet<K> {
+		@Override
 		public Iterator<K> iterator() {
 			return new KeyIterator();
 		}
+		@Override
 		public int size() {
 			return ConcurrentIdentityHashMap.this.size();
 		}
+		@Override
 		public boolean contains(Object o) {
 			return ConcurrentIdentityHashMap.this.containsKey(o);
 		}
+		@Override
 		public boolean remove(Object o) {
 			return ConcurrentIdentityHashMap.this.remove(o) != null;
 		}
+		@Override
 		public void clear() {
 			ConcurrentIdentityHashMap.this.clear();
 		}
 	}
 
 	final class Values extends AbstractCollection<V> {
+		@Override
 		public Iterator<V> iterator() {
 			return new ValueIterator();
 		}
+		@Override
 		public int size() {
 			return ConcurrentIdentityHashMap.this.size();
 		}
+		@Override
 		public boolean contains(Object o) {
 			return ConcurrentIdentityHashMap.this.containsValue(o);
 		}
+		@Override
 		public void clear() {
 			ConcurrentIdentityHashMap.this.clear();
 		}
 	}
 
 	final class EntrySet extends AbstractSet<Map.Entry<K,V>> {
+		@Override
 		public Iterator<Map.Entry<K,V>> iterator() {
 			return new EntryIterator();
 		}
+		@Override
 		public int size() {
 			return ConcurrentIdentityHashMap.this.size();
 		}
+		@Override
 		public void clear() {
 			ConcurrentIdentityHashMap.this.clear();
 		}
@@ -1291,52 +1330,55 @@ public class ConcurrentIdentityHashMap<K, V> extends AbstractMap<K, V> {
 	 * This duplicates java.util.AbstractMap.SimpleEntry until this class
 	 * is made accessible.
 	 */
-	 static final class SimpleEntry<K,V> implements Entry<K,V> {
-		 K key;
-		 V value;
+	static final class SimpleEntry<K,V> implements Entry<K,V> {
+		K key;
+		V value;
 
-		 public SimpleEntry(K key, V value) {
-			 this.key   = key;
-			 this.value = value;
-		 }
+		public SimpleEntry(K key, V value) {
+			this.key   = key;
+			this.value = value;
+		}
 
-		 public SimpleEntry(Entry<K,V> e) {
-			 this.key   = e.getKey();
-			 this.value = e.getValue();
-		 }
+		public SimpleEntry(Entry<K,V> e) {
+			this.key   = e.getKey();
+			this.value = e.getValue();
+		}
 
-		 public K getKey() {
-			 return key;
-		 }
+		public K getKey() {
+			return key;
+		}
 
-		 public V getValue() {
-			 return value;
-		 }
+		public V getValue() {
+			return value;
+		}
 
-		 public V setValue(V value) {
-			 V oldValue = this.value;
-			 this.value = value;
-			 return oldValue;
-		 }
+		public V setValue(V value) {
+			V oldValue = this.value;
+			this.value = value;
+			return oldValue;
+		}
 
-		 public boolean equals(Object o) {
-			 if (!(o instanceof Map.Entry))
-				 return false;
-			 Map.Entry e = (Map.Entry)o;
-			 return eq(key, e.getKey()) && eq(value, e.getValue());
-		 }
+		@Override
+		public boolean equals(Object o) {
+			if (!(o instanceof Map.Entry))
+				return false;
+			Map.Entry e = (Map.Entry)o;
+			return eq(key, e.getKey()) && eq(value, e.getValue());
+		}
 
-		 public int hashCode() {
-			 return ((key   == null)   ? 0 :   key.hashCode()) ^
-			 ((value == null)   ? 0 : value.hashCode());
-		 }
+		@Override
+		public int hashCode() {
+			return ((key == null) ? 0 : Util.identityHashCode(key)) ^
+			((value == null) ? 0 : Util.identityHashCode(value));
+		}
 
-		 public String toString() {
-			 return key + "=" + value;
-		 }
+		@Override
+		public String toString() {
+			return key + "=" + value;
+		}
 
-		 static boolean eq(Object o1, Object o2) {
-			 return (o1 == null ? o2 == null : o1.equals(o2));
-		 }
-	 }
+		static boolean eq(Object o1, Object o2) {
+			return (o1 == null ? o2 == null : o1.equals(o2));
+		}
+	}
 }

@@ -4,7 +4,8 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
 import oshajava.instrument.InstrumentationAgent;
-import oshajava.support.acme.util.Util;
+import oshajava.support.acme.util.Assert;
+import oshajava.support.acme.util.Debug;
 import oshajava.util.count.SequentialTimer;
 
 public class OshaJavaMain {
@@ -15,7 +16,7 @@ public class OshaJavaMain {
 			return;
 		}
 		if (args.length == 0) {
-			Util.fail("No main class given.");
+			Assert.fail("No main class given.");
 		}
 		final String mainClass = args[0];
 		InstrumentationAgent.setMainClass(mainClass);
@@ -33,16 +34,16 @@ public class OshaJavaMain {
 						cl = ClassLoader.getSystemClassLoader().loadClass(args[0]);
 						main = cl.getMethod("main", String[].class);
 					} catch (Throwable e) {
-						Util.fail(e);
+						Assert.fail(e);
 						return;
 					}
 					final String[] appArgs = new String[args.length - 1];
 					System.arraycopy(args, 1, appArgs, 0, args.length - 1);
 					main.invoke(cl, (Object)appArgs);
 				} catch (InvocationTargetException e) {
-					Util.fail(e.getCause());
+					Assert.fail(e.getCause());
 				} catch (Throwable e) {
-					Util.fail(e);
+					Assert.fail(e);
 				} finally {
 					mainTimer.stop();
 				}
@@ -54,12 +55,12 @@ public class OshaJavaMain {
 				RuntimeMonitor.fini(mainClass);
 			}
 		});
-		Util.debugf("main", "Starting %s", mainClass);
+		Debug.debugf("main", "Starting %s", mainClass);
 		app.start();
 		try {
 			app.join();
 		} catch (InterruptedException e) {
-			Util.fail(e);
+			Assert.fail(e);
 		}
 	}
 

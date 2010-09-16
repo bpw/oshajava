@@ -3,7 +3,7 @@ package oshajava.runtime;
 import java.lang.ref.WeakReference;
 
 import oshajava.runtime.RuntimeMonitor.Ref;
-import oshajava.support.acme.util.Util;
+import oshajava.support.acme.util.Assert;
 import oshajava.util.cache.DirectMappedShadowCache;
 import oshajava.util.cache.ShadowCache;
 import oshajava.util.count.Counter;
@@ -46,7 +46,7 @@ public final class ThreadState {
 	 * @return
 	 */
 	private static synchronized int newID() {
-		Util.assertTrue(idCounter < Integer.MAX_VALUE, "Ran out of thread IDs.");
+		Assert.assertTrue(idCounter < Integer.MAX_VALUE, "Ran out of thread IDs.");
 		return ++idCounter;
 	}
 	

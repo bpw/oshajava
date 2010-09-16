@@ -1,9 +1,9 @@
 /******************************************************************************
 
-Copyright (c) 2009, Cormac Flanagan (University of California, Santa Cruz)
+Copyright (c) 2010, Cormac Flanagan (University of California, Santa Cruz)
                     and Stephen Freund (Williams College) 
 
-All rights reserved.
+All rights reserved.  Revision 7939 (Wed Aug 11 12:11:58 EDT 2010)
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are
@@ -40,6 +40,9 @@ package oshajava.support.acme.util.time;
 
 import oshajava.support.acme.util.Util;
 
+/**
+ * Encapsulates a unit of work to perform while measuring the time it takes.  Call eval() to run the run method and log the time.
+ */
 public abstract class TimedStmt {
 
 	private String name;
@@ -54,6 +57,7 @@ public abstract class TimedStmt {
 		Util.log(this);		
 	}
 	
+	@Override
 	public String toString() {
 		return name;
 	}

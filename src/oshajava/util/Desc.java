@@ -5,7 +5,7 @@ import java.util.List;
 
 import oshajava.instrument.InstrumentationAgent;
 import oshajava.spec.CanonicalName;
-import oshajava.support.acme.util.Util;
+import oshajava.support.acme.util.Assert;
 
 public class Desc {
 
@@ -89,7 +89,7 @@ public class Desc {
 			desc = desc.substring(semiIndex + 1);
 			break;
 		default:
-			Util.fail("Bad descriptor " + desc);
+			Assert.fail("Bad descriptor " + desc);
 			type = "";
 			break;
 		}

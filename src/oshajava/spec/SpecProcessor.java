@@ -35,7 +35,7 @@ import oshajava.annotation.Writer;
 import oshajava.spec.Module.DuplicateGroupException;
 import oshajava.spec.Module.DuplicateMethodException;
 import oshajava.spec.SpecFileManager.Creator;
-import oshajava.support.acme.util.Util;
+import oshajava.support.acme.util.Assert;
 
 @SupportedAnnotationTypes("*")
 @SupportedSourceVersion(SourceVersion.RELEASE_6)
@@ -133,7 +133,7 @@ public class SpecProcessor extends AbstractProcessor {
 	@Override
 	public boolean process(Set<? extends TypeElement> annotationTypes, RoundEnvironment round) {
 		if (justHelp) return false;
-		Util.assertTrue(!complete, "Egads!");
+		Assert.assertTrue(!complete, "Egads!");
 		// Packages, classes, and interfaces to process in this round.
 		final Set<? extends Element> elements = round.getRootElements();
 		if (elements.isEmpty()) {

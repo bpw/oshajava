@@ -4,7 +4,7 @@ import java.io.Serializable;
 import java.util.HashSet;
 import java.util.Set;
 
-import oshajava.support.acme.util.Util;
+import oshajava.support.acme.util.Assert;
 
 public 	class Group implements Serializable {
 	/**
@@ -62,7 +62,7 @@ public 	class Group implements Serializable {
 	}
 	
 	public void addReader(CanonicalName sig) throws DuplicateMethodException {
-		Util.assertTrue(sig != null, "Null method sig");
+		Assert.assertTrue(sig != null, "Null method sig");
 		if (readers.contains(sig)) {
 			throw new DuplicateMethodException(this, sig, DuplicateMethodException.Kind.READER);
 		}
@@ -70,7 +70,7 @@ public 	class Group implements Serializable {
 	}
 	
 	public void addWriter(CanonicalName sig) throws DuplicateMethodException {
-		Util.assertTrue(sig != null, "Null method sig");
+		Assert.assertTrue(sig != null, "Null method sig");
 		if (writers.contains(sig)) {
 			throw new DuplicateMethodException(this, sig, DuplicateMethodException.Kind.WRITER);
 		}

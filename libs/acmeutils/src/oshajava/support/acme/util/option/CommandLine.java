@@ -1,23 +1,23 @@
 /******************************************************************************
 
-Copyright (c) 2009, Cormac Flanagan (University of California, Santa Cruz)
+Copyright (c) 2010, Cormac Flanagan (University of California, Santa Cruz)
                     and Stephen Freund (Williams College) 
 
-All rights reserved.
+All rights reserved.  Revision 7939 (Wed Aug 11 12:11:58 EDT 2010)
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are
 met:
 
-    * Redistributions of source code must retain the above copyright
+ * Redistributions of source code must retain the above copyright
       notice, this list of conditions and the following disclaimer.
 
-    * Redistributions in binary form must reproduce the above
+ * Redistributions in binary form must reproduce the above
       copyright notice, this list of conditions and the following
       disclaimer in the documentation and/or other materials provided
       with the distribution.
 
-    * Neither the names of the University of California, Santa Cruz
+ * Neither the names of the University of California, Santa Cruz
       and Williams College nor the names of its contributors may be
       used to endorse or promote products derived from this software
       without specific prior written permission.
@@ -34,7 +34,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-******************************************************************************/
+ ******************************************************************************/
 
 package oshajava.support.acme.util.option;
 
@@ -46,43 +46,62 @@ import java.util.Arrays;
 import java.util.Scanner;
 import java.util.Vector;
 
+import oshajava.support.acme.util.Assert;
+import oshajava.support.acme.util.Debug;
 import oshajava.support.acme.util.StringMatchResult;
 import oshajava.support.acme.util.StringMatcher;
 import oshajava.support.acme.util.Strings;
 import oshajava.support.acme.util.Util;
 import oshajava.support.acme.util.collections.IterableIterator;
-import oshajava.support.acme.util.collections.Pair;
 
 
-
+/**
+ * Abstraction for processing command line arguments.
+ */
 public class CommandLine {
 
-	public static final Option<String> javaArgs = 
-		new Option<String>("javaArgs", "");
+	/** Set to all the args after the last option provided. */
+	public static final Option<String> javaArgs = new Option<String>("javaArgs", "");
 
 	private Vector<CommandLineOption<?>> flags = new Vector<CommandLineOption<?>>();
 	private final String requiredPart; 
 	private final String commandName;
 
 	private ArrayList<String> usageInfo = new ArrayList<String>();
-
 	private ArrayList<Runnable> postProcess = new ArrayList<Runnable>();
 
 	protected CommandLineConstraints constraints = new CommandLineConstraints();
 
-	public static CommandLineOption<Boolean> makeBoolean(String id, boolean dV, String usage) {
-		return new CommandLineOption<Boolean>(id,dV,false,usage) {
+	/**
+	 * Create a new command line option
+	 * @param id  keyword for the flag.  Set with -id=X
+	 * @param dV  initial value
+	 * @param k   indicates whether the option is stable or not
+	 * @param usage  describes the option
+	 */
+	public static CommandLineOption<Boolean> makeBoolean(String id, final boolean dV, CommandLineOption.Kind k, String usage) {
+		return new CommandLineOption<Boolean>(id,dV,false, k, usage) {
+			@Override
 			protected void apply(String arg) {
-				this.set(!this.defaultVal);
+				this.set(!dV);
 			}
 
 		};
 	}
 
-	public static CommandLineOption<Boolean> makeBoolean(String id, boolean dV, String usage, final Runnable r) {
-		return new CommandLineOption<Boolean>(id,dV,false,usage) {
+	/**
+	 * Create a new command line option
+	 * @param id  keyword for the flag.  Set with -id=X
+	 * @param dV  initial value
+	 * @param k   indicates whether the option is stable or not
+	 * @param r   runs this Runnable when the flag is encountered
+	 * @param usage  describes the option
+	 */
+	public static CommandLineOption<Boolean> makeBoolean(String id, final boolean dV, CommandLineOption.Kind k, String usage, final Runnable r) {
+		return new CommandLineOption<Boolean>(id,dV,false,k,usage) {
+			@Override
 			protected void apply(String arg) {
-				this.set(!this.defaultVal);
+				this.set(!dV);
 				r.run();
 			}
 
@@ -90,8 +109,16 @@ public class CommandLine {
 	}
 
 
-	public static CommandLineOption<Integer> makeInteger(String id, int dV, String usage) {
-		return new CommandLineOption<Integer>(id,dV,true,usage) {
+	/**
+	 * Create a new command line option
+	 * @param id  keyword for the flag.  Set with -id=X
+	 * @param dV  initial value
+	 * @param k   indicates whether the option is stable or not
+	 * @param usage  describes the option
+	 */
+	public static CommandLineOption<Integer> makeInteger(String id, int dV, CommandLineOption.Kind k, String usage) {
+		return new CommandLineOption<Integer>(id,dV,true,k,usage) {
+			@Override
 			protected void apply(String arg) {
 				this.set(Integer.parseInt(arg));
 			}
@@ -99,8 +126,17 @@ public class CommandLine {
 		};
 	}
 
-	public static CommandLineOption<Integer> makeInteger(String id, int dV, String usage, final Runnable r) {
-		return new CommandLineOption<Integer>(id,dV,true,usage) {
+	/**
+	 * Create a new command line option
+	 * @param id  keyword for the flag.  Set with -id=X
+	 * @param dV  initial value
+	 * @param k   indicates whether the option is stable or not
+	 * @param r   runs this Runnable when the flag is encountered
+	 * @param usage  describes the option
+	 */
+	public static CommandLineOption<Integer> makeInteger(String id, int dV, CommandLineOption.Kind k, String usage, final Runnable r) {
+		return new CommandLineOption<Integer>(id,dV,true,k,usage) {
+			@Override
 			protected void apply(String arg) {
 				this.set(Integer.parseInt(arg));
 				r.run();
@@ -109,9 +145,16 @@ public class CommandLine {
 		};
 	}
 
-
-	public static CommandLineOption<Long> makeLong(String id, long dV, String usage) {
-		return new CommandLineOption<Long>(id,dV,true,usage) {
+	/**
+	 * Create a new command line option
+	 * @param id  keyword for the flag.  Set with -id=X
+	 * @param dV  initial value
+	 * @param k   indicates whether the option is stable or not
+	 * @param usage  describes the option
+	 */
+	public static CommandLineOption<Long> makeLong(String id, long dV, CommandLineOption.Kind k, String usage) {
+		return new CommandLineOption<Long>(id,dV,true,k,usage) {
+			@Override
 			protected void apply(String arg) {
 				this.set(Long.parseLong(arg));
 			}
@@ -119,8 +162,17 @@ public class CommandLine {
 		};
 	}
 
-	public static CommandLineOption<Long> makeLong(String id, long dV, String usage, final Runnable r) {
-		return new CommandLineOption<Long>(id,dV,true,usage) {
+	/**
+	 * Create a new command line option
+	 * @param id  keyword for the flag.  Set with -id=X
+	 * @param dV  initial value
+	 * @param k   indicates whether the option is stable or not
+	 * @param r   runs this Runnable when the flag is encountered
+	 * @param usage  describes the option
+	 */	
+	public static CommandLineOption<Long> makeLong(String id, long dV, CommandLineOption.Kind k, String usage, final Runnable r) {
+		return new CommandLineOption<Long>(id,dV,true,k,usage) {
+			@Override
 			protected void apply(String arg) {
 				this.set(Long.parseLong(arg));
 				r.run();
@@ -129,9 +181,16 @@ public class CommandLine {
 		};
 	}
 
-
-	public static CommandLineOption<String> makeString(String id, String dV, String usage) {
-		return new CommandLineOption<String>(id,dV,true,usage) {
+	/**
+	 * Create a new command line option
+	 * @param id  keyword for the flag.  Set with -id=X
+	 * @param dV  initial value
+	 * @param k   indicates whether the option is stable or not
+	 * @param usage  describes the option
+	 */
+	public static CommandLineOption<String> makeString(String id, String dV, CommandLineOption.Kind k, String usage) {
+		return new CommandLineOption<String>(id,dV,true,k,usage) {
+			@Override
 			protected void apply(String arg) {
 				this.set(arg);
 			}
@@ -139,9 +198,17 @@ public class CommandLine {
 		};
 	}
 
-
-	public static CommandLineOption<String> makeAppendableString(String id, String dV, final String sep, String usage) {
-		return new CommandLineOption<String>(id,dV,true,usage) {
+	/**
+	 * Create a new command line option.  Concats together all string args, separating them with sep.
+	 * @param id  keyword for the flag.  Set with -id=X
+	 * @param dV  initial value
+	 * @param sep  separator character for concatenated string
+	 * @param k   indicates whether the option is stable or not
+	 * @param usage  describes the option
+	 */
+	public static CommandLineOption<String> makeAppendableString(String id, String dV, final String sep, CommandLineOption.Kind k, String usage) {
+		return new CommandLineOption<String>(id,dV,true,k,usage) {
+			@Override
 			protected void apply(String arg) {
 				this.set(this.get() + (this.get().length() > 0 ? sep : "") + arg);
 			}
@@ -149,9 +216,17 @@ public class CommandLine {
 		};
 	}
 
-
-	public static CommandLineOption<String> makeString(String id, String dV, String usage, final Runnable r) {
-		return new CommandLineOption<String>(id,dV,true,usage) {
+	/**
+	 * Create a new command line option
+	 * @param id  keyword for the flag.  Set with -id=X
+	 * @param dV  initial value
+	 * @param k   indicates whether the option is stable or not
+	 * @param r   runs this Runnable when the flag is encountered
+	 * @param usage  describes the option
+	 */	
+	public static CommandLineOption<String> makeString(String id, String dV, CommandLineOption.Kind k, String usage, final Runnable r) {
+		return new CommandLineOption<String>(id,dV,true,k,usage) {
+			@Override
 			protected void apply(String arg) {
 				this.set(arg);
 				r.run();
@@ -160,11 +235,19 @@ public class CommandLine {
 		};
 	}
 
-	public static CommandLineOption<ArrayList<String>> makeStringList(String id, String usage) {
-		return new CommandLineOption<ArrayList<String>>(id,new ArrayList<String>(),true,usage) {
+	/**
+	 * Create a new command line option that builds a list of Strings.
+	 * @param id  keyword for the flag.  Set with -id=X
+	 * @param k   indicates whether the option is stable or not
+	 * @param usage  describes the option
+	 */	
+	public static CommandLineOption<ArrayList<String>> makeStringList(String id, CommandLineOption.Kind k, String usage) {
+		return new CommandLineOption<ArrayList<String>>(id,new ArrayList<String>(),true,k,usage) {
+			@Override
 			protected void apply(String arg) {
 				this.get().add(arg);
 			}		
+			@Override
 			protected String getType() {
 				return "String";
 			}
@@ -172,25 +255,61 @@ public class CommandLine {
 		};
 	}
 
-
-	public static <T extends Enum<T>> CommandLineOption<T> makeEnumChoice(final String id, T initial, String usage, final Class<T> choices) {
-		return new CommandLineOption<T>(id,initial,true,"One of " + Arrays.toString(choices.getEnumConstants()) + ".  " + usage) {
+	/**
+	 * Create a new command line option to choose from an enumerated type.
+	 * @param <T>  The type of the enumeration.
+	 * @param id   the key for the flag
+	 * @param initial  initial value
+	 * @param k   indicates whether the option is stable or not
+	 * @param usage  describes the option
+	 * @param choices The meta object for the enum type
+	 */
+	public static <T extends Enum<T>> CommandLineOption<T> makeEnumChoice(final String id, T initial, CommandLineOption.Kind k, String usage, final Class<T> choices) {
+		return new CommandLineOption<T>(id,initial,true,k,"One of " + Arrays.toString(choices.getEnumConstants()) + ".  " + usage) {
+			@Override
 			protected void apply(String arg) {
 				try {
 					set(Enum.valueOf(choices, arg));
 				} catch (IllegalArgumentException e) {
-					Util.fail("Invalid option for " + id + ".  Must be one of " + Arrays.toString(choices.getEnumConstants()));
+					Assert.fail("Invalid option for " + id + ".  Must be one of " + Arrays.toString(choices.getEnumConstants()));
 				}
 			}
 
 		};
 	}
 
+
+	public static <T extends Enum<T>> CommandLineOption<T> makeEnumChoice(final String id, T initial, CommandLineOption.Kind k, String usage, final Class<T> choices, final Runnable r) {
+		return new CommandLineOption<T>(id,initial,true,k,"One of " + Arrays.toString(choices.getEnumConstants()) + ".  " + usage) {
+			@Override
+			protected void apply(String arg) {
+				try {
+					set(Enum.valueOf(choices, arg));
+					r.run();
+				} catch (IllegalArgumentException e) {
+					Assert.fail("Invalid option for " + id + ".  Must be one of " + Arrays.toString(choices.getEnumConstants()));
+				}
+			}
+
+		};
+	}
+
+
+
+	/**
+	 * Create a new command line option to choose from a group of Strings.
+	 * @param id   the key for the flag
+	 * @param initial  initial value
+	 * @param k   indicates whether the option is stable or not
+	 * @param usage  describes the option
+	 * @param choices The string to choose among
+	 */
 	public static CommandLineOption<Integer> 
-	makeStringChoice(final String id, String initial, String usage, final String... choices) {
+	makeStringChoice(final String id, String initial, CommandLineOption.Kind k, String usage, final String... choices) {
 		for (int i = 0; i < choices.length; i++) {
 			if (initial.equals(choices[i])) {
-				return new CommandLineOption<Integer>(id,i,true,usage + " (One of:" + Arrays.toString(choices) + ")") {
+				return new CommandLineOption<Integer>(id,i,true,k,usage + " (One of:" + Arrays.toString(choices) + ")") {
+					@Override
 					protected void apply(String arg) {
 						for (int i = 0; i < choices.length; i++) {
 							if (arg.equals(choices[i])) {
@@ -198,25 +317,36 @@ public class CommandLine {
 								return;
 							}
 						}
-						Util.fail("Invalid choice for " + id + ". Must be one of: " + Arrays.toString(choices));
+						Assert.fail("Invalid choice for " + id + ". Must be one of: " + Arrays.toString(choices));
 					}	
+					@Override
 					protected String rep() {
 						return choices[get()] + "("+get()+")";
 					}
 				};
 			}
 		}
-		Util.fail("Invalid choice for " + id + ". Must be one of: " + Arrays.toString(choices));
+		Assert.fail("Invalid choice for " + id + ". Must be one of: " + Arrays.toString(choices));
 		return null;
 	}
 
+
+	/**
+	 * Create a new command line option to describe a StringMatcher
+	 * @param id
+	 * @param defaultResult
+	 * @param k
+	 * @param usage
+	 * @param initialArgs
+	 */
 	public static CommandLineOption<StringMatcher> makeStringMatcher(String id, final StringMatchResult defaultResult, 
-			String usage, final String... initialArgs) {
-		CommandLineOption<StringMatcher> tmp = new CommandLineOption<StringMatcher>(id, new StringMatcher(defaultResult), true, usage) {
+			CommandLineOption.Kind k, String usage, final String... initialArgs) {
+		CommandLineOption<StringMatcher> tmp = new CommandLineOption<StringMatcher>(id, new StringMatcher(defaultResult), true, k, usage) {
 			private final int defaultLen = initialArgs.length; 
+			@Override
 			protected void apply(String arg) {
 				char ch = arg.charAt(0);
-				Util.assertTrue(ch == '+' || ch == '-', "match item '" + arg + "' must start with +/-");
+				Assert.assertTrue(ch == '+' || ch == '-', "match item '" + arg + "' must start with +/-");
 				// arg += ".*";
 				this.get().addNFromEnd(defaultLen, arg);
 			}
@@ -224,19 +354,24 @@ public class CommandLine {
 		for (int i = 0; i < initialArgs.length; i++) {
 			String arg = initialArgs[i];
 			char ch = arg.charAt(0);
-			Util.assertTrue(ch == '+' || ch == '-', "match item '" + arg + "' must start with +/-");
+			Assert.assertTrue(ch == '+' || ch == '-', "match item '" + arg + "' must start with +/-");
 			//	arg += ".*";
 			tmp.get().add(arg);
 		}
 		return tmp;
 	}	
 
+
+
+	/**
+	 * Add an option to this command line processor.
+	 */
 	public <T> void add(CommandLineOption<T> c) { 
 
 		String flag = c.getId();
 		for (CommandLineOption<?> clo : flags) {
 			if (clo.getId().equals(flag)) {
-				Util.warn("Multiple Options with same flag: '%s'", flag);
+				Assert.warn("Multiple Options with same flag: '%s'", flag);
 				break;
 			} 
 		}
@@ -246,11 +381,17 @@ public class CommandLine {
 		usageInfo.add(c.getUsage());
 	}
 
+	/**
+	 * Add a group marker to separate commands when printing help.
+	 */
 	public void addGroup(String name) {
 		usageInfo.add(name);
 		usageInfo.add(Strings.repeat("-", name.length()));
 	}
 
+	/**
+	 * Create a new command line with the default set of options.
+	 */
 	public CommandLine(String command, String requiredPart, CommandLineOption<?>... clo) {
 		this.requiredPart = requiredPart;
 		this.commandName = command;
@@ -259,19 +400,21 @@ public class CommandLine {
 		}
 
 
-		add(new CommandLineOption<ArrayList<String>>("args",new ArrayList<String>(),true,
+		add(new CommandLineOption<ArrayList<String>>("args",new ArrayList<String>(),true, CommandLineOption.Kind.STABLE,
 				"Read additional command-line options from the given file.  Can be used " +
 		"multiple times.") {
+			@Override
 			protected void apply(String arg) {
 				this.get().add(arg);
 				readArgsFromFile(arg);
 			}
+			@Override
 			protected String getType() {
 				return "String";
 			}
 		});
 
-		add(Util.debugKeysOption);
+		add(Debug.debugKeysOption);
 		add(Util.quietOption);
 		add(Util.outputPathOption); 
 		add(Util.outputFileOption); 
@@ -280,7 +423,7 @@ public class CommandLine {
 	}
 
 
-	protected void readArgsFromFile(String inFile) {
+	private void readArgsFromFile(String inFile) {
 		try {
 			Vector<String> args = new Vector<String>();
 			Scanner in = new Scanner(new BufferedReader(new FileReader(inFile)));
@@ -296,14 +439,18 @@ public class CommandLine {
 			args.copyInto(argsArray);
 			int end = this.applyHelper(argsArray, 0);
 			if (end < argsArray.length) {
-				Util.fail("Bad arg in file " + inFile + ": " + argsArray[end]);
+				Assert.fail("Bad arg in file " + inFile + ": " + argsArray[end]);
 			}
 		} catch (IOException e) {
-			Util.fail(e);
+			Assert.fail(e);
 		}
 
 	}
 
+
+	/**
+	 * Print the usage information for the command line
+	 */
 	public void usage() {
 		Util.error("\n");
 		Util.error("Usage\n-----");
@@ -316,6 +463,9 @@ public class CommandLine {
 		Util.error("");
 	}
 
+	/**
+	 * Add a routine to run after processing a list of options.
+	 */
 	public void addPostProcessor(Runnable r) {
 		this.postProcess.add(r);
 	}
@@ -326,6 +476,9 @@ public class CommandLine {
 		}
 	}
 
+	/**
+	 * Apply the command line options to the array of arguments.
+	 */
 	public int apply(String args[]) {
 		int n = applyHelper(args, 0);
 
@@ -362,14 +515,14 @@ public class CommandLine {
 						found = true;
 						CommandLineOption failure = constraints.findOutOfOrder(processed, clo);
 						if (failure != null) {
-							Util.fail("Option -%s cannot appear after -%s", clo.getId(), failure.getId());
+							Assert.fail("Option -%s cannot appear after -%s", clo.getId(), failure.getId());
 						}
 						processed.add(clo);
 						clo.checkAndApply(arg);
 					} 
 				}
 				if (!found) {
-					Util.fail("Unrecognized Option: %s.", flag);					
+					Assert.fail("Unrecognized Option: %s.", flag);					
 				}
 			} else {
 				break;
@@ -380,6 +533,9 @@ public class CommandLine {
 		return firstArg;
 	}
 
+	/**
+	 * Specify that open option must appear on the command line before another.
+	 */
 	public void addOrderConstraint(CommandLineOption<?> before, CommandLineOption<?> o) {
 		constraints.addConstraint(before, o);
 	}
@@ -388,12 +544,12 @@ public class CommandLine {
 
 	public static void main(String s[]) {
 		CommandLineOption<?>[] os = new CommandLineOption<?>[] {
-				makeBoolean("f1", false, "set f1"),
-				makeBoolean("f2", true,  "set f2"),
-				makeInteger("i1", 32, "set i1"),
-				makeString("s1", "Cow", "set s1"),
-				makeStringList("l1", "add to l"),
-				makeEnumChoice("num", Nums.ONE, "moo", Nums.class)
+				makeBoolean("f1", false, CommandLineOption.Kind.STABLE, "set f1"),
+				makeBoolean("f2", true,  CommandLineOption.Kind.STABLE, "set f2"),
+				makeInteger("i1", 32, CommandLineOption.Kind.STABLE, "set i1"),
+				makeString("s1", "Cow", CommandLineOption.Kind.STABLE, "set s1"),
+				makeStringList("l1", CommandLineOption.Kind.STABLE, "add to l"),
+				makeEnumChoice("num", Nums.ONE, CommandLineOption.Kind.STABLE, "moo", Nums.class)
 		};
 		CommandLine cl = new CommandLine("mpoo", "file1 file2", os);
 		cl.usage();

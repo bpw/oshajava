@@ -1,23 +1,23 @@
 /******************************************************************************
 
-Copyright (c) 2009, Cormac Flanagan (University of California, Santa Cruz)
+Copyright (c) 2010, Cormac Flanagan (University of California, Santa Cruz)
                     and Stephen Freund (Williams College) 
 
-All rights reserved.
+All rights reserved.  Revision 7939 (Wed Aug 11 12:11:58 EDT 2010)
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are
 met:
 
-    * Redistributions of source code must retain the above copyright
+ * Redistributions of source code must retain the above copyright
       notice, this list of conditions and the following disclaimer.
 
-    * Redistributions in binary form must reproduce the above
+ * Redistributions in binary form must reproduce the above
       copyright notice, this list of conditions and the following
       disclaimer in the documentation and/or other materials provided
       with the distribution.
 
-    * Neither the names of the University of California, Santa Cruz
+ * Neither the names of the University of California, Santa Cruz
       and Williams College nor the names of its contributors may be
       used to endorse or promote products derived from this software
       without specific prior written permission.
@@ -34,37 +34,47 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-******************************************************************************/
+ ******************************************************************************/
 
 package oshajava.support.acme.util.option;
 
 import java.util.ArrayList;
 
+import oshajava.support.acme.util.Assert;
 import oshajava.support.acme.util.Util;
 import oshajava.support.acme.util.io.XMLWriter;
 import oshajava.support.acme.util.time.TimedStmt;
 
 
-
+/**
+ * A configuration option.  These will be logged in the XML 
+ * produced during execution, 
+ * so it is useful to keep all config options in them, so that 
+ * there is a history of how a program was run. 
+ */
 public class Option<T> {
 
 	private static ArrayList<Option<?>> options = new ArrayList<Option<?>>(); 
 
+	/** Name of the option */
 	final protected String id;
-	protected T val;
-	final protected T defaultVal;
-
+	
+	/** Where the option is created */
 	final private String location;
+
+	/** Current value */
+	protected T val;
+
 
 	public Option(String id, T dV) {
 		this.id = id;
-		this.set(this.defaultVal = dV);
+		this.set(dV);
 		options.add(this);
 
 		StackTraceElement st[] = (new Throwable()).getStackTrace();
 		int n = 0;
-		while (st[n].getClassName().indexOf("acme.util.option.Option") > -1 || 	
-				st[n].getClassName().indexOf("acme.util.option.CommandLine") > -1) {
+		while (st[n].getClassName().indexOf("oshajava.support.acme.util.option.Option") > -1 || 	
+				st[n].getClassName().indexOf("oshajava.support.acme.util.option.CommandLine") > -1) {
 			n++;
 		}
 		location = st[n].getClassName();
@@ -82,6 +92,7 @@ public class Option<T> {
 		return this.id;
 	}
 
+	/** Format the current value in an appropriate way */
 	protected String rep() {
 		return val == null ? "null" : val.toString();
 	}
@@ -91,7 +102,10 @@ public class Option<T> {
 		String res = String.format("%-34s %-20s = %-20s", "(" + location + ")", id, val);
 		return res;
 	}
-
+ 
+	/**
+	 * Dump the values of all options in XML.
+	 */
 	public static void printAllXML(XMLWriter xml) {
 		xml.push("options");
 		for (Option o : options) {
@@ -100,12 +114,10 @@ public class Option<T> {
 		xml.pop();
 	}
 
-	@Deprecated
-	protected String toXML() {
-		String res = String.format("<option name=\"%s\">%s</option>", id, rep(), id);
-		return res;
-	}
 
+	/**
+	 * Dump the values of all options in XML to the log.
+	 */
 	public static void dumpOptions() {
 		try {
 			new TimedStmt("OPTIONS:") {
@@ -117,23 +129,16 @@ public class Option<T> {
 				}
 			}.eval();
 		} catch (Exception e) {
-			Util.panic(e);
+			Assert.panic(e);
 		}
 	}
 
-	@Deprecated
-	public static String optionsToXML() {
-		String result = "<options>\n";
-		for (Option o : options) {
-			result += "   ";
-			result += o.toXML();
-			result += "\n";
-		}
-		result += "</options>";
-		return result;
-	}
-	
+	/**
+	 * Added by bpw for oshajava.
+	 * @return
+	 */
 	public static Iterable<Option<?>> all() {
 		return options;
 	}
+
 }

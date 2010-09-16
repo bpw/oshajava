@@ -5,7 +5,7 @@ import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Vector;
 
-import oshajava.support.acme.util.Util;
+import oshajava.support.acme.util.Assert;
 import oshajava.util.ColdStorage;
 
 /**
@@ -27,7 +27,7 @@ public class Spec {
 		return uid >> METHOD_BITS;
 	}
 	public static int makeUID(final int moduleID, final int methodID) {
-		Util.assertTrue(moduleID <= MAX_MODULE_ID && methodID <= METHOD_ID_SELECTOR);
+		Assert.assertTrue(moduleID <= MAX_MODULE_ID && methodID <= METHOD_ID_SELECTOR);
 		return (moduleID << METHOD_BITS) | methodID;
 	}
 	
@@ -54,7 +54,7 @@ public class Spec {
 			    // (inlined) spec. This is somewhat unsafe, but allows
 			    // use of precompiled libraries that don't have
 			    // specifications.
-			    Util.warn("No spec found for " + qualifiedName + ", using null spec.");
+			    Assert.warn("No spec found for " + qualifiedName + ", using null spec.");
 			    return new NullModuleSpec(qualifiedName);
 			}
 			CompiledModuleSpec ms = (CompiledModuleSpec)ColdStorage.load(res);
