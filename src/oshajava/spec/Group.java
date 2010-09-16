@@ -44,18 +44,23 @@ public 	class Group implements Serializable {
 		this.kind = kind;
 		this.name = name;
 	}
+	
 	public Kind kind() {
 		return kind;
 	}
+	
 	public String getName() {
 		return name;
 	}
+	
 	public Iterable<CanonicalName> readers() {
 		return readers;
 	}
+	
 	public Iterable<CanonicalName> writers() {
 		return writers;
 	}
+	
 	public void addReader(CanonicalName sig) throws DuplicateMethodException {
 		Util.assertTrue(sig != null, "Null method sig");
 		if (readers.contains(sig)) {
@@ -63,6 +68,7 @@ public 	class Group implements Serializable {
 		}
 		readers.add(sig);
 	}
+	
 	public void addWriter(CanonicalName sig) throws DuplicateMethodException {
 		Util.assertTrue(sig != null, "Null method sig");
 		if (writers.contains(sig)) {
@@ -74,6 +80,10 @@ public 	class Group implements Serializable {
 	public void removeMethod(String sig) {
 		readers.remove(sig);
 		writers.remove(sig);
+	}
+	
+	public boolean isEmpty() {
+		return readers.isEmpty() && writers.isEmpty();
 	}
 	
 	public String toString() {
