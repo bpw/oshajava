@@ -56,7 +56,7 @@ public class Config {
 				"Set object tracking granularity. (COARSE is not fully implemented.)", Granularity.class);
 	
 	public static final CommandLineOption<Boolean> noInstrumentOption =
-		CommandLine.makeBoolean("noInstrument", false, Kind.STABLE, "Turn off all instrumentation.");
+		CommandLine.makeBoolean("noTracking", false, Kind.STABLE, "Turn off all tracking.");
 	
 	public enum ProfileLevel { NONE, PERF, DEEP }
 	public static final CommandLineOption<ProfileLevel> profileOption =
@@ -74,7 +74,7 @@ public class Config {
 		CommandLine.makeBoolean("fudgeExceptionStackTraces", true, Kind.STABLE, "Make communication exceptions look like they occur directly in user code.");
 
     public static final CommandLineOption<Boolean> stackTracesOption =
-        CommandLine.makeBoolean("traces", false, Kind.STABLE, "Snapshot and store the current stack trace for debugging on every write.");
+        CommandLine.makeBoolean("traces", false, Kind.STABLE, "Store the full (pre-inlined) stack trace on every write for exception reports.");
     
     public enum ErrorAction { HALT, THROW, WARN, NONE }
     public static final CommandLineOption<ErrorAction> errorActionOption =
@@ -106,7 +106,7 @@ public class Config {
     public static final CommandLineOption<String> idOption =
     	CommandLine.makeString("id", Long.toString(System.currentTimeMillis()), Kind.STABLE, "ID for this run.");
 
-    public static final CommandLine cl = new CommandLine(TOOL_NAME, "[ -javaOptions java options ] -- Class [ class args ]", helpOption, jvmOption);
+    public static final CommandLine cl = new CommandLine(TOOL_NAME, "[ -javaOptions java options ] -- Program [ program args ]", helpOption, jvmOption);
 	
 	public static void configure(String[] args){
 		// add command line options here --------------------------------------------------
@@ -118,12 +118,17 @@ public class Config {
 
 		cl.addGroup("Tracking");
 		
+		cl.add(noInstrumentOption);
 		cl.add(arrayTrackingOption);
 		cl.add(objectTrackingOption);
-		cl.add(intraThreadOption);
 		cl.add(InstrumentationAgent.instrumentClassesOption);
 		cl.add(InstrumentationAgent.instrumentFieldsOption);
 		cl.add(InstrumentationAgent.instrumentMethodsOption);
+		cl.add(InstrumentationAgent.volatileShadowOption);
+		cl.add(intraThreadOption);
+		
+		cl.addGroup("Specification handling");
+		
 		cl.add(noSpecOption);
 		cl.add(noSpecActionOption);
 		
@@ -142,17 +147,17 @@ public class Config {
 		cl.add(profileExtOption);
 		cl.add(idOption);
 		
-		cl.addGroup("Instrumentation");
+		cl.addGroup("Instrumentation (for debugging oshajava)");
 		
-		cl.add(noInstrumentOption);
 		cl.add(InstrumentationAgent.bytecodeDumpOption);
 		cl.add(InstrumentationAgent.bytecodeDumpDirOption);
 		cl.add(InstrumentationAgent.framesOption);
-		cl.add(InstrumentationAgent.fullJDKInstrumentationOption);
 		cl.add(InstrumentationAgent.preVerifyOption);
 		cl.add(InstrumentationAgent.verifyOption);
+		
+		cl.addGroup("Deprecated");
+		cl.add(InstrumentationAgent.fullJDKInstrumentationOption);
 		cl.add(InstrumentationAgent.ignoreMissingMethodsOption);
-		cl.add(InstrumentationAgent.volatileShadowOption);
 		
 		// end command line options -------------------------------------------------------
 			

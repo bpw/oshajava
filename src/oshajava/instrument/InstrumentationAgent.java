@@ -109,14 +109,16 @@ public class InstrumentationAgent implements ClassFileTransformer {
 		CommandLine.makeBoolean("frames", false, Kind.EXPERIMENTAL, "Handle frames intelligently.");
 	
 	public static final CommandLineOption<Boolean> ignoreMissingMethodsOption =
-		CommandLine.makeBoolean("ignoreMissingMethods", false, Kind.DEPRECATED, "Ignore and inline methods missing from their modules.  (See -" + Config.noSpecOption.getId() + " and -" + Config.noSpecActionOption.getId() + " instead.)");
+		CommandLine.makeBoolean("ignoreMissingMethods", false, Kind.DEPRECATED, "Ignore and inline methods missing from their modules.  (See -" + 
+				Config.noSpecOption.getId() + " and -" + Config.noSpecActionOption.getId() + " instead.)");
 	
 	public static final CommandLineOption<Boolean> volatileShadowOption =
 		CommandLine.makeBoolean("volatileShadows", false, Kind.EXPERIMENTAL, "Make shadow fields volatile");
 	
     public static final CommandLineOption<StringMatcher> instrumentClassesOption =
     	CommandLine.makeStringMatcher("classes", StringMatchResult.ACCEPT, Kind.EXPERIMENTAL, 
-    			"Only track memory operations on fields and in methods in matching classes (by fully qualified name).", "-^java\\..*", "-^com.sun\\..*", "-^sun\\..*");
+    			"Only track memory operations on fields and in methods in matching classes (by fully qualified name).", 
+    			"-^java\\..*", "-^com.sun\\..*", "-^sun\\..*");
 
     public static final CommandLineOption<StringMatcher> instrumentFieldsOption =
     	CommandLine.makeStringMatcher("fields", StringMatchResult.ACCEPT, Kind.EXPERIMENTAL, 
