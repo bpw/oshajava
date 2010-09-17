@@ -37,7 +37,7 @@ public class Config {
 	
 	public static final String TOOL_NAME = "oshajava";
 	
-	public static final Option<String> oshajavaRevision = new Option<String>("revision", "$Revision$".replace("$Revision$", ""));
+//	public static final Option<String> oshajavaRevision = new Option<String>("revision", "$Revision$".replace("$Revision: ", "").replace(" $", ""));
 	
 	// -- Options ---------------------------------------------------------
 	
@@ -171,7 +171,7 @@ public class Config {
 	public static void premain(String agentArgs, Instrumentation inst) {
 		premainTimer.start();
 		Thread.currentThread().setName(TOOL_NAME);
-		Util.logf("oshajava %s", oshajavaRevision.get());
+//		Util.logf("oshajava %s", oshajavaRevision.get());
 		configure(agentArgs == null ? new String[0] : agentArgs.replace('#', ' ').split(","));
 		if (visualizeOption.get()) {
 			@SuppressWarnings("unused")

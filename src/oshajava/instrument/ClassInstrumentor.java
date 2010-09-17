@@ -370,8 +370,7 @@ public class ClassInstrumentor extends ClassAdapter {
 		    		chain = new JSRInlinerAdapter(chain, access, name, desc, signature, exceptions);
 		    	}
 			} else if (name.equals("<clinit>") && (classAccess & Opcodes.ACC_INTERFACE) != 0) {
-			    // Class initializer for an interface. Inline the
-			    // initialization.
+			    // Class initializer for an interface. Inline the initialization.
 			    visitedClinit = true;
 			    Debug.debugf("clinit", "instrumenting clinit in %s", className);
 			    return new StaticShadowInitInserter(chain, access, name, desc, classType, staticShadowedFields);

@@ -83,7 +83,7 @@ public class SpecProcessor extends AbstractProcessor {
 	@Override
 	public synchronized void init(ProcessingEnvironment env) {
 		super.init(env);
-		note("oshajava $Revision$".replace("$Revision$", ""));
+//		note("oshajava $Revision$".replace("$Revision: ", "").replace(" $", ""));
 		modules = new SpecFileManager<Module>(Module.EXT, new Creator<Module>() {
 			public Module create(final CanonicalName qualifiedName) {
 				return new Module(qualifiedName);
