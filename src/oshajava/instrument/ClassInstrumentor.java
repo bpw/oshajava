@@ -8,10 +8,10 @@ import java.util.List;
 import java.util.Set;
 
 import oshajava.runtime.Config;
-import oshajava.spec.CompiledModuleSpec;
 import oshajava.spec.ModuleMap;
 import oshajava.spec.ModuleMap.MissingEntryException;
 import oshajava.spec.ModuleSpec;
+import oshajava.spec.NullModuleSpec;
 import oshajava.spec.Spec;
 import oshajava.spec.exceptions.ModuleMapNotFoundException;
 import oshajava.spec.exceptions.ModuleSpecNotFoundException;
@@ -126,31 +126,12 @@ public class ClassInstrumentor extends ClassAdapter {
 	protected final ClassLoader loader;
 	private final ArrayList<String> instanceShadowedFields = new ArrayList<String>();
 	private final ArrayList<String> staticShadowedFields = new ArrayList<String>();
-	private ModuleMap methodToModule;
-	protected CanonicalName defaultModuleName;
+	private ModuleMap moduleMap;
 	protected boolean isNonStaticInnerClass = false;
 
 	public ClassInstrumentor(ClassVisitor cv, ClassLoader loader) {
 		super(cv);
 		this.loader = loader;
-	}
-	
-	protected ModuleSpec getModuleForMethod(MethodDescriptor methodName) throws ModuleSpecNotFoundException {
-		ModuleSpec module;
-		CanonicalName moduleName;
-		if (methodToModule == null) {
-			moduleName = defaultModuleName;
-		} else {
-			try {
-				moduleName = methodToModule.get(methodName);
-			} catch (MissingEntryException e) {
-				Assert.warn("Method not mapped to module: %s. Trying default module: %s", methodName, defaultModuleName);
-				moduleName = defaultModuleName;
-			}
-		}
-		module = Spec.getModule(moduleName, loader, methodName);
-		Assert.assertTrue(module != null, "Misleading message: No module specified for %s.", methodName);
-		return module;
 	}
 	
 	/**
@@ -291,7 +272,6 @@ public class ClassInstrumentor extends ClassAdapter {
 		final int lastSep = name.lastIndexOf('/');
 		packageName = lastSep == -1 ? "" : name.substring(0, lastSep);
 		className = CanonicalName.of(packageName, name.substring(lastSep + 1));
-		defaultModuleName = CanonicalName.of(packageName, CompiledModuleSpec.DEFAULT_NAME);
 		classDesc = getDescriptor(name);
 		classType = Type.getObjectType(name);
 		classAccess = access;
@@ -302,22 +282,13 @@ public class ClassInstrumentor extends ClassAdapter {
 		}
 		
 		try {
-			methodToModule = Spec.getModuleMap(className, loader);
+			moduleMap = Spec.getModuleMap(className, loader);
 		} catch (ModuleMapNotFoundException e) {
-//			throw e.wrap();
-			if (className.getSimpleName().contains("$")) {
-				Assert.warn("No module map found for anonymous inner class %s. All methods assumed to be in module %s.", className, 
-						defaultModuleName);
-			} else {
-				Assert.warn("No module map found for class %s. All methods assumed to be in module %s.", className, 
-						defaultModuleName);
-			}
+			Assert.warn("No module map for class %s.  Using null module for all member methods.", className);
 		}
 
 		// TODO 5/6
 		super.visit((version == Opcodes.V1_6 ? Opcodes.V1_5 : version), access, name, signature, superName, interfaces);
-//		Util.log("class " + name + " extends " + superName);
-		
 		// Ensure all fields here (including inherited ones) are shadowed. First, check whether our
 		// superclass is instrumented.
 		shadowedInheritedFields = new HashSet<String>();
@@ -365,26 +336,39 @@ public class ClassInstrumentor extends ClassAdapter {
 	private boolean visitedClinit = false;
 	@Override
 	public MethodVisitor visitMethod(int access, String name, String desc, String signature, String[] exceptions) {
+	    MethodVisitor chain = super.visitMethod(access, name, desc, signature, exceptions);
 		if ((access & Opcodes.ACC_NATIVE) == 0) {
-		    MethodVisitor chain = super.visitMethod(access, name, desc, signature, exceptions);
 		    if (!name.equals("<clinit>")) {
 		    	if ((classAccess & Opcodes.ACC_INTERFACE) == 0) {
 		    		// (Not instrumenting class initializers avoids balooning the size
 		    		//  of large literal table constructions. It also makes sense, I
 		    		//  think, because no "communication" should occur (semantically)
 		    		//  from class loading.) FIXME
-		    		chain = new HandlerSorterAdapter(chain, access, name, desc, signature, exceptions);
-		    		//			    Util.log(name);
-//		    		Method method = new Method(name, desc);
-		    		MethodDescriptor methodName = MethodDescriptor.of(className, name, desc, signature);
-		    		try {
-		    			chain = new MethodInstrumentor(chain, access, name, desc, this, methodName);
-		    		} catch (ModuleSpecNotFoundException e) {
-		    			throw e.wrap();
+		    		ModuleSpec module;
+		    		final MethodDescriptor method = MethodDescriptor.of(className, name, desc, signature);
+		    		if (moduleMap == null) {
+			    		// if the module map is null, then we've already warned that this class will be dumped in the null module.
+		    			if (Config.noSpecActionOption.get() == Config.DefaultSpec.UNTRACKED) {
+		    				return chain;
+		    			}
+		    			module = NullModuleSpec.MODULE;
+		    		} else {
+		    			try {
+		    				try {
+		    					module = Spec.getModule(moduleMap.get(method), loader, method);
+		    				} catch (MissingEntryException e) {
+		    					// If a particular method is missing from the module map, we need to warn! (Maybe fail.)
+		    					Assert.warn("Method %s missing from module map for class %s.  Using null module.", method, className);
+		    					module = NullModuleSpec.MODULE;
+		    				}
+		    			} catch (ModuleSpecNotFoundException e) {
+		    				throw e.wrap();
+		    			}
 		    		}
+		    		chain = new HandlerSorterAdapter(chain, access, name, desc, signature, exceptions);
+		    		chain = new MethodInstrumentor(chain, access, name, desc, this, module, method);
 		    		chain = new JSRInlinerAdapter(chain, access, name, desc, signature, exceptions);
 		    	}
-	    		return chain;
 			} else if (name.equals("<clinit>") && (classAccess & Opcodes.ACC_INTERFACE) != 0) {
 			    // Class initializer for an interface. Inline the
 			    // initialization.
@@ -396,9 +380,8 @@ public class ClassInstrumentor extends ClassAdapter {
 		    	Debug.debugf("clinit", "instrumenting clinit in %s", className);
 		    	return new StaticShadowInitInserter(chain, access, name, desc, classType, null);
 		    }
-		} else {
-			return super.visitMethod(access, name, desc, signature, exceptions);
 		}
+		return chain;
 	}
 
 	/**

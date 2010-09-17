@@ -3,6 +3,7 @@ package oshajava.spec;
 import java.util.HashMap;
 import java.util.Vector;
 
+import oshajava.runtime.Config;
 import oshajava.spec.names.CanonicalName;
 import oshajava.spec.names.MethodDescriptor;
 import oshajava.support.acme.util.Assert;
@@ -11,20 +12,21 @@ import oshajava.util.Graph;
 
 public class NullModuleSpec extends ModuleSpec {
     
-    /**
-	 * 
-	 */
 	private static final long serialVersionUID = 1L;
+	
+	private static final boolean ALLOW = Config.noSpecActionOption.get() != Config.DefaultSpec.NONCOMM;
+	
+	public static final ModuleSpec MODULE = new NullModuleSpec();
 
-	protected Vector<MethodDescriptor> nullMethodIdToSig = new Vector<MethodDescriptor>();
+	protected final Vector<MethodDescriptor> nullMethodIdToSig = new Vector<MethodDescriptor>();
     
 	/**
 	 * Map from method signature to id.
 	 */
 	protected final HashMap<MethodDescriptor,Integer> methodSigToId = new HashMap<MethodDescriptor,Integer>();
 	
-	public NullModuleSpec(final CanonicalName name) {
-        super(name);
+	private NullModuleSpec() {
+        super(CanonicalName.of("__NullModuleSpec__"));
     }
     
     @Override
@@ -52,12 +54,12 @@ public class NullModuleSpec extends ModuleSpec {
     
     @Override
     public boolean isAllowed(final int w, final int r) {
-        return true;
+        return ALLOW;
     }
     
     @Override
     public boolean allAllowed(final int w, final BitVectorIntSet readers) {
-        return true;
+        return ALLOW;
     }
     
     @Override
@@ -69,7 +71,7 @@ public class NullModuleSpec extends ModuleSpec {
     public CommunicationKind getCommunicationKind(final int uid) {
         Assert.assertTrue(Spec.getModuleID(uid) == id, "method id " + uid + " (module=" + Spec.getModuleID(uid) + 
         		", method=" + Spec.getMethodID(uid) + ") is not a member of module " + getName()  + " (id " + id + ")");
-        return CompiledModuleSpec.CommunicationKind.INLINE;
+        return ALLOW ? CompiledModuleSpec.CommunicationKind.INLINE : CompiledModuleSpec.CommunicationKind.NONCOMM;
     }
     
     @Override

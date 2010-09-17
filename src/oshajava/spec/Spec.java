@@ -2,8 +2,8 @@ package oshajava.spec;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Vector;
 
 import oshajava.spec.exceptions.ModuleMapNotFoundException;
 import oshajava.spec.exceptions.ModuleSpecNotFoundException;
@@ -39,8 +39,8 @@ public class Spec {
 	 * Map module name to ModuleSpec.
 	 */
 	protected static final HashMap<CanonicalName,ModuleSpec> nameToModule = new HashMap<CanonicalName,ModuleSpec>();
-	
-	protected static final Vector<ModuleSpec> idToModule = new Vector<ModuleSpec>();
+	protected static final HashMap<CanonicalName,ModuleMap> classToMap = new HashMap<CanonicalName,ModuleMap>();
+	protected static final ArrayList<ModuleSpec> idToModule = new ArrayList<ModuleSpec>();
 	
 	/**
 	 * Load a ModuleSpec from disk given its name.
@@ -49,21 +49,19 @@ public class Spec {
 	 * @throws ModuleSpecNotFoundException if there was a problem finding or loading the spec.
 	 */
 	protected static ModuleSpec loadModule(CanonicalName qualifiedName, ClassLoader loader, Descriptor requester) throws ModuleSpecNotFoundException {
+	    if (loader == null) {
+	    	Assert.warn("Bootstrap loader used to load %s.  Trying System loader instead.", requester);
+	    	loader = ClassLoader.getSystemClassLoader();
+	    }
 		try {
 			final InputStream res = loader.getResourceAsStream(qualifiedName.toInternalString() + CompiledModuleSpec.EXT);
 			if (res == null) {
-			    // Module spec file legitimately not present. This is a
-			    // somewhat questionable decision, but we warn the user
-			    // that the module is unspecified and give it a null
-			    // (inlined) spec. This is somewhat unsafe, but allows
-			    // use of precompiled libraries that don't have
-			    // specifications.
-			    Assert.warn("No spec found for " + qualifiedName + ", using null spec.");
-			    return new NullModuleSpec(qualifiedName);
+				throw new ModuleSpecNotFoundException(qualifiedName + ", referenced by " + requester);
 			}
-			CompiledModuleSpec ms = (CompiledModuleSpec)ColdStorage.load(res);
+			final CompiledModuleSpec ms = (CompiledModuleSpec)ColdStorage.load(res);
 			if (ms == null) {
-			    return new NullModuleSpec(qualifiedName);
+				Assert.warn("ModuleSpec %s was null on disk.", qualifiedName);
+				throw new ModuleSpecNotFoundException(qualifiedName + ", referenced by " + requester);
 			}
 			return ms;
 		} catch (IOException e) {
@@ -82,19 +80,11 @@ public class Spec {
 	 * @throws ModuleSpecNotFoundException
 	 */
 	public static synchronized ModuleSpec getModule(CanonicalName name, ClassLoader loader, Descriptor requester) throws ModuleSpecNotFoundException {
-	    if (loader == null) {
-	    	// FIXME
-	        // Loaded by the JVM.
-	        return new NullModuleSpec(name);
-	    }
-	    
 	    ModuleSpec module = nameToModule.get(name);
 		if (module == null) {
 			module = loadModule(name, loader, requester);
-//			synchronized (idToModule) { // not needed if this method is synchronized
-				module.setId(idToModule.size());
-				idToModule.add(module);
-//			}
+			module.setId(idToModule.size());
+			idToModule.add(module);
 			nameToModule.put(name, module);
 		}
 		return module;
@@ -104,14 +94,24 @@ public class Spec {
 	}
 	
 	public static synchronized ModuleMap getModuleMap(CanonicalName className, ClassLoader loader) throws ModuleMapNotFoundException {
-		//FIXME
-		if (loader == null) return new ModuleMap(className);
+		if (classToMap.containsKey(className)) {
+			return classToMap.get(className);
+		}
+		if (loader == null) {
+			Assert.warn("Bootstrap loader used to load %s.  Trying System loader instead.", className);
+	    	loader = ClassLoader.getSystemClassLoader();
+		}
 		try {
-//			Util.log(className.toInternalString() + ModuleMap.EXT);
 			final InputStream res = loader.getResourceAsStream(className.toInternalString() + ModuleMap.EXT);
-			if (res == null) throw new ModuleMapNotFoundException(className);
-			ModuleMap ms = (ModuleMap)ColdStorage.load(res);
-			if (ms == null) throw new ModuleMapNotFoundException(className);
+			if (res == null) {
+				throw new ModuleMapNotFoundException(className);
+			}
+			final ModuleMap ms = (ModuleMap)ColdStorage.load(res);
+			if (ms == null) {
+				Assert.warn("ModuleMap for class %s was null on disk.", className);
+				throw new ModuleMapNotFoundException(className);
+			}
+			classToMap.put(className, ms);
 			return ms;
 		} catch (IOException e) {
 			throw new ModuleMapNotFoundException(className);

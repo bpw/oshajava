@@ -3,15 +3,15 @@ package oshajava.util;
 
 public class ExpandableGraph extends Graph {
 	
-	/**
-	 * 
-	 */
 	private static final long serialVersionUID = 1L;
 	/**
 	 * ID counter for adding new nodes.
 	 */
 	private int nextID = 0;
 
+	public ExpandableGraph() {
+		this(8);
+	}
 	public ExpandableGraph(int initialNodeCapacity) {
 		super(initialNodeCapacity, initialNodeCapacity);
 	}

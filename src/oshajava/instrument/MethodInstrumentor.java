@@ -5,7 +5,6 @@ import oshajava.runtime.Config;
 import oshajava.spec.CompiledModuleSpec;
 import oshajava.spec.ModuleSpec;
 import oshajava.spec.ModuleSpec.CommunicationKind;
-import oshajava.spec.exceptions.ModuleSpecNotFoundException;
 import oshajava.spec.names.MethodDescriptor;
 import oshajava.support.acme.util.Assert;
 import oshajava.support.org.objectweb.asm.Label;
@@ -34,7 +33,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 	protected int originalMaxLocals = UNINITIALIZED, originalMaxStack = UNINITIALIZED;
 	
 	public MethodInstrumentor(MethodVisitor next, int access, String name, String desc, 
-			ClassInstrumentor inst, MethodDescriptor methodDescriptor) throws ModuleSpecNotFoundException {
+			ClassInstrumentor inst, ModuleSpec module, MethodDescriptor methodDescriptor) {
 		super(next, access, name, desc);
 		this.inst = inst;
 		isStatic = (access & Opcodes.ACC_STATIC) != 0;
@@ -44,9 +43,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 		isConstructor = name.equals("<init>");
 		isClinit = name.equals("<clinit>");
 		final boolean isSynthetic = (access & Opcodes.ACC_SYNTHETIC) != 0;
-		
-		ModuleSpec module = inst.getModuleForMethod(methodDescriptor);
-		
+				
 		try {
 			methodUID = module.getMethodUID(methodDescriptor);
 			// Set policy appropriately if method is found.
