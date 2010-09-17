@@ -39,6 +39,8 @@ import oshajava.spec.names.CanonicalName;
 import oshajava.spec.names.MethodDescriptor;
 import oshajava.support.acme.util.Assert;
 
+// TODO add an @Untracked annotation.  Applies to methods.  Maybe fields too.
+
 @SupportedAnnotationTypes("*")
 @SupportedSourceVersion(SourceVersion.RELEASE_6)
 @SupportedOptions({SpecProcessor.HELP_OPTION, SpecProcessor.DEFAULT_ANN_OPTION, SpecProcessor.DEBUG_OPTION})

@@ -3,8 +3,6 @@ package oshajava.instrument;
 
 import oshajava.runtime.Config;
 import oshajava.spec.CompiledModuleSpec;
-import oshajava.spec.ModuleMap;
-import oshajava.spec.ModuleMap.MissingEntryException;
 import oshajava.spec.ModuleSpec;
 import oshajava.spec.ModuleSpec.CommunicationKind;
 import oshajava.spec.ModuleSpecNotFoundException;
@@ -35,7 +33,8 @@ public class MethodInstrumentor extends AdviceAdapter {
 
 	protected int originalMaxLocals = UNINITIALIZED, originalMaxStack = UNINITIALIZED;
 	
-	public MethodInstrumentor(MethodVisitor next, int access, String name, String desc, ClassInstrumentor inst, MethodDescriptor methodDescriptor) throws ModuleSpecNotFoundException {
+	public MethodInstrumentor(MethodVisitor next, int access, String name, String desc, 
+			ClassInstrumentor inst, MethodDescriptor methodDescriptor) throws ModuleSpecNotFoundException {
 		super(next, access, name, desc);
 		this.inst = inst;
 		isStatic = (access & Opcodes.ACC_STATIC) != 0;

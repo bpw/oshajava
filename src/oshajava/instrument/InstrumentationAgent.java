@@ -9,9 +9,12 @@ import java.lang.instrument.Instrumentation;
 import java.security.ProtectionDomain;
 import java.util.HashMap;
 
+import oshajava.runtime.Config;
 import oshajava.spec.ModuleSpecNotFoundException;
 import oshajava.support.acme.util.Assert;
 import oshajava.support.acme.util.Debug;
+import oshajava.support.acme.util.StringMatchResult;
+import oshajava.support.acme.util.StringMatcher;
 import oshajava.support.acme.util.Util;
 import oshajava.support.acme.util.option.CommandLine;
 import oshajava.support.acme.util.option.CommandLineOption;
@@ -87,7 +90,7 @@ public class InstrumentationAgent implements ClassFileTransformer {
 	};
 
 	public static final CommandLineOption<Boolean> fullJDKInstrumentationOption =
-		CommandLine.makeBoolean("instrumentFullJDK", false, Kind.EXPERIMENTAL, "Instrument deep into the JDK.");
+		CommandLine.makeBoolean("instrumentFullJDK", false, Kind.DEPRECATED, "Instrument deep into the JDK.");
 	
 	public static final CommandLineOption<Boolean> bytecodeDumpOption =
 		CommandLine.makeBoolean("bytecodeDump", false, Kind.STABLE, "Dump instrumented bytecode.");
@@ -106,12 +109,25 @@ public class InstrumentationAgent implements ClassFileTransformer {
 		CommandLine.makeBoolean("frames", false, Kind.EXPERIMENTAL, "Handle frames intelligently.");
 	
 	public static final CommandLineOption<Boolean> ignoreMissingMethodsOption =
-		CommandLine.makeBoolean("ignoreMissingMethods", false, Kind.STABLE, "Ignore and inline methods missing from their modules.");
+		CommandLine.makeBoolean("ignoreMissingMethods", false, Kind.DEPRECATED, "Ignore and inline methods missing from their modules.  (See -" + Config.noSpecOption.getId() + " and -" + Config.noSpecActionOption.getId() + " instead.)");
 	
 	public static final CommandLineOption<Boolean> volatileShadowOption =
 		CommandLine.makeBoolean("volatileShadows", false, Kind.EXPERIMENTAL, "Make shadow fields volatile");
 	
-	private static final ConcurrentTimer insTimer = new ConcurrentTimer("Instrumentation time");
+    public static final CommandLineOption<StringMatcher> instrumentClassesOption =
+    	CommandLine.makeStringMatcher("classes", StringMatchResult.ACCEPT, Kind.EXPERIMENTAL, 
+    			"Only track memory operations on fields and in methods in matching classes (by fully qualified name).", "-^java\\..*", "-^com.sun\\..*", "-^sun\\..*");
+
+    public static final CommandLineOption<StringMatcher> instrumentFieldsOption =
+    	CommandLine.makeStringMatcher("fields", StringMatchResult.ACCEPT, Kind.EXPERIMENTAL, 
+    			"Only track memory operations on matching fields (by fully qulified name).", "-^java\\..*", "-^com.sun\\..*", "-^sun\\..*");
+
+    public static final CommandLineOption<StringMatcher> instrumentMethodsOption =
+    	CommandLine.makeStringMatcher("methods", StringMatchResult.ACCEPT, Kind.EXPERIMENTAL, 
+    			"Only track memory operations in matching methods (by fully qulified name).", "-^java\\..*", "-^com.sun\\..*", "-^sun\\..*");
+
+    
+    private static final ConcurrentTimer insTimer = new ConcurrentTimer("Instrumentation time");
 		
 	public byte[] instrument(String className, byte[] bytecode, ClassLoader loader) throws ModuleSpecNotFoundException {
 		try {

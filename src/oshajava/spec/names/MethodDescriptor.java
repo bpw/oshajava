@@ -14,8 +14,6 @@ import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
 
-import oshajava.support.acme.util.Assert;
-
 /**
  * TODO support generics.
  * @author bpw

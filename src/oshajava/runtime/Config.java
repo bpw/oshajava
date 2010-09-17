@@ -4,6 +4,8 @@ import java.lang.instrument.Instrumentation;
 
 import oshajava.instrument.InstrumentationAgent;
 import oshajava.rtviz.StackCommMonitor;
+import oshajava.support.acme.util.StringMatchResult;
+import oshajava.support.acme.util.StringMatcher;
 import oshajava.support.acme.util.Util;
 import oshajava.support.acme.util.option.CommandLine;
 import oshajava.support.acme.util.option.CommandLineOption;
@@ -45,15 +47,16 @@ public class Config {
 	public static final CommandLineOption<Boolean> intraThreadOption =
 		CommandLine.makeBoolean("intraThread", false, Kind.EXPERIMENTAL, "Track all (intra- and inter-thread) communication.");
 
-	public enum Granularity { FINE, COARSE };
+	public enum Granularity { FINE, COARSE }; // TODO add NONE level.
 	public static final CommandLineOption<Granularity> arrayTrackingOption =
 		CommandLine.makeEnumChoice("arrayTracking", Granularity.FINE, Kind.STABLE, "Set array tracking granularity.", Granularity.class);
 	
 	public static final CommandLineOption<Granularity> objectTrackingOption = 
-		CommandLine.makeEnumChoice("objectTracking", Granularity.FINE, Kind.EXPERIMENTAL, "Set object tracking granularity. (COARSE is not fully implemented.)", Granularity.class);
+		CommandLine.makeEnumChoice("objectTracking", Granularity.FINE, Kind.EXPERIMENTAL, 
+				"Set object tracking granularity. (COARSE is not fully implemented.)", Granularity.class);
 	
 	public static final CommandLineOption<Boolean> noInstrumentOption =
-		CommandLine.makeBoolean("noInstrument", false, Kind.STABLE, "Turn off instrumentation.");
+		CommandLine.makeBoolean("noInstrument", false, Kind.STABLE, "Turn off all instrumentation.");
 	
 	public enum ProfileLevel { NONE, PERF, DEEP }
 	public static final CommandLineOption<ProfileLevel> profileOption =
@@ -77,8 +80,16 @@ public class Config {
     public static final CommandLineOption<ErrorAction> errorActionOption =
         CommandLine.makeEnumChoice("errorAction", ErrorAction.HALT, Kind.STABLE, "What to do when illegal communication occurs.", ErrorAction.class);
     
+    public static final CommandLineOption<StringMatcher> noSpecOption =
+    	CommandLine.makeStringMatcher("nospecs", StringMatchResult.NOTHING, Kind.EXPERIMENTAL, 
+    			"Proceed silently if modules for methods in these classes cannot be found.", "+^java\\..*", "+^com.sun\\..*", "+^sun\\..*");
+    
+    public enum DefaultSpec { INLINE, NONCOMM, UNTRACKED }
+    public static final CommandLineOption<DefaultSpec> noSpecActionOption =
+    	CommandLine.makeEnumChoice("defaultSpec", DefaultSpec.INLINE, Kind.EXPERIMENTAL, "Default treatment of methods without specs.", DefaultSpec.class);
+    
     public static final CommandLineOption<Boolean> recordOption =
-    		CommandLine.makeBoolean("record", false, Kind.STABLE, "Record exercised graph and dump an XML file.");
+    	CommandLine.makeBoolean("record", false, Kind.STABLE, "Record exercised graph and dump an XML file.");
     
 	public static final CommandLineOption<Boolean> visualizeOption =
 		CommandLine.makeBoolean("visualize", false, Kind.EXPERIMENTAL, "Visualize communications in real-time.");
@@ -87,7 +98,7 @@ public class Config {
     	CommandLine.makeString("profileExt", "-oshajava-profile.py", Kind.STABLE, "Extension on profile file (prefixed by main class)");
     
     public static final CommandLineOption<Boolean> createOption =
-    		CommandLine.makeBoolean("create", false, Kind.STABLE, "Create a full execution graph (text).");
+    	CommandLine.makeBoolean("create", false, Kind.STABLE, "Create a full execution graph (text).");
     
     public static final CommandLineOption<Boolean> summaryOption =
 		CommandLine.makeBoolean("summary", false, Kind.STABLE, "Print summary.");
@@ -100,11 +111,26 @@ public class Config {
 	public static void configure(String[] args){
 		// add command line options here --------------------------------------------------
 
+		cl.addGroup("Error reporting");
+		
+		cl.add(errorActionOption);
+		cl.add(stackTracesOption);
+
 		cl.addGroup("Tracking");
 		
 		cl.add(arrayTrackingOption);
 		cl.add(objectTrackingOption);
 		cl.add(intraThreadOption);
+		cl.add(InstrumentationAgent.instrumentClassesOption);
+		cl.add(InstrumentationAgent.instrumentFieldsOption);
+		cl.add(InstrumentationAgent.instrumentMethodsOption);
+		cl.add(noSpecOption);
+		cl.add(noSpecActionOption);
+		
+		cl.addGroup("Optimizations");
+		
+		cl.add(arrayCacheSizeOption);
+		cl.add(lockCacheSizeOption);
 		
 		cl.addGroup("Profiling");
 		
@@ -116,16 +142,6 @@ public class Config {
 		cl.add(profileExtOption);
 		cl.add(idOption);
 		
-		cl.addGroup("Optimizations");
-		
-		cl.add(arrayCacheSizeOption);
-		cl.add(lockCacheSizeOption);
-		
-		cl.addGroup("Error reporting");
-		
-		cl.add(stackTracesOption);
-		cl.add(errorActionOption);
-
 		cl.addGroup("Instrumentation");
 		
 		cl.add(noInstrumentOption);
@@ -137,7 +153,7 @@ public class Config {
 		cl.add(InstrumentationAgent.verifyOption);
 		cl.add(InstrumentationAgent.ignoreMissingMethodsOption);
 		cl.add(InstrumentationAgent.volatileShadowOption);
-
+		
 		// end command line options -------------------------------------------------------
 			
 		cl.apply(args);	
