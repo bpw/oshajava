@@ -1,10 +1,8 @@
-package oshajava.spec;
+package oshajava.util;
 
 import java.io.Serializable;
 import java.util.Iterator;
 
-import oshajava.util.intset.BitVectorIntSet;
-import oshajava.util.intset.IntSet;
 
 /**
  * A graph representation targeted at method communication graphs.
@@ -56,7 +54,7 @@ public class Graph implements Serializable, Iterable<Graph.Edge> {
 	 * @return
 	 */
 	public final boolean hasInEdges(int i) {
-		for (IntSet set : table) {
+		for (BitVectorIntSet set : table) {
 			if (set.contains(i)) return true;
 		}
 		return false;
@@ -71,7 +69,7 @@ public class Graph implements Serializable, Iterable<Graph.Edge> {
 	public final boolean containsEdge(int i, int j) {
 		assert i >= 0 && i < size() && j >= 0 && j < size();
 		if (i >= size()) return false;
-		final IntSet set = table[i];
+		final BitVectorIntSet set = table[i];
 		return set != null && set.contains(j);
 	}
 	

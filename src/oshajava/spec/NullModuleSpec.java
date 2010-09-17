@@ -6,7 +6,8 @@ import java.util.Vector;
 import oshajava.spec.names.CanonicalName;
 import oshajava.spec.names.MethodDescriptor;
 import oshajava.support.acme.util.Assert;
-import oshajava.util.intset.BitVectorIntSet;
+import oshajava.util.BitVectorIntSet;
+import oshajava.util.Graph;
 
 public class NullModuleSpec extends ModuleSpec {
     

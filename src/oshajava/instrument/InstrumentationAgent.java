@@ -10,7 +10,7 @@ import java.security.ProtectionDomain;
 import java.util.HashMap;
 
 import oshajava.runtime.Config;
-import oshajava.spec.ModuleSpecNotFoundException;
+import oshajava.spec.exceptions.ModuleSpecNotFoundException;
 import oshajava.support.acme.util.Assert;
 import oshajava.support.acme.util.Debug;
 import oshajava.support.acme.util.StringMatchResult;

@@ -5,6 +5,8 @@ import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Vector;
 
+import oshajava.spec.exceptions.ModuleMapNotFoundException;
+import oshajava.spec.exceptions.ModuleSpecNotFoundException;
 import oshajava.spec.names.CanonicalName;
 import oshajava.spec.names.Descriptor;
 import oshajava.support.acme.util.Assert;

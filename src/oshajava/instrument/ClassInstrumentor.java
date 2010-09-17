@@ -11,10 +11,10 @@ import oshajava.runtime.Config;
 import oshajava.spec.CompiledModuleSpec;
 import oshajava.spec.ModuleMap;
 import oshajava.spec.ModuleMap.MissingEntryException;
-import oshajava.spec.ModuleMapNotFoundException;
 import oshajava.spec.ModuleSpec;
-import oshajava.spec.ModuleSpecNotFoundException;
 import oshajava.spec.Spec;
+import oshajava.spec.exceptions.ModuleMapNotFoundException;
+import oshajava.spec.exceptions.ModuleSpecNotFoundException;
 import oshajava.spec.names.CanonicalName;
 import oshajava.spec.names.MethodDescriptor;
 import oshajava.support.acme.util.Assert;
@@ -32,7 +32,7 @@ import oshajava.support.org.objectweb.asm.commons.Method;
 
 public class ClassInstrumentor extends ClassAdapter {
 
-	protected static final Type BIT_VECTOR_INT_SET_TYPE = Type.getType(oshajava.util.intset.BitVectorIntSet.class);
+	protected static final Type BIT_VECTOR_INT_SET_TYPE = Type.getType(oshajava.util.BitVectorIntSet.class);
 	protected static final Type STRING_TYPE             = Type.getType(java.lang.String.class);
 	protected static final Type STACK_TYPE              = Type.getType(oshajava.runtime.Stack.class);
 	protected static final Type STATE_TYPE              = Type.getType(oshajava.runtime.State.class);

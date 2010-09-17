@@ -3,7 +3,8 @@ package oshajava.spec;
 import oshajava.spec.CompiledModuleSpec.MethodNotFoundException;
 import oshajava.spec.names.CanonicalName;
 import oshajava.spec.names.MethodDescriptor;
-import oshajava.util.intset.BitVectorIntSet;
+import oshajava.util.BitVectorIntSet;
+import oshajava.util.Graph;
 
 public abstract class ModuleSpec extends SpecFile {
 	/**

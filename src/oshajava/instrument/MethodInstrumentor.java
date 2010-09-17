@@ -5,7 +5,7 @@ import oshajava.runtime.Config;
 import oshajava.spec.CompiledModuleSpec;
 import oshajava.spec.ModuleSpec;
 import oshajava.spec.ModuleSpec.CommunicationKind;
-import oshajava.spec.ModuleSpecNotFoundException;
+import oshajava.spec.exceptions.ModuleSpecNotFoundException;
 import oshajava.spec.names.MethodDescriptor;
 import oshajava.support.acme.util.Assert;
 import oshajava.support.org.objectweb.asm.Label;

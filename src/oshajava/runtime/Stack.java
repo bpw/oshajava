@@ -10,8 +10,6 @@ import java.util.Map;
 import java.util.Set;
 
 import oshajava.rtviz.StackCommMonitor;
-import oshajava.spec.ExpandableGraph;
-import oshajava.spec.Graph;
 import oshajava.spec.ModuleSpec;
 import oshajava.spec.Spec;
 import oshajava.spec.names.MethodDescriptor;
@@ -19,13 +17,15 @@ import oshajava.spec.names.TypeDescriptor;
 import oshajava.support.acme.util.Assert;
 import oshajava.support.acme.util.Util;
 import oshajava.support.acme.util.identityhash.ConcurrentIdentityHashMap;
+import oshajava.util.BitVectorIntSet;
+import oshajava.util.ExpandableGraph;
+import oshajava.util.Graph;
 import oshajava.util.Py;
 import oshajava.util.PyWriter;
 import oshajava.util.XMLWriter;
 import oshajava.util.count.Counter;
 import oshajava.util.count.DistributionCounter;
 import oshajava.util.count.SetSizeCounter;
-import oshajava.util.intset.BitVectorIntSet;
 
 public class Stack {
 	

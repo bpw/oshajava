@@ -9,8 +9,9 @@ import oshajava.runtime.RuntimeMonitor;
 import oshajava.spec.names.CanonicalName;
 import oshajava.spec.names.MethodDescriptor;
 import oshajava.support.acme.util.Assert;
+import oshajava.util.BitVectorIntSet;
+import oshajava.util.Graph;
 import oshajava.util.count.MaxRecorder;
-import oshajava.util.intset.BitVectorIntSet;
 /**
  * Module specification format for saving to disk and using at runtime.
  * @author bpw

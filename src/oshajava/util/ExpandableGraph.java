@@ -1,6 +1,5 @@
-package oshajava.spec;
+package oshajava.util;
 
-import oshajava.util.intset.BitVectorIntSet;
 
 public class ExpandableGraph extends Graph {
 	

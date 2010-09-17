@@ -1,4 +1,4 @@
-package oshajava.spec;
+package oshajava.spec.exceptions;
 
 import java.lang.instrument.IllegalClassFormatException;
 

@@ -17,13 +17,13 @@ import oshajava.support.acme.util.Assert;
 import oshajava.support.acme.util.Debug;
 import oshajava.support.acme.util.Util;
 import oshajava.support.acme.util.option.Option;
+import oshajava.util.BitVectorIntSet;
 import oshajava.util.Py;
 import oshajava.util.PyWriter;
 import oshajava.util.WeakConcurrentIdentityHashMap;
 import oshajava.util.cache.DirectMappedShadowCache;
 import oshajava.util.count.AbstractCounter;
 import oshajava.util.count.Counter;
-import oshajava.util.intset.BitVectorIntSet;
 
 /**
  * @author bpw

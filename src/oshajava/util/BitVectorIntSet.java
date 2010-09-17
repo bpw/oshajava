@@ -1,4 +1,4 @@
-package oshajava.util.intset;
+package oshajava.util;
 
 import java.io.Serializable;
 import java.util.Iterator;
@@ -7,7 +7,6 @@ import java.util.HashSet;
 
 import oshajava.runtime.RuntimeMonitor;
 import oshajava.support.acme.util.Assert;
-import oshajava.util.ArrayUtil;
 import oshajava.util.count.MaxRecorder;
 
 /**
@@ -19,7 +18,7 @@ import oshajava.util.count.MaxRecorder;
  * @author bpw
  *
  */
-public class BitVectorIntSet extends IntSet implements Serializable, Iterable<Integer> {
+public class BitVectorIntSet implements Serializable, Iterable<Integer> {
 	
 	/**
 	 * Auto-generated version ID.
