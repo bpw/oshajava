@@ -8,13 +8,15 @@ import java.util.List;
 import java.util.Set;
 
 import oshajava.runtime.Config;
-import oshajava.spec.CanonicalName;
 import oshajava.spec.CompiledModuleSpec;
 import oshajava.spec.ModuleMap;
+import oshajava.spec.ModuleMap.MissingEntryException;
 import oshajava.spec.ModuleMapNotFoundException;
 import oshajava.spec.ModuleSpec;
 import oshajava.spec.ModuleSpecNotFoundException;
 import oshajava.spec.Spec;
+import oshajava.spec.names.CanonicalName;
+import oshajava.spec.names.MethodDescriptor;
 import oshajava.support.acme.util.Assert;
 import oshajava.support.acme.util.Debug;
 import oshajava.support.org.objectweb.asm.ClassAdapter;
@@ -31,17 +33,17 @@ import oshajava.support.org.objectweb.asm.commons.Method;
 public class ClassInstrumentor extends ClassAdapter {
 
 	protected static final Type BIT_VECTOR_INT_SET_TYPE = Type.getType(oshajava.util.intset.BitVectorIntSet.class);
-	protected static final Type STRING_TYPE          = Type.getType(java.lang.String.class);
-	protected static final Type STACK_TYPE           = Type.getType(oshajava.runtime.Stack.class);
-	protected static final Type STATE_TYPE           = Type.getType(oshajava.runtime.State.class);
-	protected static final Type THREAD_STATE_TYPE    = Type.getType(oshajava.runtime.ThreadState.class);
-	protected static final Type RUNTIME_MONITOR_TYPE = Type.getType(oshajava.runtime.RuntimeMonitor.class);
-	protected static final Type OBJECT_TYPE          = Type.getType(java.lang.Object.class);
-	protected static final Type THREAD_TYPE          = Type.getType(java.lang.Thread.class);
+	protected static final Type STRING_TYPE             = Type.getType(java.lang.String.class);
+	protected static final Type STACK_TYPE              = Type.getType(oshajava.runtime.Stack.class);
+	protected static final Type STATE_TYPE              = Type.getType(oshajava.runtime.State.class);
+	protected static final Type THREAD_STATE_TYPE       = Type.getType(oshajava.runtime.ThreadState.class);
+	protected static final Type RUNTIME_MONITOR_TYPE    = Type.getType(oshajava.runtime.RuntimeMonitor.class);
+	protected static final Type OBJECT_TYPE             = Type.getType(java.lang.Object.class);
+	protected static final Type THREAD_TYPE             = Type.getType(java.lang.Thread.class);
 
-	protected static final String ANNOT_INLINE_DESC         = Type.getDescriptor(oshajava.annotation.Inline.class);
-	protected static final String ANNOT_READER_DESC = Type.getDescriptor(oshajava.annotation.Reader.class);
-	protected static final String ANNOT_WRITER_DESC = Type.getDescriptor(oshajava.annotation.Writer.class);
+	protected static final String ANNOT_INLINE_DESC        = Type.getDescriptor(oshajava.annotation.Inline.class);
+	protected static final String ANNOT_READER_DESC        = Type.getDescriptor(oshajava.annotation.Reader.class);
+	protected static final String ANNOT_WRITER_DESC        = Type.getDescriptor(oshajava.annotation.Writer.class);
 	protected static final String ANNOT_MODULE_MEMBER_DESC = Type.getDescriptor(oshajava.annotation.Module.class);
 	
 	protected static final String OSHA_EXCEPT_TYPE_NAME     = Type.getInternalName(oshajava.runtime.exceptions.OshaRuntimeException.class);
@@ -55,56 +57,54 @@ public class ClassInstrumentor extends ClassAdapter {
 	protected static final String OBJECT_WITH_STATE_NAME    = Type.getInternalName(oshajava.runtime.ObjectWithState.class);
 	protected static final String SHADOW_INIT_METHOD_PREFIX = "__osha_shadow_field_initer";
 
-	protected static final Type[] ARGS_NONE      = new Type[0];
-	protected static final Type[] ARGS_INT       = { Type.INT_TYPE };
-	protected static final Type[] ARGS_STATE     = { STATE_TYPE };
-	protected static final Type[] ARGS_STATE_THREAD     = { STATE_TYPE, THREAD_STATE_TYPE };
-	protected static final Type[] ARGS_STATE_INT = { STATE_TYPE, Type.INT_TYPE };
-	protected static final Type[] ARGS_OBJECT_INT = { OBJECT_TYPE, Type.INT_TYPE };
-	protected static final Type[] ARGS_OBJECT_INT_STATE = { OBJECT_TYPE, Type.INT_TYPE, STATE_TYPE };
-	protected static final Type[] ARGS_INT_OBJECT = { Type.INT_TYPE, OBJECT_TYPE };
+	protected static final Type[] ARGS_NONE              = new Type[0];
+	protected static final Type[] ARGS_INT               = { Type.INT_TYPE };
+	protected static final Type[] ARGS_STATE             = { STATE_TYPE };
+	protected static final Type[] ARGS_STATE_THREAD      = { STATE_TYPE, THREAD_STATE_TYPE };
+	protected static final Type[] ARGS_STATE_INT         = { STATE_TYPE, Type.INT_TYPE };
+	protected static final Type[] ARGS_OBJECT_INT        = { OBJECT_TYPE, Type.INT_TYPE };
+	protected static final Type[] ARGS_OBJECT_INT_STATE  = { OBJECT_TYPE, Type.INT_TYPE, STATE_TYPE };
+	protected static final Type[] ARGS_INT_OBJECT        = { Type.INT_TYPE, OBJECT_TYPE };
 	protected static final Type[] ARGS_INT_OBJECT_THREAD = { Type.INT_TYPE, OBJECT_TYPE, THREAD_STATE_TYPE };
-	protected static final Type[] ARGS_OBJECT    = { OBJECT_TYPE };
-	protected static final Type[] ARGS_OBJECT_THREAD    = { OBJECT_TYPE, THREAD_STATE_TYPE };
-	protected static final Type[] ARGS_OBJECT_STATE    = { OBJECT_TYPE, STATE_TYPE };
+	protected static final Type[] ARGS_OBJECT            = { OBJECT_TYPE };
+	protected static final Type[] ARGS_OBJECT_THREAD     = { OBJECT_TYPE, THREAD_STATE_TYPE };
+	protected static final Type[] ARGS_OBJECT_STATE      = { OBJECT_TYPE, STATE_TYPE };
 	
 	protected static final String STACKTRACE_FIELD_SUFFIX   = "__osha_stacktrace";
 	protected static final String STACKTRACE_DESC           = "[Ljava/lang/StackTraceElement;";
 	protected static final Type   STACKTRACE_TYPE           = Type.getType(STACKTRACE_DESC);
-	protected static final Method CURRENTTHREAD_METHOD      = new Method("currentThread", THREAD_TYPE, ARGS_NONE);
-	protected static final Method GETSTACKTRACE_METHOD      = new Method("getStackTrace", STACKTRACE_TYPE, ARGS_NONE);
 	
-	protected static final Method STATE_STACK_ID  = new Method("getStackID",  Type.INT_TYPE, ARGS_NONE);
-	protected static final Method CONTAINS_METHOD  = new Method("contains", Type.BOOLEAN_TYPE,  new Type[] { Type.INT_TYPE });
+	protected static final Method CURRENTTHREAD_METHOD = new Method("currentThread", THREAD_TYPE, ARGS_NONE);
+	protected static final Method GETSTACKTRACE_METHOD = new Method("getStackTrace", STACKTRACE_TYPE, ARGS_NONE);
+	protected static final Method STATE_STACK_ID       = new Method("getStackID",    Type.INT_TYPE, ARGS_NONE);
+	protected static final Method CONTAINS_METHOD      = new Method("contains",      Type.BOOLEAN_TYPE,  new Type[] { Type.INT_TYPE });
 
-	protected static final Method HOOK_ENTER = new Method("enter", THREAD_STATE_TYPE, ARGS_INT);
-	protected static final Method HOOK_EXIT  = new Method("exit",  Type.VOID_TYPE, new Type[] { THREAD_STATE_TYPE });
+	protected static final Method HOOK_ENTER        = new Method("enter",       THREAD_STATE_TYPE, ARGS_INT);
+	protected static final Method HOOK_EXIT         = new Method("exit",        Type.VOID_TYPE, new Type[] { THREAD_STATE_TYPE });
 	protected static final Method HOOK_ENTER_CLINIT = new Method("enterClinit", THREAD_STATE_TYPE, ARGS_NONE);
 
-	protected static final Method HOOK_THREAD_STATE = new Method("getThreadState", THREAD_STATE_TYPE, ARGS_NONE);
-	protected static final Method HOOK_CURRENT_STATE = new Method("getCurrentState", STATE_TYPE, ARGS_NONE);
-	protected static final Method HOOK_CLINIT_STATE = new Method("classInitializer", STATE_TYPE, new Type[] { THREAD_STATE_TYPE });
+	protected static final Method HOOK_THREAD_STATE  = new Method("getThreadState",   THREAD_STATE_TYPE, ARGS_NONE);
+	protected static final Method HOOK_CURRENT_STATE = new Method("getCurrentState",  STATE_TYPE,        ARGS_NONE);
+	protected static final Method HOOK_CLINIT_STATE  = new Method("classInitializer", STATE_TYPE,        new Type[] { THREAD_STATE_TYPE });
 
-	protected static final Method HOOK_READ  = new Method("checkFieldRead",  Type.VOID_TYPE, new Type[] { STATE_TYPE, STATE_TYPE, Type.getType(String.class) });
-	protected static final Method HOOK_READ_STACK_TRACE  = new Method("checkFieldRead",  Type.VOID_TYPE, new Type[] { STATE_TYPE, STATE_TYPE, Type.getType(String.class), STACKTRACE_TYPE });
+	protected static final Method HOOK_READ             = new Method("checkFieldRead", Type.VOID_TYPE, new Type[] { STATE_TYPE, STATE_TYPE, Type.getType(String.class) });
+	protected static final Method HOOK_READ_STACK_TRACE = new Method("checkFieldRead", Type.VOID_TYPE, new Type[] { STATE_TYPE, STATE_TYPE, Type.getType(String.class), STACKTRACE_TYPE });
 	
-//	protected static final Method HOOK_NEW_ARRAY       = new Method("newArray",      Type.VOID_TYPE, ARGS_INT_OBJECT);
-//	protected static final Method HOOK_NEW_MULTI_ARRAY = new Method("newMultiArray", Type.VOID_TYPE, ARGS_OBJECT_INT);
-	protected static final Method HOOK_ARRAY_LOAD      = new Method("arrayRead",     Type.VOID_TYPE, new Type[] {OBJECT_TYPE, Type.INT_TYPE, THREAD_STATE_TYPE, BIT_VECTOR_INT_SET_TYPE});
-	protected static final Method HOOK_ARRAY_STORE     = new Method("arrayWrite",    Type.VOID_TYPE, new Type[] {OBJECT_TYPE, Type.INT_TYPE, STATE_TYPE, THREAD_STATE_TYPE});
-	protected static final Method HOOK_COARSE_ARRAY_LOAD  = new Method("coarseArrayRead",     Type.VOID_TYPE, new Type[] {OBJECT_TYPE, THREAD_STATE_TYPE, BIT_VECTOR_INT_SET_TYPE} );
-	protected static final Method HOOK_COARSE_ARRAY_STORE = new Method("coarseArrayWrite",    Type.VOID_TYPE, new Type[] {OBJECT_TYPE, STATE_TYPE, THREAD_STATE_TYPE});
+	protected static final Method HOOK_ARRAY_LOAD         = new Method("arrayRead",        Type.VOID_TYPE, new Type[] {OBJECT_TYPE, Type.INT_TYPE, THREAD_STATE_TYPE, BIT_VECTOR_INT_SET_TYPE});
+	protected static final Method HOOK_ARRAY_STORE        = new Method("arrayWrite",       Type.VOID_TYPE, new Type[] {OBJECT_TYPE, Type.INT_TYPE, STATE_TYPE, THREAD_STATE_TYPE});
+	protected static final Method HOOK_COARSE_ARRAY_LOAD  = new Method("coarseArrayRead",  Type.VOID_TYPE, new Type[] {OBJECT_TYPE, THREAD_STATE_TYPE, BIT_VECTOR_INT_SET_TYPE} );
+	protected static final Method HOOK_COARSE_ARRAY_STORE = new Method("coarseArrayWrite", Type.VOID_TYPE, new Type[] {OBJECT_TYPE, STATE_TYPE, THREAD_STATE_TYPE});
 
-	protected static final Method HOOK_ACQUIRE        = new Method("acquire", Type.VOID_TYPE, new Type[] {OBJECT_TYPE, THREAD_STATE_TYPE, STATE_TYPE});
-	protected static final Method HOOK_RELEASE        = new Method("release", Type.VOID_TYPE, ARGS_OBJECT_THREAD);
-	protected static final Method HOOK_PREWAIT        = new Method("prewait", Type.INT_TYPE, ARGS_OBJECT_THREAD);
-	protected static final Method HOOK_POSTWAIT       = new Method("postwait", Type.VOID_TYPE, new Type[] {OBJECT_TYPE, Type.INT_TYPE, THREAD_STATE_TYPE, STATE_TYPE});
+	protected static final Method HOOK_ACQUIRE  = new Method("acquire",  Type.VOID_TYPE, new Type[] {OBJECT_TYPE, THREAD_STATE_TYPE, STATE_TYPE});
+	protected static final Method HOOK_RELEASE  = new Method("release",  Type.VOID_TYPE, ARGS_OBJECT_THREAD);
+	protected static final Method HOOK_PREWAIT  = new Method("prewait",  Type.INT_TYPE,  ARGS_OBJECT_THREAD);
+	protected static final Method HOOK_POSTWAIT = new Method("postwait", Type.VOID_TYPE, new Type[] {OBJECT_TYPE, Type.INT_TYPE, THREAD_STATE_TYPE, STATE_TYPE});
 
-	protected static final Method INSTANCE_SHADOW_INIT_METHOD = new Method(SHADOW_INIT_METHOD_PREFIX, Type.VOID_TYPE, ARGS_NONE);
-	protected static final Method STATIC_SHADOW_INIT_METHOD = new Method(SHADOW_INIT_METHOD_PREFIX + "_clinit", Type.VOID_TYPE, ARGS_NONE);
+	protected static final Method INSTANCE_SHADOW_INIT_METHOD = new Method(SHADOW_INIT_METHOD_PREFIX,             Type.VOID_TYPE, ARGS_NONE);
+	protected static final Method STATIC_SHADOW_INIT_METHOD   = new Method(SHADOW_INIT_METHOD_PREFIX + "_clinit", Type.VOID_TYPE, ARGS_NONE);
 
-	protected static final Method HOOK_COUNT_READ        = new Method("countRead", Type.VOID_TYPE, ARGS_NONE);
-	protected static final Method HOOK_COUNT_COMM        = new Method("countComm", Type.VOID_TYPE, ARGS_NONE);
+	protected static final Method HOOK_COUNT_READ = new Method("countRead", Type.VOID_TYPE, ARGS_NONE);
+	protected static final Method HOOK_COUNT_COMM = new Method("countComm", Type.VOID_TYPE, ARGS_NONE);
 
 	/****************************************************************************/
 
@@ -127,28 +127,29 @@ public class ClassInstrumentor extends ClassAdapter {
 	private final ArrayList<String> instanceShadowedFields = new ArrayList<String>();
 	private final ArrayList<String> staticShadowedFields = new ArrayList<String>();
 	private ModuleMap methodToModule;
+	protected CanonicalName defaultModuleName;
+	protected boolean isNonStaticInnerClass = false;
 
 	public ClassInstrumentor(ClassVisitor cv, ClassLoader loader) {
 		super(cv);
 		this.loader = loader;
 	}
 	
-	private ModuleSpec getModuleForMethod(String name, String desc, String sig) throws ModuleSpecNotFoundException {
+	protected ModuleSpec getModuleForMethod(MethodDescriptor methodName) throws ModuleSpecNotFoundException {
 		ModuleSpec module;
-		CanonicalName methodName = new CanonicalName(className.getPackage(), className.getSimpleName() + "." + name + desc);
 		CanonicalName moduleName;
 		if (methodToModule == null) {
-			moduleName = new CanonicalName(packageName, CompiledModuleSpec.DEFAULT_NAME);
+			moduleName = defaultModuleName;
 		} else {
 			try {
 				moduleName = methodToModule.get(methodName);
-			} catch (ModuleMap.MissingEntryException e) {
-				Assert.warn("Method not mapped to module: %s", methodName);
-				moduleName = new CanonicalName(packageName, CompiledModuleSpec.DEFAULT_NAME);
+			} catch (MissingEntryException e) {
+				Assert.warn("Method not mapped to module: %s. Trying default module: %s", methodName, defaultModuleName);
+				moduleName = defaultModuleName;
 			}
 		}
 		module = Spec.getModule(moduleName, loader, methodName);
-		Assert.assertTrue(module != null, "No module specified for %s.", methodName);
+		Assert.assertTrue(module != null, "Misleading message: No module specified for %s.", methodName);
 		return module;
 	}
 	
@@ -289,10 +290,12 @@ public class ClassInstrumentor extends ClassAdapter {
 			String superName, String[] interfaces) {
 		final int lastSep = name.lastIndexOf('/');
 		packageName = lastSep == -1 ? "" : name.substring(0, lastSep);
-		className = new CanonicalName(packageName, name.substring(lastSep + 1));
+		className = CanonicalName.of(packageName, name.substring(lastSep + 1));
+		defaultModuleName = CanonicalName.of(packageName, CompiledModuleSpec.DEFAULT_NAME);
 		classDesc = getDescriptor(name);
 		classType = Type.getObjectType(name);
 		classAccess = access;
+		
 		this.superName = superName;
 		if (Config.objectTrackingOption.get() == Config.Granularity.COARSE && (access & Opcodes.ACC_INTERFACE) == 0 && (superName == null || superName.equals("java/lang/Object"))) {
 			superName = Type.getType(oshajava.runtime.ObjectWithState.class).getInternalName();
@@ -304,10 +307,10 @@ public class ClassInstrumentor extends ClassAdapter {
 //			throw e.wrap();
 			if (className.getSimpleName().contains("$")) {
 				Assert.warn("No module map found for anonymous inner class %s. All methods assumed to be in module %s.", className, 
-						new CanonicalName(packageName, CompiledModuleSpec.DEFAULT_NAME));
+						defaultModuleName);
 			} else {
 				Assert.warn("No module map found for class %s. All methods assumed to be in module %s.", className, 
-						new CanonicalName(packageName, CompiledModuleSpec.DEFAULT_NAME));
+						defaultModuleName);
 			}
 		}
 
@@ -340,10 +343,11 @@ public class ClassInstrumentor extends ClassAdapter {
 	}
 	
 	@Override
-	public void visitOuterClass(String owner, String name, String desc) {
+	public void visitOuterClass(String owner, String containingMethodName, String containingMethodDesc) {
 	    outerClassName = owner;
 		outerClassDesc = getDescriptor(owner);
-		super.visitOuterClass(owner, name, desc);
+		isNonStaticInnerClass = (classAccess & Opcodes.ACC_STATIC) == 0;
+		super.visitOuterClass(owner, containingMethodName, containingMethodDesc);
 	}
 	
 	@Override
@@ -372,8 +376,9 @@ public class ClassInstrumentor extends ClassAdapter {
 		    		chain = new HandlerSorterAdapter(chain, access, name, desc, signature, exceptions);
 		    		//			    Util.log(name);
 //		    		Method method = new Method(name, desc);
+		    		MethodDescriptor methodName = MethodDescriptor.of(className, name, desc, signature);
 		    		try {
-		    			chain = new MethodInstrumentor(chain, access, name, desc, this, getModuleForMethod(name, desc, signature));
+		    			chain = new MethodInstrumentor(chain, access, name, desc, this, methodName);
 		    		} catch (ModuleSpecNotFoundException e) {
 		    			throw e.wrap();
 		    		}

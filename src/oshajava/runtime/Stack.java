@@ -10,15 +10,15 @@ import java.util.Map;
 import java.util.Set;
 
 import oshajava.rtviz.StackCommMonitor;
-import oshajava.spec.CanonicalName;
 import oshajava.spec.ExpandableGraph;
 import oshajava.spec.Graph;
 import oshajava.spec.ModuleSpec;
 import oshajava.spec.Spec;
+import oshajava.spec.names.MethodDescriptor;
+import oshajava.spec.names.TypeDescriptor;
 import oshajava.support.acme.util.Assert;
 import oshajava.support.acme.util.Util;
 import oshajava.support.acme.util.identityhash.ConcurrentIdentityHashMap;
-import oshajava.util.Desc;
 import oshajava.util.Py;
 import oshajava.util.PyWriter;
 import oshajava.util.XMLWriter;
@@ -454,17 +454,16 @@ public class Stack {
 					specXml.start("module", "id", m.getId(), "name", m.getName());
 					specXml.start("methods");
 
-					CanonicalName[] methods = m.getMethods();
+					MethodDescriptor[] methods = m.getMethods();
 					for (int i = 0; i < methods.length; i++) {
-						final Desc d = new Desc(methods[i]);
 						specXml.start("method", "uid", Spec.makeUID(m.getId(), i), 
-									"class", d.cls,
-									"name", d.method,
-									"return", d.ret,
-									"internal", methods[i], 
+									"class", methods[i].getClassName(),
+									"name", methods[i].getMethodName(),
+									"return", methods[i].getReturnType(),
+									"internal", methods[i].toInternalString(), 
 									"kind", m.getCommunicationKind(Spec.makeUID(m.getId(), i)).toString().toLowerCase());
 						specXml.start("params");
-						for (String p : d.params) {
+						for (TypeDescriptor p : methods[i].getParamTypes()) {
 							specXml.singleton("param", "type", p);
 						}
 						specXml.end("params");

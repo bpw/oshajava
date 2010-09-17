@@ -219,7 +219,7 @@ public class InstrumentationAgent implements ClassFileTransformer {
 			Assert.fail(e);
 			return null;
 		} catch (Throwable e) {
-			Assert.fail("Problem running oshajava instrumentor: " + e);
+			Assert.fail("Problem running oshajava instrumentor: ", e);
 			return null;
 		} finally {
 			insTimer.stop();

@@ -2,6 +2,8 @@ package oshajava.spec;
 
 import java.lang.instrument.IllegalClassFormatException;
 
+import oshajava.spec.names.CanonicalName;
+
 /**
  * To be thrown when a module map could not be found at runtime.
  * @author bpw

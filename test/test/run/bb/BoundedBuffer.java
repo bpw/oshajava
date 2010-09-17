@@ -5,7 +5,7 @@ import oshajava.annotation.*;
 @Group(id="BB")
 @Module("test.run.bb.BoundedBuffer")
 @InterfaceGroup(id="INTER")
-public class BoundedBuffer {
+public class BoundedBuffer<T> {
 	private Node front;
 	private Node back;
 	private int size;
@@ -29,7 +29,7 @@ public class BoundedBuffer {
 //	@Writer({ "INTER", "BB" })
 	@Reader({ "BB" })
 	@Writer({ "INTER", "BB" })
-	public synchronized void enqueue(int x) {
+	public synchronized void enqueue(T x) {
 		while (size == bound) { // Full buffer.
 			try {
 				wait();
@@ -49,14 +49,14 @@ public class BoundedBuffer {
 //	@Reader({ "INTER", "BB" })
 	@Writer({ "BB" })
 	@Reader({ "INTER", "BB" })
-	public synchronized int dequeue() {
+	public synchronized T dequeue() {
 		while (front == null) { // Empty buffer.
 			try {
 				wait();
 			} catch (InterruptedException e) {}
 		}
 		notifyAll();
-		int el = front.data;
+		T el = front.data;
 		if (front == back) {
 			back = null;
 		}
@@ -68,10 +68,10 @@ public class BoundedBuffer {
 	// Simple Node class for internal linked list structure.
 	@Inline
 	private class Node {
-		public int data;
+		public T data;
 		public Node next;
 
-		public Node(int data, Node next) {
+		public Node(T data, Node next) {
 			this.data = data;
 			this.next = next;
 		}

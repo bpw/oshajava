@@ -3,6 +3,8 @@ package oshajava.spec;
 import java.util.HashMap;
 import java.util.Vector;
 
+import oshajava.spec.names.CanonicalName;
+import oshajava.spec.names.MethodDescriptor;
 import oshajava.support.acme.util.Assert;
 import oshajava.util.intset.BitVectorIntSet;
 
@@ -13,19 +15,19 @@ public class NullModuleSpec extends ModuleSpec {
 	 */
 	private static final long serialVersionUID = 1L;
 
-	protected Vector<CanonicalName> nullMethodIdToSig = new Vector<CanonicalName>();
+	protected Vector<MethodDescriptor> nullMethodIdToSig = new Vector<MethodDescriptor>();
     
 	/**
 	 * Map from method signature to id.
 	 */
-	protected final HashMap<CanonicalName,Integer> methodSigToId = new HashMap<CanonicalName,Integer>();
+	protected final HashMap<MethodDescriptor,Integer> methodSigToId = new HashMap<MethodDescriptor,Integer>();
 	
 	public NullModuleSpec(final CanonicalName name) {
         super(name);
     }
     
     @Override
-    public CanonicalName getMethodSignature(final int methodUID) {
+    public MethodDescriptor getMethodSignature(final int methodUID) {
         Assert.assertTrue(Spec.getModuleID(methodUID) == id, 
 				"method id " + methodUID + " (module=" + Spec.getModuleID(methodUID) 
 				+ ", method=" + Spec.getMethodID(methodUID) + 
@@ -34,7 +36,7 @@ public class NullModuleSpec extends ModuleSpec {
     }
     
     @Override
-    public int getMethodUID(final CanonicalName sig) {
+    public int getMethodUID(final MethodDescriptor sig) {
         int mid;
         if (methodSigToId.containsKey(sig)) {
             mid = methodSigToId.get(sig);
@@ -94,8 +96,8 @@ public class NullModuleSpec extends ModuleSpec {
         return "Module " + getName()  + " [null module] (ID " + id + ")";
     }
     
-	public CanonicalName[] getMethods() {
-		CanonicalName[] s = new CanonicalName[nullMethodIdToSig.size()];
+	public MethodDescriptor[] getMethods() {
+		MethodDescriptor[] s = new MethodDescriptor[nullMethodIdToSig.size()];
 		for (int i = 0; i < s.length; i++) {
 			s[i] = nullMethodIdToSig.get(i);
 		}

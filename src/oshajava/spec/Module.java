@@ -3,6 +3,8 @@ package oshajava.spec;
 import java.util.HashMap;
 import java.util.Map;
 
+import oshajava.spec.names.CanonicalName;
+import oshajava.spec.names.MethodDescriptor;
 import oshajava.support.acme.util.Assert;
 
 /**
@@ -30,13 +32,13 @@ public class Module extends SpecFile {
 	@SuppressWarnings("serial")
 	static class DuplicateMethodException extends Exception {
 		protected final Module module;
-		protected final CanonicalName sig;
-		public DuplicateMethodException(Module module, CanonicalName sig) {
+		protected final MethodDescriptor sig;
+		public DuplicateMethodException(Module module, MethodDescriptor sig) {
 			super("Method " + sig + " is already entered in module " + module + ".");
 			this.module = module;
 			this.sig = sig;
 		}
-		public CanonicalName getMethod() {
+		public MethodDescriptor getMethod() {
 			return sig;
 		}
 		public Module getModule() {
@@ -53,7 +55,7 @@ public class Module extends SpecFile {
 		}
 	}
 	
-	protected Map<CanonicalName,MethodSpec> methodSpecs = new HashMap<CanonicalName,MethodSpec>();
+	protected Map<MethodDescriptor,MethodSpec> methodSpecs = new HashMap<MethodDescriptor,MethodSpec>();
 	protected Map<String,Group> groups = new HashMap<String,Group>();
 	protected int numCommMethods = 0, numNoncommMethods = 0, numInlinedMethods = 0, numCommGroups = 0, numIfaceGroups = 0;
 	
@@ -107,7 +109,7 @@ public class Module extends SpecFile {
 	 * @throws DuplicateMethodException if a method with the same signature already exists in this module.
 	 * @throws Group.DuplicateMethodException 
 	 */
-	public void addMethod(CanonicalName sig, MethodSpec spec) throws DuplicateMethodException, Group.DuplicateMethodException {
+	public void addMethod(MethodDescriptor sig, MethodSpec spec) throws DuplicateMethodException, Group.DuplicateMethodException {
 		if (methodSpecs.containsKey(sig)) {
 			throw new DuplicateMethodException(this, sig);
 		}
@@ -167,7 +169,7 @@ public class Module extends SpecFile {
 		String out = "Module " + getName() + "\n";
 		out += "  Methods: " + methodSpecs.size() + "\n";
 		out += "    Communicating: " + numCommMethods + "\n";
-		for (Map.Entry<CanonicalName, MethodSpec> e : methodSpecs.entrySet()) {
+		for (Map.Entry<MethodDescriptor, MethodSpec> e : methodSpecs.entrySet()) {
 			if (e.getValue().kind() == MethodSpec.Kind.COMM) {
 				out += "      " + e.getKey() + "\n";
 				out += "        Read groups: ";
@@ -193,13 +195,13 @@ public class Module extends SpecFile {
 			}
 		}
 		out += "    Non-communicating: " + numNoncommMethods + "\n";
-		for (Map.Entry<CanonicalName, MethodSpec> e : methodSpecs.entrySet()) {
+		for (Map.Entry<MethodDescriptor, MethodSpec> e : methodSpecs.entrySet()) {
 			if (e.getValue().kind() == MethodSpec.Kind.NONCOMM) {
 				out += "      " + e.getKey() + "\n";
 			}
 		}
 		out += "    Inlined: " + numInlinedMethods + "\n";
-		for (Map.Entry<CanonicalName, MethodSpec> e : methodSpecs.entrySet()) {
+		for (Map.Entry<MethodDescriptor, MethodSpec> e : methodSpecs.entrySet()) {
 			if (e.getValue().kind() == MethodSpec.Kind.INLINE) {
 				out += "      " + e.getKey() + "\n";
 			}
@@ -210,18 +212,18 @@ public class Module extends SpecFile {
 				out += "      " + e.getKey() + "\n";
 				out += "        Readers: \n";
 				{
-					final Iterable<CanonicalName> readers = e.getValue().readers();
+					final Iterable<MethodDescriptor> readers = e.getValue().readers();
 					if (readers != null) {
-						for (CanonicalName g : readers) {
+						for (MethodDescriptor g : readers) {
 							out += "          " + g + "\n";
 						}
 					}
 				}
 				out += "        Writers:\n";
 				{
-					final Iterable<CanonicalName> writers = e.getValue().writers();
+					final Iterable<MethodDescriptor> writers = e.getValue().writers();
 					if (writers != null) {
-						for (CanonicalName g : writers) {
+						for (MethodDescriptor g : writers) {
 							out += "          " + g + "\n";
 						}
 					}
@@ -234,18 +236,18 @@ public class Module extends SpecFile {
 				out += "      " + e.getKey() + "\n";
 				out += "        Readers:\n";
 				{
-					final Iterable<CanonicalName> readers = e.getValue().readers();
+					final Iterable<MethodDescriptor> readers = e.getValue().readers();
 					if (readers != null) {
-						for (CanonicalName g : readers) {
+						for (MethodDescriptor g : readers) {
 							out += "          " + g + "\n";
 						}
 					}
 				}
 				out += "        Writers:\n";
 				{
-					final Iterable<CanonicalName> writers = e.getValue().writers();
+					final Iterable<MethodDescriptor> writers = e.getValue().writers();
 					if (writers != null) {
-						for (CanonicalName g : writers) {
+						for (MethodDescriptor g : writers) {
 							out += "          " + g + "\n";
 						}
 					}

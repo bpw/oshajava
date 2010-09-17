@@ -3,6 +3,9 @@ package oshajava.spec;
 import java.util.HashMap;
 import java.util.Map;
 
+import oshajava.spec.names.CanonicalName;
+import oshajava.spec.names.MethodDescriptor;
+
 public class ModuleMap extends SpecFile {
 	
 	private static final long serialVersionUID = 1L;
@@ -12,7 +15,7 @@ public class ModuleMap extends SpecFile {
 	/**
 	 * Maps each method signature to the qualified name of the module it belongs to.
 	 */
-	private final HashMap<CanonicalName,CanonicalName> map = new HashMap<CanonicalName,CanonicalName>();
+	private final HashMap<MethodDescriptor,CanonicalName> map = new HashMap<MethodDescriptor,CanonicalName>();
 	/**
 	 * Lists modules whose contents are affected by annotations in the source of this class.
 	 */
@@ -24,7 +27,7 @@ public class ModuleMap extends SpecFile {
 		super(className);
 	}
 	
-	public void put(CanonicalName method, CanonicalName module) {
+	public void put(MethodDescriptor method, CanonicalName module) {
 //		if (method.contains("<init>")) {
 //			hasExplicitConstructor = true;
 //		}
@@ -32,7 +35,7 @@ public class ModuleMap extends SpecFile {
 //		affects.add(module);
 	}
 
-	public CanonicalName get(CanonicalName method) throws MissingEntryException {
+	public CanonicalName get(MethodDescriptor method) throws MissingEntryException {
 		if (method != null && map.containsKey(method)) {
 			return map.get(method);
 		} else {
@@ -56,7 +59,7 @@ public class ModuleMap extends SpecFile {
 	
 	public String toString() {
 		String out = "Modules for methods of class " + getName() + ":\n";
-		for (Map.Entry<CanonicalName, CanonicalName> e : map.entrySet()) {
+		for (Map.Entry<MethodDescriptor, CanonicalName> e : map.entrySet()) {
 			out += "  " + e.getKey() + " : " + e.getValue() + "\n";
 		}
 		return out;

@@ -35,6 +35,8 @@ import oshajava.annotation.Writer;
 import oshajava.spec.Module.DuplicateGroupException;
 import oshajava.spec.Module.DuplicateMethodException;
 import oshajava.spec.SpecFileManager.Creator;
+import oshajava.spec.names.CanonicalName;
+import oshajava.spec.names.MethodDescriptor;
 import oshajava.support.acme.util.Assert;
 
 @SupportedAnnotationTypes("*")
@@ -290,7 +292,7 @@ public class SpecProcessor extends AbstractProcessor {
 			if (memberDecl != null) {
 				Module m;
 				try {
-					m = modules.getOrCreate(new CanonicalName(memberDecl.value()));
+					m = modules.getOrCreate(CanonicalName.of(memberDecl.value()));
 				} catch (IOException e1) {
 					error("Could not access module info on filesystem.");
 					throw new RuntimeException(e1);
@@ -310,7 +312,8 @@ public class SpecProcessor extends AbstractProcessor {
 			if (e instanceof ExecutableElement) {
 				TypeElement cls = (TypeElement)e.getEnclosingElement();
 				try {
-					maps.getOrCreate(new CanonicalName(cls, processingEnv.getElementUtils())).put(DescriptorWrangler.methodDescriptor(cls, (ExecutableElement)e), processedModules.get(e).getName());
+					maps.getOrCreate(CanonicalName.of(cls, processingEnv.getElementUtils())).put(
+							MethodDescriptor.of((ExecutableElement)e, processingEnv.getElementUtils()), processedModules.get(e).getName());
 				} catch (IOException ioe) {
 					error("Could not write spec info to filesystem.");
 					throw new RuntimeException(ioe);
@@ -327,7 +330,7 @@ public class SpecProcessor extends AbstractProcessor {
 		public Module visitPackage(PackageElement e, Object _) {
 			Module m;
 			try {
-				m = modules.getOrCreate(new CanonicalName((e.isUnnamed() ? "" : e.getQualifiedName().toString()), CompiledModuleSpec.DEFAULT_NAME));
+				m = modules.getOrCreate(CanonicalName.of((e.isUnnamed() ? "" : e.getQualifiedName().toString()), CompiledModuleSpec.DEFAULT_NAME));
 			} catch (IOException e1) {
 				error("Could not access module info on filesystem.");
 				throw new RuntimeException(e1);
@@ -493,8 +496,7 @@ public class SpecProcessor extends AbstractProcessor {
 				final ExecutableElement m = (ExecutableElement)e;
 				// Get the right module.
 				final Module module = processedModules.get(m);
-				TypeElement cls = (TypeElement)e.getEnclosingElement();
-				CanonicalName sig = DescriptorWrangler.methodDescriptor(cls, m);
+				MethodDescriptor sig = MethodDescriptor.of(m, processingEnv.getElementUtils());
 				if (verbose) {
 //					System.out.println(sig + ": " + r);
 				}

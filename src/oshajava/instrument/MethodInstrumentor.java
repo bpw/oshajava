@@ -2,10 +2,13 @@ package oshajava.instrument;
 
 
 import oshajava.runtime.Config;
-import oshajava.spec.CanonicalName;
 import oshajava.spec.CompiledModuleSpec;
+import oshajava.spec.ModuleMap;
+import oshajava.spec.ModuleMap.MissingEntryException;
 import oshajava.spec.ModuleSpec;
 import oshajava.spec.ModuleSpec.CommunicationKind;
+import oshajava.spec.ModuleSpecNotFoundException;
+import oshajava.spec.names.MethodDescriptor;
 import oshajava.support.acme.util.Assert;
 import oshajava.support.org.objectweb.asm.Label;
 import oshajava.support.org.objectweb.asm.MethodVisitor;
@@ -32,7 +35,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 
 	protected int originalMaxLocals = UNINITIALIZED, originalMaxStack = UNINITIALIZED;
 	
-	public MethodInstrumentor(MethodVisitor next, int access, String name, String desc, ClassInstrumentor inst, final ModuleSpec module) {
+	public MethodInstrumentor(MethodVisitor next, int access, String name, String desc, ClassInstrumentor inst, MethodDescriptor methodDescriptor) throws ModuleSpecNotFoundException {
 		super(next, access, name, desc);
 		this.inst = inst;
 		isStatic = (access & Opcodes.ACC_STATIC) != 0;
@@ -41,27 +44,30 @@ public class MethodInstrumentor extends AdviceAdapter {
 		isSynchronized = (access & Opcodes.ACC_SYNCHRONIZED) != 0;
 		isConstructor = name.equals("<init>");
 		isClinit = name.equals("<clinit>");
-		CanonicalName fullNameAndDesc = new CanonicalName(inst.className.getPackage(), inst.className.getSimpleName() + "." + name + desc);
+		final boolean isSynthetic = (access & Opcodes.ACC_SYNTHETIC) != 0;
+		
+		ModuleSpec module = inst.getModuleForMethod(methodDescriptor);
 		
 		try {
-			methodUID = module.getMethodUID(fullNameAndDesc);
+			methodUID = module.getMethodUID(methodDescriptor);
 			// Set policy appropriately if method is found.
 			policy = module.getCommunicationKind(methodUID);
 		} catch (CompiledModuleSpec.MethodNotFoundException e) {
 			methodUID = -1;
-			if ((access & Opcodes.ACC_SYNTHETIC) != 0) {
+			if (isSynthetic) {
 				// Synthetic methods are, in general, not seen by the annotation
 				// processor. If they're not, then we inline the method.
+				Assert.warn("Inlining synthetic method %s", methodDescriptor.toInternalString());
 				policy = CommunicationKind.INLINE;
 			} else if (inst.className.toInternalString().matches(".*\\$\\d.*")) {
 				// Such is also the case with methods inside anonymous classes.
-				Assert.warn("Anonymous class %s has method %s not in module %s. Inlining.", inst.className, fullNameAndDesc, module.getName());
+				Assert.warn("Anonymous class %s has method %s not in module %s. Inlining.", inst.className, methodDescriptor, module.getName());
 				policy = CommunicationKind.INLINE;
 			} else {
 				if (InstrumentationAgent.ignoreMissingMethodsOption.get()) {
-					Assert.warn("IGNORED and INLINED: in module " + module.getName() + ", " + fullNameAndDesc + " not found");
+					Assert.warn("IGNORED and INLINED: in module " + module.getName() + ", " + methodDescriptor + " not found");
 				} else {
-					Assert.fail("Method " + fullNameAndDesc + " not found in " + module);
+					Assert.fail("Method " + methodDescriptor + " not found in " + module);
 				}
 			}
 		}

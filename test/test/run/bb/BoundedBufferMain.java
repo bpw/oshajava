@@ -8,7 +8,7 @@ public class BoundedBufferMain {
 	@Inline
 	public static void main(String[] args) {
 		int n = 10;
-		BoundedBuffer buf = new BoundedBuffer(10);
+		BoundedBuffer<Integer> buf = new BoundedBuffer<Integer>(10);
 		Consumer[] cs = new Consumer[n];
 		Producer[] ps = new Producer[n];
 		for (int i = 0; i < n; i++) {
@@ -28,10 +28,10 @@ public class BoundedBufferMain {
 
 @Group(id="PR")
 class Producer extends Thread {
-	private BoundedBuffer buf;
+	private BoundedBuffer<Integer> buf;
 
 	@Writer("PR")
-	public Producer(BoundedBuffer buffer) {
+	public Producer(BoundedBuffer<Integer> buffer) {
 		buf = buffer;
 	}
 
@@ -48,11 +48,11 @@ class Producer extends Thread {
 class Consumer extends Thread {
 	private static int idCounter = 0;
 
-	private BoundedBuffer buf;
+	private BoundedBuffer<Integer> buf;
 	private int myId;
 
 	@Writer("CR")
-	public Consumer(BoundedBuffer buffer) {
+	public Consumer(BoundedBuffer<Integer> buffer) {
 		myId = idCounter++;
 		buf = buffer;
 	}

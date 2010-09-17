@@ -5,6 +5,8 @@ import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Vector;
 
+import oshajava.spec.names.CanonicalName;
+import oshajava.spec.names.Descriptor;
 import oshajava.support.acme.util.Assert;
 import oshajava.util.ColdStorage;
 
@@ -44,7 +46,7 @@ public class Spec {
 	 * @return
 	 * @throws ModuleSpecNotFoundException if there was a problem finding or loading the spec.
 	 */
-	protected static ModuleSpec loadModule(CanonicalName qualifiedName, ClassLoader loader, CanonicalName requester) throws ModuleSpecNotFoundException {
+	protected static ModuleSpec loadModule(CanonicalName qualifiedName, ClassLoader loader, Descriptor requester) throws ModuleSpecNotFoundException {
 		try {
 			final InputStream res = loader.getResourceAsStream(qualifiedName.toInternalString() + CompiledModuleSpec.EXT);
 			if (res == null) {
@@ -77,7 +79,7 @@ public class Spec {
 	 * @return
 	 * @throws ModuleSpecNotFoundException
 	 */
-	public static synchronized ModuleSpec getModule(CanonicalName name, ClassLoader loader, CanonicalName requester) throws ModuleSpecNotFoundException {
+	public static synchronized ModuleSpec getModule(CanonicalName name, ClassLoader loader, Descriptor requester) throws ModuleSpecNotFoundException {
 	    if (loader == null) {
 	    	// FIXME
 	        // Loaded by the JVM.

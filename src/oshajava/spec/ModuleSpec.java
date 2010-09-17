@@ -1,6 +1,8 @@
 package oshajava.spec;
 
 import oshajava.spec.CompiledModuleSpec.MethodNotFoundException;
+import oshajava.spec.names.CanonicalName;
+import oshajava.spec.names.MethodDescriptor;
 import oshajava.util.intset.BitVectorIntSet;
 
 public abstract class ModuleSpec extends SpecFile {
@@ -47,7 +49,7 @@ public abstract class ModuleSpec extends SpecFile {
 	 * @param methodUID
 	 * @return
 	 */
-	public abstract CanonicalName getMethodSignature(final int methodUID);
+	public abstract MethodDescriptor getMethodSignature(final int methodUID);
 	
 	/**
 	 * Get the method ID for the method with signature sig. throws exception
@@ -56,7 +58,7 @@ public abstract class ModuleSpec extends SpecFile {
 	 * @return
 	 * @throws MethodNotFoundException 
 	 */
-	public abstract int getMethodUID(final CanonicalName fullNameAndDesc) throws MethodNotFoundException;
+	public abstract int getMethodUID(final MethodDescriptor method) throws MethodNotFoundException;
 	
 	/**
 	 * Check if communication is allowed from method with ID w to method with ID r.
@@ -93,7 +95,7 @@ public abstract class ModuleSpec extends SpecFile {
 	
 	public abstract String toString();
 	
-	public abstract CanonicalName[] getMethods();
+	public abstract MethodDescriptor[] getMethods();
 	
 	public abstract Graph getCommunication();
 	public abstract Graph getInterface();

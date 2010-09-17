@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.Map;
 
 import oshajava.runtime.RuntimeMonitor;
+import oshajava.spec.names.CanonicalName;
+import oshajava.spec.names.MethodDescriptor;
 import oshajava.support.acme.util.Assert;
 import oshajava.util.count.MaxRecorder;
 import oshajava.util.intset.BitVectorIntSet;
@@ -33,12 +35,12 @@ public class CompiledModuleSpec extends ModuleSpec {
 	/**
 	 * Map from method signature to id.
 	 */
-	protected final HashMap<CanonicalName,Integer> methodSigToId;
+	protected final HashMap<MethodDescriptor,Integer> methodSigToId = new HashMap<MethodDescriptor,Integer>();
 	
 	/**
 	 * Map from method id to signature.
 	 */
-	protected final CanonicalName[] methodIdToSig;
+	protected final MethodDescriptor[] methodIdToSig;
 	
 //	protected final int commMethods;
 	protected final int firstNoncommMethod, firstInlinedMethod;
@@ -57,15 +59,14 @@ public class CompiledModuleSpec extends ModuleSpec {
 	/**
 	 * Create a new ModuleSpec.
 	 */
-	public CompiledModuleSpec(final CanonicalName name, final Map<CanonicalName,MethodSpec> methodSpecs) {
+	public CompiledModuleSpec(final CanonicalName name, final Map<MethodDescriptor,MethodSpec> methodSpecs) {
 		super(name);
 		
-		final List<CanonicalName> idToSig = new ArrayList<CanonicalName>();
-		methodSigToId = new HashMap<CanonicalName,Integer>();
-		final List<CanonicalName> inlinedMethods = new ArrayList<CanonicalName>();
-		final List<CanonicalName> noncommMethods = new ArrayList<CanonicalName>();
+		final List<MethodDescriptor> idToSig = new ArrayList<MethodDescriptor>();
+		final List<MethodDescriptor> inlinedMethods = new ArrayList<MethodDescriptor>();
+		final List<MethodDescriptor> noncommMethods = new ArrayList<MethodDescriptor>();
 		
-		for (final CanonicalName sig : methodSpecs.keySet()) {
+		for (final MethodDescriptor sig : methodSpecs.keySet()) {
 			switch (methodSpecs.get(sig).kind()) {
 			case INLINE:
 				inlinedMethods.add(sig);
@@ -89,7 +90,7 @@ public class CompiledModuleSpec extends ModuleSpec {
 			if (m.writeGroups() != null) {
 				for (final Group g : m.writeGroups()) {
 					final BitVectorIntSet readers = g.kind() == Group.Kind.COMM ? commReaders : ifaceReaders;
-					for (CanonicalName reader : g.readers()) {
+					for (MethodDescriptor reader : g.readers()) {
 						readers.add(methodSigToId.get(reader));
 					}
 				}
@@ -97,17 +98,17 @@ public class CompiledModuleSpec extends ModuleSpec {
 		}
 		
 		firstNoncommMethod = idToSig.size();
-		for (final CanonicalName sig : noncommMethods) {
+		for (final MethodDescriptor sig : noncommMethods) {
 			methodSigToId.put(sig, idToSig.size());
 			idToSig.add(sig);
 		}
 		firstInlinedMethod = idToSig.size();
-		for (final CanonicalName sig : inlinedMethods) {
+		for (final MethodDescriptor sig : inlinedMethods) {
 			methodSigToId.put(sig, idToSig.size());
 			idToSig.add(sig);
 		}
 		
-		this.methodIdToSig = idToSig.toArray(new CanonicalName[0]);
+		this.methodIdToSig = idToSig.toArray(new MethodDescriptor[0]);
 		if (COUNT_METHODS) {
 			maxCommMethods.add(firstNoncommMethod);
 			maxInterfaceMethods.add(interfaceGraph == null ? 0 : interfaceGraph.size());
@@ -137,7 +138,7 @@ public class CompiledModuleSpec extends ModuleSpec {
 	 * @param methodUID
 	 * @return
 	 */
-	public CanonicalName getMethodSignature(final int methodUID) {
+	public MethodDescriptor getMethodSignature(final int methodUID) {
 		Assert.assertTrue(Spec.getModuleID(methodUID) == id, 
 				"method id " + methodUID + " (module=" + Spec.getModuleID(methodUID) 
 				+ ", method=" + Spec.getMethodID(methodUID) + 
@@ -147,8 +148,8 @@ public class CompiledModuleSpec extends ModuleSpec {
 	
 	@SuppressWarnings("serial")
 	public class MethodNotFoundException extends Exception {
-		protected final CanonicalName sig;
-		public MethodNotFoundException(CanonicalName sig) {
+		protected final MethodDescriptor sig;
+		public MethodNotFoundException(MethodDescriptor sig) {
 			super("Method " + sig + " not found in module " + CompiledModuleSpec.this.getName());
 			this.sig = sig;
 		}
@@ -161,7 +162,7 @@ public class CompiledModuleSpec extends ModuleSpec {
 	 * @return
 	 * @throws MethodNotFoundException 
 	 */
-	public int getMethodUID(final CanonicalName sig) throws MethodNotFoundException {
+	public int getMethodUID(final MethodDescriptor sig) throws MethodNotFoundException {
 	    if (!methodSigToId.containsKey(sig)) {
 	        throw new MethodNotFoundException(sig);
 	    }
@@ -269,7 +270,7 @@ public class CompiledModuleSpec extends ModuleSpec {
 	 * DO NOT MODIFY the array returned.
 	 * @return
 	 */
-	public CanonicalName[] getMethods() {
+	public MethodDescriptor[] getMethods() {
 		return methodIdToSig; 
 	}
 	

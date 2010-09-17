@@ -11,6 +11,7 @@ import javax.tools.Diagnostic.Kind;
 import javax.tools.FileObject;
 import javax.tools.JavaFileManager.Location;
 
+import oshajava.spec.names.CanonicalName;
 import oshajava.util.ColdStorage;
 
 public class SpecFileManager<T extends SpecFile> implements Iterable<T> {
