@@ -10,6 +10,7 @@ import oshajava.support.acme.util.Util;
 import oshajava.support.acme.util.option.CommandLine;
 import oshajava.support.acme.util.option.CommandLineOption;
 import oshajava.support.acme.util.option.CommandLineOption.Kind;
+import oshajava.support.acme.util.option.Option;
 import oshajava.util.count.ConcurrentTimer;
 import oshajava.util.count.SequentialTimer;
 
@@ -35,6 +36,8 @@ public class Config {
 	// -- Constants -------------------------------------------------------
 	
 	public static final String TOOL_NAME = "oshajava";
+	
+	public static final Option<String> oshajavaRevision = new Option<String>("revision", "$Revision$".replace("$Revision$", ""));
 	
 	// -- Options ---------------------------------------------------------
 	
@@ -168,6 +171,7 @@ public class Config {
 	public static void premain(String agentArgs, Instrumentation inst) {
 		premainTimer.start();
 		Thread.currentThread().setName(TOOL_NAME);
+		Util.logf("oshajava %s", oshajavaRevision.get());
 		configure(agentArgs == null ? new String[0] : agentArgs.replace('#', ' ').split(","));
 		if (visualizeOption.get()) {
 			@SuppressWarnings("unused")

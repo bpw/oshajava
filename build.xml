@@ -51,11 +51,12 @@
 	</target>
 		
 	<target name="jar" depends="compile">
-		<property name="manifest" value="${classes.dir}/Manifest.mf" />
-<echo file="${manifest}">Premain-Class: ${premain.class}
-Agent-Class: ${agent.class}
-</echo>
-		<jar destfile="${agent.jar}" index="true" manifest="${manifest}">	
+		<jar destfile="${agent.jar}" index="true">
+			<manifest>
+				<attribute name="Premain-Class" value="${premain.class}" />
+				<attribute name="Agent-Class" value="${agent.class}" />
+			</manifest>
+			<service type="javax.annotation.processing.Processor" provider="${processor.class}" />
 			<fileset dir="${classes.dir}" includes="**/*.class" />
 			<zipfileset src="libs/prefuse.jar" />
 			<!-- <indexjars refid="libs.classpath" /> -->
@@ -67,8 +68,9 @@ Agent-Class: ${agent.class}
 		
 		<!-- Generate setup.sh to set some environment variables. -->
 		<echo file="${paths.script}">export PATH=$$PATH:${basedir}/${bin.dir}
-			export OSHAJAVA_ANNOTATION_CLASSPATH=${basedir}/${annotation.jar}
-			export OSHAJAVA_CLASSPATH=${basedir}/${agent.jar}
+			export OSHAJAVA_JAR=${basedir}/${agent.jar}
+			export OSHAJAVA_ANNOTATION_CLASSPATH=$$OSHAJAVA_JAR
+			export OSHAJAVA_CLASSPATH=$$OSHAJAVA_JAR
 			export OSHAJAVA_PROCESSOR_CLASS=${processor.class}
 		</echo>
 		
@@ -85,10 +87,9 @@ case "$1" in
     shift
     ;;	  
 esac
-echo $JAVAC -Xbootclasspath/a:${basedir}/${annotation.jar} -processorpath ${basedir}/${agent.jar} -processor oshajava.spec.SpecProcessor $$@
-$JAVAC -Xbootclasspath/a:${basedir}/${annotation.jar} -processorpath ${basedir}/${agent.jar} -processor oshajava.spec.SpecProcessor $$@
+#echo $JAVAC -Xbootclasspath/a:${basedir}/${agent.jar} -processorpath ${basedir}/${agent.jar} -processor ${processor.class} $$@
+$$JAVAC -Xbootclasspath/a:${basedir}/${agent.jar} -processorpath ${basedir}/${agent.jar} -processor ${processor.class} $$@
 </echo>
-		
 		<!-- Generate the java wrapper script -->
 		<echo file="${runtime.bin}">#!/bin/sh
 OSHA_ARGS=""
@@ -159,7 +160,8 @@ fi
 test -z "$1" &amp;&amp; OSHA_ARGS="$OSHA_ARGS,-help"
 
 export CLASSPATH
-echo $$JVM -javaagent:${basedir}/${agent.jar}=$$OSHA_ARGS -Xbootclasspath/a:${basedir}/${agent.jar} $$JVM_ARGS ${main.class} $$MAIN $$@
+#echo $$JVM -javaagent:${basedir}/${agent.jar}=$$OSHA_ARGS -Xbootclasspath/a:${basedir}/${agent.jar} $$JVM_ARGS ${main.class} $$MAIN $$@
+$$JVM -version
 $$JVM -javaagent:${basedir}/${agent.jar}=$$OSHA_ARGS -Xbootclasspath/a:${basedir}/${agent.jar} $$JVM_ARGS ${main.class} $$MAIN $$@
 
 		</echo>
