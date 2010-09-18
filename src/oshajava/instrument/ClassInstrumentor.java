@@ -284,7 +284,7 @@ public class ClassInstrumentor extends ClassAdapter {
 		try {
 			moduleMap = Spec.getModuleMap(className, loader);
 		} catch (ModuleMapNotFoundException e) {
-			Assert.warn("No module map for class %s.  Using null module for all member methods.", className);
+			Assert.warn("No module map for class %s (%s).  Using null module for all member methods.", className, className.toInternalString());
 		}
 
 		// TODO 5/6
@@ -357,8 +357,13 @@ public class ClassInstrumentor extends ClassAdapter {
 		    				try {
 		    					module = Spec.getModule(moduleMap.get(method), loader, method);
 		    				} catch (MissingEntryException e) {
-		    					// If a particular method is missing from the module map, we need to warn! (Maybe fail.)
-		    					Assert.warn("Method %s missing from module map for class %s.  Using null module.", method, className);
+		    					if ((access & Opcodes.ACC_SYNTHETIC) != 0) {
+		    						// synthetic method.
+			    					Assert.warn("SYNTHETIC method %s missing from module map for class %s (%s).  Using null module.", method, method.toInternalString(), className);
+		    					} else {
+			    					// If a particular method is missing from the module map, we need to warn! (Maybe fail.)
+			    					Assert.warn("Method %s missing from module map for class %s (%s).  Using null module.", method, method.toInternalString(), className);
+		    					}
 		    					module = NullModuleSpec.MODULE;
 		    				}
 		    			} catch (ModuleSpecNotFoundException e) {

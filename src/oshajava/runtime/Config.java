@@ -10,7 +10,6 @@ import oshajava.support.acme.util.Util;
 import oshajava.support.acme.util.option.CommandLine;
 import oshajava.support.acme.util.option.CommandLineOption;
 import oshajava.support.acme.util.option.CommandLineOption.Kind;
-import oshajava.support.acme.util.option.Option;
 import oshajava.util.count.ConcurrentTimer;
 import oshajava.util.count.SequentialTimer;
 

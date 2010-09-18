@@ -104,6 +104,7 @@ public class Spec {
 		try {
 			final InputStream res = loader.getResourceAsStream(className.toInternalString() + ModuleMap.EXT);
 			if (res == null) {
+				Assert.warn("Loader could not find ModuleMap for class %s.", className);
 				throw new ModuleMapNotFoundException(className);
 			}
 			final ModuleMap ms = (ModuleMap)ColdStorage.load(res);

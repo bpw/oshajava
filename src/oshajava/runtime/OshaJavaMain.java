@@ -4,6 +4,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
 import oshajava.instrument.InstrumentationAgent;
+import oshajava.runtime.exceptions.OshaRuntimeException;
 import oshajava.support.acme.util.Assert;
 import oshajava.support.acme.util.Debug;
 import oshajava.util.count.SequentialTimer;
@@ -42,8 +43,10 @@ public class OshaJavaMain {
 					main.invoke(cl, (Object)appArgs);
 				} catch (InvocationTargetException e) {
 					Assert.fail(e.getCause());
-				} catch (Throwable e) {
+				} catch (OshaRuntimeException e) {
 					Assert.fail(e);
+				} catch (Throwable e) {
+					Assert.panic(e);
 				} finally {
 					mainTimer.stop();
 				}
@@ -60,7 +63,7 @@ public class OshaJavaMain {
 		try {
 			app.join();
 		} catch (InterruptedException e) {
-			Assert.fail(e);
+			Assert.panic(e);
 		}
 	}
 

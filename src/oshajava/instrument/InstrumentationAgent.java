@@ -208,7 +208,7 @@ public class InstrumentationAgent implements ClassFileTransformer {
 			ProtectionDomain pd, byte[] bytecode) throws IllegalClassFormatException {
 		if (loader == null) {
 			if (shouldTransform(className)) {
-				Assert.warn("Should have instrumented %s, but bootstrap class loader in use.", className);
+				Assert.warn("Would have transformed %s, but bootstrap class loader in use.", className);
 			}
 //			if (!shouldInstrument(className)) {
 //				System.out.print('.');
@@ -217,7 +217,7 @@ public class InstrumentationAgent implements ClassFileTransformer {
 		}
 		try {
 			if (!shouldTransform(className)) {
-				Assert.warn("Not transforming %s, even though it has a non-null classloader.", className);
+				Assert.warn("Not transforming %s, even though it was not loaded by the bootstrap class loader.", className);
 				return null;
 			}
 
@@ -237,7 +237,7 @@ public class InstrumentationAgent implements ClassFileTransformer {
 			Assert.fail(e);
 			return null;
 		} catch (Throwable e) {
-			Assert.fail("Problem running oshajava instrumentor: ", e);
+			Assert.panic("Problem running oshajava instrumentor: ", e);
 			return null;
 		} finally {
 			insTimer.stop();

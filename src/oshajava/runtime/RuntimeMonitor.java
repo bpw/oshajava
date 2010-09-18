@@ -491,22 +491,26 @@ public class RuntimeMonitor {
 	 */
 	public static void fini(final String mainClass) {
 		Config.premainFiniTimer.stop();
+		// mem and gc
+		MemoryMXBean bean = ManagementFactory.getMemoryMXBean();
+		CompilationMXBean cbean = ManagementFactory.getCompilationMXBean();
+
+		long peakMem = 0;
+		for (MemoryPoolMXBean b : ManagementFactory.getMemoryPoolMXBeans()) {
+			peakMem += b.getPeakUsage().getUsed();
+		}
+		final String threadName = Thread.currentThread().getName();
+		Thread.currentThread().setName("oshajava");
+		
+		Util.logf("%s, Peak Memory: %d", Config.premainFiniTimer, peakMem);
+		
+
 		// Report some stats.
 		if (PROFILE) {
 			Util.log("---- Profile info ------------------------------------");
 		}    
 		if (Stack.RECORD) {
 			Stack.dumpRecordedGraphs(mainClass);
-		}
-
-		// mem and gc
-		MemoryMXBean bean = ManagementFactory.getMemoryMXBean();
-		CompilationMXBean cbean = ManagementFactory.getCompilationMXBean();
-
-		long peakMem = 0;
-
-		for (MemoryPoolMXBean b : ManagementFactory.getMemoryPoolMXBeans()) {
-			peakMem += b.getPeakUsage().getUsed();
 		}
 
 		if (Config.profileOption.get() != Config.ProfileLevel.NONE) {
@@ -585,6 +589,7 @@ public class RuntimeMonitor {
 			}
 
 		}
+		Thread.currentThread().setName(threadName);
 	}
 
 

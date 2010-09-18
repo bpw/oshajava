@@ -466,7 +466,7 @@ public class SpecProcessor extends AbstractProcessor {
 				}
 			} catch (Module.GroupNotFoundException e1) {
 				ms = MethodSpec.ERROR;
-				error(e.getSimpleName() + ": " + e1.group + " not found in module " + module.getName());
+				error("Group " + e1.group + " not found in module " + module.getName(), e);
 			}
 			return ms;
 		}

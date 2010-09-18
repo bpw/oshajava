@@ -44,7 +44,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 		isClinit = name.equals("<clinit>");
 		final boolean isSynthetic = (access & Opcodes.ACC_SYNTHETIC) != 0;
 				
-		try {
+		try { // FIXME
 			methodUID = module.getMethodUID(methodDescriptor);
 			// Set policy appropriately if method is found.
 			policy = module.getCommunicationKind(methodUID);
