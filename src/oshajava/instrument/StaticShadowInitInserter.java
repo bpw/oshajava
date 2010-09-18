@@ -11,10 +11,8 @@ public class StaticShadowInitInserter extends AdviceAdapter {
 
 	private final Type classType;
 	private final List<String> inlineInitFields;
-//	private final String className;
 	public StaticShadowInitInserter(MethodVisitor mv, int access, String name, String desc, Type classType, List<String> inlineInitFields) {
 		super(mv, access, name, desc);
-//		this.className = name;
 		this.classType = classType;
 		this.inlineInitFields = inlineInitFields;
 	}

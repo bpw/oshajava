@@ -19,7 +19,6 @@ public class MethodInstrumentor extends AdviceAdapter {
 	protected final boolean isMain;
 	protected final boolean isSynchronized;
 	protected final boolean isConstructor;
-	protected boolean usesThisConstructor = false;
 	protected final boolean isClinit;
 	protected final boolean isStatic;	
 	private int methodUID;
@@ -36,12 +35,11 @@ public class MethodInstrumentor extends AdviceAdapter {
 			ClassInstrumentor inst, ModuleSpec module, MethodDescriptor methodDescriptor) {
 		super(next, access, name, desc);
 		this.inst = inst;
-		isStatic = (access & Opcodes.ACC_STATIC) != 0;
-		isMain = (access & Opcodes.ACC_PUBLIC ) != 0 && isStatic
-		&& name.equals("main") && desc.equals("([Ljava/lang/String;)V");
-		isSynchronized = (access & Opcodes.ACC_SYNCHRONIZED) != 0;
-		isConstructor = name.equals("<init>");
-		isClinit = name.equals("<clinit>");
+		this.isStatic = (access & Opcodes.ACC_STATIC) != 0;
+		this.isMain = (access & Opcodes.ACC_PUBLIC ) != 0 && isStatic && name.equals("main") && desc.equals("([Ljava/lang/String;)V");
+		this.isSynchronized = (access & Opcodes.ACC_SYNCHRONIZED) != 0;
+		this.isConstructor = name.equals("<init>");
+		this.isClinit = name.equals("<clinit>");
 		final boolean isSynthetic = (access & Opcodes.ACC_SYNTHETIC) != 0;
 				
 		try { // FIXME  Centralize/unify handling of synthetics, missing methods, etc.
