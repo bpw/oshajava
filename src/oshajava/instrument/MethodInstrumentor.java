@@ -722,6 +722,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 		case Opcodes.RETURN:
 			makeReleaseExitHook(0);
 			super.visitInsn(opcode);
+			break;
 		default:
 			super.visitInsn(opcode);
 		break;			
