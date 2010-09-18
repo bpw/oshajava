@@ -15,6 +15,16 @@ public class CanonicalName extends Name {
 	private final String pkg, simple;
 	private ObjectTypeDescriptor type;
 	
+	@Override
+	public int hashCode() {
+		return pkg.hashCode() ^ simple.hashCode();
+	}
+	
+	@Override
+	public boolean equals(Object other) {
+		return other != null && other instanceof CanonicalName && pkg.equals(((CanonicalName)other).pkg) && simple.equals(((CanonicalName)other).simple);
+	}
+	
 	/**
 	 * Construct a new CanonicalName from the given package and simple names.
 	 * @param pkg The package name, using '.' or '/' as a delimiter.

@@ -25,13 +25,9 @@ public abstract class Name implements Serializable {
 	}
 	
 	@Override
-	public int hashCode() {
-		return toString().hashCode();
-	}
+	public abstract int hashCode();
 	
 	@Override
-	public boolean equals(Object other) {
-		return toString().equals(other.toString());
-	}
+	public abstract boolean equals(Object other);
 	
 }

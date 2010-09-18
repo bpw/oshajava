@@ -28,6 +28,20 @@ public class MethodDescriptor extends Descriptor {
 	protected final TypeDescriptor returnType;
 	protected final List<TypeDescriptor> paramTypes;
 	
+	@Override
+	public int hashCode() {
+		return className.hashCode() ^ methodName.hashCode() ^ returnType.hashCode() ^ paramTypes.hashCode();
+	}
+	
+	@Override
+	public boolean equals(Object other) {
+		if (other != null && other instanceof MethodDescriptor) {
+			final MethodDescriptor md = (MethodDescriptor)other;
+			return className.equals(md.className) && methodName.equals(md.methodName) && returnType.equals(md.returnType) && paramTypes.equals(md.paramTypes);
+		}
+		return false;
+	}
+	
 	/**
 	 * Construct the JVM method descriptor for an ExecutableElement.
 	 */
@@ -58,9 +72,6 @@ public class MethodDescriptor extends Descriptor {
 		this.className = className;
 		this.methodName = methodName;
 		this.paramTypes  = new ArrayList<TypeDescriptor>();
-//		if (sig != null && !sig.isEmpty()) {
-//			Assert.warn("Uh oh. We should do something with method signatures: %s.%s has sig %s", className.toInternalString(), methodName,  sig);
-//		}
 		
 		{
 			final String desc = methodTypeDescriptor.substring(methodTypeDescriptor.indexOf('(') + 1, methodTypeDescriptor.lastIndexOf(')'));
@@ -121,9 +132,17 @@ public class MethodDescriptor extends Descriptor {
 		return Collections.unmodifiableList(paramTypes);
 	}
 	
+	public boolean isConstructor() {
+		return methodName.equals("<init>");
+	}
+	
+	public boolean isMain() {
+		return methodName.equals("main") && returnType.equals(PrimitiveDescriptor.VOID) && paramTypes.size() == 1 && paramTypes.get(0).equals(ArrayTypeDescriptor.STRING_ARRAY);
+	}
+	
 	public String toSourceString() {
 		String out = "";
-		if (methodName.equals("<init>")) {
+		if (isConstructor()) {
 			out += className.toSourceString() + '.';
 			String cls = className.getSimpleName();
 			int i = cls.lastIndexOf('.');

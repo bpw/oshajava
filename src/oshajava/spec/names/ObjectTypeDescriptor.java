@@ -6,9 +6,19 @@ import javax.lang.model.util.Elements;
 
 public class ObjectTypeDescriptor extends TypeDescriptor {
 	private static final long serialVersionUID = 1L;
-	public static final ObjectTypeDescriptor OBJECT = new ObjectTypeDescriptor(CanonicalName.of("java.lang.Object"));
+	public static final ObjectTypeDescriptor OBJECT = ObjectTypeDescriptor.of(CanonicalName.of("java.lang.Object"));
 	
 	protected final CanonicalName typeName;
+	
+	@Override
+	public int hashCode() {
+		return typeName.hashCode();
+	}
+	
+	@Override
+	public boolean equals(Object other) {
+		return other != null && other instanceof ObjectTypeDescriptor && typeName.equals(((ObjectTypeDescriptor)other).typeName);
+	}
 	
 	protected ObjectTypeDescriptor(CanonicalName typeName) {
 		this.typeName = typeName;
