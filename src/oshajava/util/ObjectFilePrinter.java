@@ -10,10 +10,8 @@ public class ObjectFilePrinter {
 				System.out.println(a + ":");
 				System.out.println(ColdStorage.load(a));
 			} catch (IOException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			} catch (ClassNotFoundException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 

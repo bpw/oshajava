@@ -15,7 +15,7 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
 
 /**
- * TODO support generics.
+ * TODO support generics?  Right now we just do type erasure.  TODO Double check that we do the *right* erasure!
  * @author bpw
  *
  */

@@ -165,26 +165,12 @@ public class SpecProcessor extends AbstractProcessor {
 			for (final Element e : elements) {
 				moduleScanner.traverse(e);
 			}
-//			try {
-//				// Map methods and constructors to their modules.
-//				for (final ExecutableElement e : ElementFilter.methodsIn(processedModules.keySet())) {
-//					TypeElement cls = (TypeElement)e.getEnclosingElement();
-//					// TODO: for method -> module in existing map, remove method from module.
-//					maps.getOrCreate(cls.getQualifiedName().toString()).put(DescriptorWrangler.methodDescriptor(cls, e), processedModules.get(e).getName());
-//				}
-//				for (final ExecutableElement e : ElementFilter.constructorsIn(processedModules.keySet())) {
-//					TypeElement cls = (TypeElement)e.getEnclosingElement();
-//					maps.getOrCreate(cls.getQualifiedName().toString()).put(DescriptorWrangler.methodDescriptor(cls, e), processedModules.get(e).getName());	
-//				}
-//			} catch (IOException ioe) {
-//				error("Could not write spec info to filesystem.");
-//				throw new RuntimeException(ioe);
-//			}
 			// Second, establish groups.
 			for (final Element e : processedModules.keySet()) {
 				groupScanner.traverse(e);
 			}
-			// TODO: for modulemaps, for each class, remove from modules all groups previously declared in this class that are no longer declared in this class 
+			// TODO: Incremental: 
+			// for modulemaps, for each class, remove from modules all groups previously declared in this class that are no longer declared in this class 
 			// (or that now belong to a diff module).
 			// Third, establish readers and writers in groups, noncomm, and inline.
 			for (final Element e : processedModules.keySet()) {

@@ -233,7 +233,7 @@ public class Stack {
 		}
 		if (writer == root && reader != root || writer != root && reader == root) {
 			// Layer mismatch at root of stacks.
-			// FIXME pop/throw to find a compositional module...
+			// TODO pop/throw to find a compositional module...
 			return false;
 		}
 		
@@ -277,7 +277,7 @@ public class Stack {
 			// THen try coming back down to merge with callees if needed.
 			// The general case is going to have pretty high worst-case theoretical
 			// time
-			// FIXME
+			// TODO Implement compositional modules
 			return false;
 		}
 	}
@@ -539,7 +539,7 @@ public class Stack {
 //						interfaceGraphml.writeNode(uid + "", mod.getMethodSignature(uid), "");
 						BitVectorIntSet bv = g.getOutEdges(i);
 						if (bv != null && ! bv.isEmpty()) {
-							// FIXME
+							// TODO something here to fix?
 							final int srcuid = Spec.makeUID(mod.getId(), i);
 							for (int j : bv.toJavaSet()) {
 //								int destID = Spec.makeUID(mod.getId(), j);
@@ -563,7 +563,7 @@ public class Stack {
 //						int uid = Spec.makeUID(mod.getId(), i);
 						BitVectorIntSet bv = g.getOutEdges(i);
 						if (bv != null && ! bv.isEmpty()) {
-							// FIXME
+							// TODO something here to fix?
 							final int srcuid = Spec.makeUID(mod.getId(), i);
 							for (int j : bv.toJavaSet()) {
 								int destID = Spec.makeUID(mod.getId(), j);

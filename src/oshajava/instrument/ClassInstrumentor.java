@@ -287,7 +287,7 @@ public class ClassInstrumentor extends ClassAdapter {
 			Assert.warn("No module map for class %s (%s).  Using null module for all member methods.", className, className.toInternalString());
 		}
 
-		// TODO 5/6
+		// TODO Fix frames so we can actually support Java 6 class file format in full.
 		super.visit((version == Opcodes.V1_6 ? Opcodes.V1_5 : version), access, name, signature, superName, interfaces);
 		// Ensure all fields here (including inherited ones) are shadowed. First, check whether our
 		// superclass is instrumented.
@@ -343,7 +343,7 @@ public class ClassInstrumentor extends ClassAdapter {
 		    		// (Not instrumenting class initializers avoids balooning the size
 		    		//  of large literal table constructions. It also makes sense, I
 		    		//  think, because no "communication" should occur (semantically)
-		    		//  from class loading.) FIXME
+		    		//  from class loading.) TODO Revisit class initializers.
 		    		ModuleSpec module;
 		    		final MethodDescriptor method = MethodDescriptor.of(className, name, desc, signature);
 		    		if (moduleMap == null) {

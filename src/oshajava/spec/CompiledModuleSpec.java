@@ -181,7 +181,7 @@ public class CompiledModuleSpec extends ModuleSpec {
 		return commGraph.containsEdge(Spec.getMethodID(w), Spec.getMethodID(r));
 	}
 	public boolean allAllowed(final int w, final BitVectorIntSet readers) {
-		Assert.assertTrue(Spec.getModuleID(w) == id); //FIXME && Spec.getModuleID(r) == id);
+		Assert.assertTrue(Spec.getModuleID(w) == id);
 		final BitVectorIntSet edges = commGraph.getOutEdges(Spec.getMethodID(w));
 		if (edges == null) return false;
 		return edges.containsAll(readers);
@@ -230,7 +230,7 @@ public class CompiledModuleSpec extends ModuleSpec {
 	}
 	
 	public int numInterfaceMethods() {
-		return interfaceGraph.size(); // FIXME
+		return interfaceGraph.size(); // FIXME This returns the same number as the number of comm. methods.  It doesn't report how many are in the interface.
 	}
 	
 	public int numCommEdges() {

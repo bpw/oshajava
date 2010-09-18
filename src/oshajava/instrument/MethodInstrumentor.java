@@ -44,7 +44,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 		isClinit = name.equals("<clinit>");
 		final boolean isSynthetic = (access & Opcodes.ACC_SYNTHETIC) != 0;
 				
-		try { // FIXME
+		try { // FIXME  Centralize/unify handling of synthetics, missing methods, etc.
 			methodUID = module.getMethodUID(methodDescriptor);
 			// Set policy appropriately if method is found.
 			policy = module.getCommunicationKind(methodUID);
@@ -383,7 +383,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 	}
 
 	@Override
-	public void visitFrame(int type, int nLocal, Object[] local, int nStack, Object[] stack) {//TODO
+	public void visitFrame(int type, int nLocal, Object[] local, int nStack, Object[] stack) {//TODO implement frames correctly
 	}
 	
 	/**

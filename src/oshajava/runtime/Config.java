@@ -85,10 +85,12 @@ public class Config {
     public static final CommandLineOption<ErrorAction> errorActionOption =
         CommandLine.makeEnumChoice("errorAction", ErrorAction.HALT, Kind.STABLE, "What to do when illegal communication occurs.", ErrorAction.class);
     
+    // TODO
     public static final CommandLineOption<StringMatcher> noSpecOption =
     	CommandLine.makeStringMatcher("nospecs", StringMatchResult.NOTHING, Kind.EXPERIMENTAL, 
     			"Proceed silently if modules for methods in these classes cannot be found.", "+^java\\..*", "+^com.sun\\..*", "+^sun\\..*");
     
+    // TODO
     public enum DefaultSpec { INLINE, NONCOMM, UNTRACKED }
     public static final CommandLineOption<DefaultSpec> noSpecActionOption =
     	CommandLine.makeEnumChoice("defaultSpec", DefaultSpec.INLINE, Kind.EXPERIMENTAL, "Default treatment of methods without specs.", DefaultSpec.class);
@@ -96,6 +98,7 @@ public class Config {
     public static final CommandLineOption<Boolean> recordOption =
     	CommandLine.makeBoolean("record", false, Kind.STABLE, "Record exercised graph and dump an XML file.");
     
+    // TODO Deal or axe.
 	public static final CommandLineOption<Boolean> visualizeOption =
 		CommandLine.makeBoolean("visualize", false, Kind.EXPERIMENTAL, "Visualize communications in real-time.");
     
@@ -111,6 +114,7 @@ public class Config {
     public static final CommandLineOption<String> idOption =
     	CommandLine.makeString("id", Long.toString(System.currentTimeMillis()), Kind.STABLE, "ID for this run.");
     
+    // TODO improve
     public static final CommandLineOption<Boolean> shadowStoreGCoption =
     	CommandLine.makeBoolean("shadowStoreGC", false, Kind.STABLE, "Turn on garbage collection of expired keys in shadow stores.");
     

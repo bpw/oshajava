@@ -41,15 +41,12 @@ public abstract class TypeDescriptor extends Descriptor {
 			type = ObjectTypeDescriptor.of((DeclaredType)tm, util);
 			break;
 		case TYPEVAR:
-//			type = new TypeParameterDescriptor(tm.toString(), (ObjectTypeDescriptor)((TypeVariable)tm).getUpperBound());
 			type = ObjectTypeDescriptor.OBJECT;
-//			Assert.fail("Type var case exercised.");
-			// FIXME
+			// TODO Find a concrete upper bound instead?
 			break;
 		case WILDCARD:
-			type = null;
-//			type = new WildcardParameterDescriptor((ObjectTypeDescriptor)TypeDescriptor.of(((WildcardType)tm).getSuperBound().));
-			Assert.fail("Wildcard case exercised.");
+			type = ObjectTypeDescriptor.OBJECT;
+			// TODO Find a concrete upper bound instead?
 			break;
 		case EXECUTABLE:        
 		case NULL:

@@ -56,8 +56,7 @@ public class RuntimeMonitor {
 		}
 	};
 
-	// TODO test the WCIHM implementation to make sure it actually works and isn't just dropping
-	// all the keys or something weird.
+	// TODO Stress test the WCIHM.
 	protected static final WeakConcurrentIdentityHashMap<Object,LockState> lockStates = 
 		new WeakConcurrentIdentityHashMap<Object,LockState>(Config.shadowStoreGCoption.get());
 	protected static final WeakConcurrentIdentityHashMap<Object,State[]> arrayStates = 
@@ -318,8 +317,8 @@ public class RuntimeMonitor {
 //				if (lastHolderState != null && lastHolderState.thread != holder) {
 //					if (checkStacks(lastHolderState.stack, holderState.stack)) {
 //						throw new IllegalSynchronizationException(
-//								lastHolderState.thread, "FIXME", 
-//								holder, "FIXME"
+//								lastHolderState.thread, "FIX ME", 
+//								holder, "FIX ME"
 //						);
 //					}
 //				}
@@ -548,8 +547,7 @@ public class RuntimeMonitor {
 					py.close();
 				}
 			} catch (IOException e) {
-				Assert.fail("Failed to dump py.");
-				//FIXME
+				Assert.warn("Failed to dump py.");
 			}
 		}
 		

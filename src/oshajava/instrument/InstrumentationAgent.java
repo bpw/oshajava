@@ -29,8 +29,6 @@ import oshajava.support.org.objectweb.asm.util.CheckClassAdapter;
 import oshajava.util.count.ConcurrentTimer;
 
 /**
- * TODO options
- * + on illegal communication: throw, log, both?
  * 
  * 
  * TODO Write a tool with ASM that finds all dependencies on java.*, copies them, and
@@ -64,7 +62,7 @@ public class InstrumentationAgent implements ClassFileTransformer {
 
 	protected static final String DEBUG_KEY = "inst";
 
-	protected static final String[] EXCLUDE_PREFIXES = { 
+	protected static final String[] EXCLUDE_PREFIXES = { // TODO replace with the string matcher options.
 		"oshajava/", 
 		"java/lang/", 
 		"java/security",
@@ -112,22 +110,27 @@ public class InstrumentationAgent implements ClassFileTransformer {
 		CommandLine.makeBoolean("ignoreMissingMethods", false, Kind.DEPRECATED, "Ignore and inline methods missing from their modules.  (See -" + 
 				Config.noSpecOption.getId() + " and -" + Config.noSpecActionOption.getId() + " instead.)");
 	
+    // FIXME see RuntimeMonitor.Ref
 	public static final CommandLineOption<Boolean> volatileShadowOption =
 		CommandLine.makeBoolean("volatileShadows", false, Kind.EXPERIMENTAL, "Make shadow fields volatile");
-	
+
+    // TODO
     public static final CommandLineOption<StringMatcher> instrumentClassesOption =
     	CommandLine.makeStringMatcher("classes", StringMatchResult.ACCEPT, Kind.EXPERIMENTAL, 
     			"Only track memory operations on fields and in methods in matching classes (by fully qualified name).", 
     			"-^java\\..*", "-^com.sun\\..*", "-^sun\\..*");
 
+    // TODO
     public static final CommandLineOption<StringMatcher> instrumentFieldsOption =
     	CommandLine.makeStringMatcher("fields", StringMatchResult.ACCEPT, Kind.EXPERIMENTAL, 
     			"Only track memory operations on matching fields (by fully qulified name).", "-^java\\..*", "-^com.sun\\..*", "-^sun\\..*");
 
+    // TODO
     public static final CommandLineOption<StringMatcher> instrumentMethodsOption =
     	CommandLine.makeStringMatcher("methods", StringMatchResult.ACCEPT, Kind.EXPERIMENTAL, 
     			"Only track memory operations in matching methods (by fully qulified name).", "-^java\\..*", "-^com.sun\\..*", "-^sun\\..*");
 
+    /*****************/
     
     private static final ConcurrentTimer insTimer = new ConcurrentTimer("Instrumentation time");
 		
@@ -151,7 +154,7 @@ public class InstrumentationAgent implements ClassFileTransformer {
 				chain = new CheckClassAdapter(chain);
 			}
 			Debug.debugf(DEBUG_KEY, "Instrumenting %s", className);
-			in.accept(chain, ClassReader.SKIP_FRAMES); // FIXME frames
+			in.accept(chain, ClassReader.SKIP_FRAMES); // TODO implement frames option correctly
 			return out.toByteArray();
 		} catch (ModuleSpecNotFoundException.Wrapper e) {
 			throw e.unwrap();
