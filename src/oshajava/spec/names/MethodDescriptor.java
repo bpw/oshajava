@@ -77,7 +77,7 @@ public class MethodDescriptor extends Descriptor {
 					start = semi + 1;
 				} else {
 					type = PrimitiveDescriptor.get(desc.substring(start + arrayDepth, start + arrayDepth + 1));
-					start++;
+					start = start + arrayDepth + 1;
 				}
 				if (arrayDepth == 0) {
 					paramTypes.add(type);
@@ -168,6 +168,7 @@ public class MethodDescriptor extends Descriptor {
 	private static final Map<String,MethodDescriptor> stringToDescriptor = new HashMap<String,MethodDescriptor>();
 
 	public static MethodDescriptor of(CanonicalName className, String methodName, String methodTypeDescriptor, String sig) {
+//		System.out.println(methodTypeDescriptor);
 		String s = className.toInternalString() + '.' + methodName + methodTypeDescriptor;
 		if (stringToDescriptor.containsKey(s)) {
 			return stringToDescriptor.get(s);
