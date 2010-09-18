@@ -66,7 +66,7 @@ public class RuntimeMonitor {
 		new WeakConcurrentIdentityHashMap<Object,Ref<State>>();
 
 	static class Ref<T> {
-		T contents;
+		T contents; // FIXME make volatile if volatileShadows option is set...
 	}
 
 	/*******************************************************************/
