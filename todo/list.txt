@@ -1,0 +1,27 @@
+* Separate instrumentation parts into different visitors for simpler
+  selection via options.
+
+* Incremental compilation.
+
+* Test Eclipse support for annotation processors.
+
+* Improve GC for shadow stores (WCIHM)
+  * Thread on the side?
+  * Thread-local or global counter for interval of full hash-map GC
+    (not just within single Segment when rehash is required).
+
+* Inline lock/array shadow caches.
+
+* @Unchecked option.
+
+* Fix Volatile shadows (REf)
+
+* Implement added options.
+
+* Clean up instrumentation filtering.
+
+* JDK rewriting
+
+* Update to ASM 3.3
+
+
