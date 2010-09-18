@@ -59,11 +59,11 @@ public class RuntimeMonitor {
 	// TODO test the WCIHM implementation to make sure it actually works and isn't just dropping
 	// all the keys or something weird.
 	protected static final WeakConcurrentIdentityHashMap<Object,LockState> lockStates = 
-		new WeakConcurrentIdentityHashMap<Object,LockState>();
+		new WeakConcurrentIdentityHashMap<Object,LockState>(Config.shadowStoreGCoption.get());
 	protected static final WeakConcurrentIdentityHashMap<Object,State[]> arrayStates = 
-		new WeakConcurrentIdentityHashMap<Object,State[]>();
+		new WeakConcurrentIdentityHashMap<Object,State[]>(Config.shadowStoreGCoption.get());
 	protected static final WeakConcurrentIdentityHashMap<Object,Ref<State>> coarseArrayStates = 
-		new WeakConcurrentIdentityHashMap<Object,Ref<State>>();
+		new WeakConcurrentIdentityHashMap<Object,Ref<State>>(Config.shadowStoreGCoption.get());
 
 	static class Ref<T> {
 		T contents; // FIXME make volatile if volatileShadows option is set...

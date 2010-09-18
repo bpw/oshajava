@@ -116,7 +116,7 @@ public class WeakConcurrentIdentityHashMap<K, V> implements ConcurrentMap<K,V> {
 
 	/* ---------------- Constants -------------- */
 
-	static final int GC_INTERVAL = 4096;
+//	static final int GC_INTERVAL = 4096;
 	
 	/**
 	 * The default initial number of table slots for this table.
@@ -174,6 +174,8 @@ public class WeakConcurrentIdentityHashMap<K, V> implements ConcurrentMap<K,V> {
 	 * The segments, each of which is a specialized hash table
 	 */
 	final Segment[] segments;
+	
+	final boolean useGC;
 
 	/* ---------------- Small Utilities -------------- */
 
@@ -312,9 +314,12 @@ public class WeakConcurrentIdentityHashMap<K, V> implements ConcurrentMap<K,V> {
 		 * @serial
 		 */
 		final float loadFactor;
+		
+		final boolean useGC;
 
-		Segment(int initialCapacity, float lf) {
+		Segment(int initialCapacity, float lf, boolean useGC) {
 			loadFactor = lf;
+			this.useGC = useGC;
 			setTable(new HashEntry[initialCapacity]);
 		}
 
@@ -375,11 +380,15 @@ public class WeakConcurrentIdentityHashMap<K, V> implements ConcurrentMap<K,V> {
 				int c = count;
 				if (c++ > threshold) {// ensure capacity
 					// ADDITION by bpw
-					// FIXME: KILLS performance in JBB.
-					// gc();
-					// if (count >= threshold)
-					// end ADDITION	
-					rehash();	
+					if (useGC) {
+						gc();
+						c = count;
+						if (c++ >= threshold) {
+							rehash();
+						}
+					} else {
+						rehash();
+					}
 				}
 				HashEntry[] tab = table;
 				int index = hash & (tab.length - 1);
@@ -525,11 +534,12 @@ public class WeakConcurrentIdentityHashMap<K, V> implements ConcurrentMap<K,V> {
 		
 		// removes expired weak keys
 		void gc() {
-			if (count != 0) {
+			if (count != 0) { // read-volatile
 				lock();
 				try {
+					if (count == 0) return;
 					HashEntry<K,V>[] tab = table;
-					int c = count;
+					int c = count; // read-volatile
 					for (int i = 0; i < tab.length ; i++) {
 						//tab[i] = gcFilter(tab[i]);
 						HashEntry<K,V> last = null;
@@ -540,6 +550,7 @@ public class WeakConcurrentIdentityHashMap<K, V> implements ConcurrentMap<K,V> {
 								c--;
 							}
 						}
+						tab[i] = last;
 					}
 					++modCount;
 					count = c; // write-volatile
@@ -572,10 +583,12 @@ public class WeakConcurrentIdentityHashMap<K, V> implements ConcurrentMap<K,V> {
 	 * nonpositive.
 	 */
 	public WeakConcurrentIdentityHashMap(int initialCapacity,
-			float loadFactor, int concurrencyLevel) {
+			float loadFactor, int concurrencyLevel, boolean useGC) {
 		if (!(loadFactor > 0) || initialCapacity < 0 || concurrencyLevel <= 0)
 			throw new IllegalArgumentException();
 
+		this.useGC = useGC;
+		
 		if (concurrencyLevel > MAX_SEGMENTS)
 			concurrencyLevel = MAX_SEGMENTS;
 
@@ -601,7 +614,7 @@ public class WeakConcurrentIdentityHashMap<K, V> implements ConcurrentMap<K,V> {
 			cap <<= 1;
 
 		for (int i = 0; i < this.segments.length; ++i)
-			this.segments[i] = new Segment<K,V>(cap, loadFactor);
+			this.segments[i] = new Segment<K,V>(cap, loadFactor, useGC);
 	}
 
 	/**
@@ -613,16 +626,16 @@ public class WeakConcurrentIdentityHashMap<K, V> implements ConcurrentMap<K,V> {
 	 * @throws IllegalArgumentException if the initial capacity of
 	 * elements is negative.
 	 */
-	public WeakConcurrentIdentityHashMap(int initialCapacity) {
-		this(initialCapacity, DEFAULT_LOAD_FACTOR, DEFAULT_SEGMENTS);
+	public WeakConcurrentIdentityHashMap(int initialCapacity, boolean useGC) {
+		this(initialCapacity, DEFAULT_LOAD_FACTOR, DEFAULT_SEGMENTS, useGC);
 	}
 
 	/**
 	 * Creates a new, empty map with a default initial capacity,
 	 * load factor, and concurrencyLevel.
 	 */
-	public WeakConcurrentIdentityHashMap() {
-		this(DEFAULT_INITIAL_CAPACITY, DEFAULT_LOAD_FACTOR, DEFAULT_SEGMENTS);
+	public WeakConcurrentIdentityHashMap(boolean useGC) {
+		this(DEFAULT_INITIAL_CAPACITY, DEFAULT_LOAD_FACTOR, DEFAULT_SEGMENTS, useGC);
 	}
 
 

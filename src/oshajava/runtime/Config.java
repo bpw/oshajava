@@ -110,6 +110,11 @@ public class Config {
     
     public static final CommandLineOption<String> idOption =
     	CommandLine.makeString("id", Long.toString(System.currentTimeMillis()), Kind.STABLE, "ID for this run.");
+    
+    public static final CommandLineOption<Boolean> shadowStoreGCoption =
+    	CommandLine.makeBoolean("shadowStoreGC", false, Kind.STABLE, "Turn on garbage collection of expired keys in shadow stores.");
+    
+    /************/
 
     public static final CommandLine cl = new CommandLine(TOOL_NAME, "[ -javaOptions java options ] -- Program [ program args ]", helpOption, jvmOption);
 	
@@ -142,6 +147,7 @@ public class Config {
 		
 		cl.add(arrayCacheSizeOption);
 		cl.add(lockCacheSizeOption);
+		cl.add(shadowStoreGCoption);
 		
 		cl.addGroup("Profiling");
 		
