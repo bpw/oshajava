@@ -57,6 +57,9 @@ public class Config {
 		CommandLine.makeEnumChoice("objectTracking", Granularity.FINE, Kind.EXPERIMENTAL, 
 				"Set object tracking granularity. (COARSE is not fully implemented.)", Granularity.class);
 	
+	public static final CommandLineOption<Boolean> lockTrackingOption =
+		CommandLine.makeBoolean("lockTracking", false, Kind.EXPERIMENTAL, "Turn on tracking of synchronization edges.");
+	
 	public static final CommandLineOption<Boolean> noInstrumentOption =
 		CommandLine.makeBoolean("noTracking", false, Kind.STABLE, "Turn off all tracking.");
 	
@@ -123,6 +126,7 @@ public class Config {
 		cl.add(noInstrumentOption);
 		cl.add(arrayTrackingOption);
 		cl.add(objectTrackingOption);
+		cl.add(lockTrackingOption);
 		cl.add(InstrumentationAgent.instrumentClassesOption);
 		cl.add(InstrumentationAgent.instrumentFieldsOption);
 		cl.add(InstrumentationAgent.instrumentMethodsOption);

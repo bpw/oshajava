@@ -231,7 +231,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 	}
 
 	protected void makeReleaseExitHook(int extraStack) {
-		if (isSynchronized) {
+		if (isSynchronized && Config.lockTrackingOption.get()) {
 			myStackSize(2 + extraStack);
 			if (isStatic) {
 				// get class (lock). stack -> lock
@@ -334,7 +334,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 		initializeStateAndCacheVars();
 		// To init those ^^^ lazily, you need to know about control flow. We don't.
 		
-		if (isSynchronized) {
+		if (isSynchronized && Config.lockTrackingOption.get()) {
 			myStackSize(3);
 			if (isStatic) {
 				// get class (lock). stack -> lock
@@ -352,7 +352,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 		// exit hook for non-inlined methods and the release hook for syncrhonized methods.
 		// Even though we've hit an error condition, we still want to preserve instrumentation that is
 		// in sync with reality because a programmer could catch our exception and continue.
-		if (policy != CommunicationKind.INLINE || isSynchronized) {
+		if (policy != CommunicationKind.INLINE || (isSynchronized && Config.lockTrackingOption.get())) {
 			mv.visitTryCatchBlock(beginTry, endTryBeginHandler, endTryBeginHandler, null);
 			super.mark(beginTry);
 		}
@@ -363,7 +363,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 		// If this is a non-abstract, non-interface, real, warm-blooded method.
 		if (originalMaxStack != UNINITIALIZED) {
 			// on ICEs, call release and exit hooks as needed 
-			if (policy != CommunicationKind.INLINE || isSynchronized) {
+			if (policy != CommunicationKind.INLINE || (isSynchronized && Config.lockTrackingOption.get())) {
 				super.mark(endTryBeginHandler);
 				makeReleaseExitHook(1);
 				super.throwException();
@@ -691,6 +691,10 @@ public class MethodInstrumentor extends AdviceAdapter {
 			super.visitInsn(opcode);
 			break;
 		case Opcodes.MONITORENTER:
+			if (!Config.lockTrackingOption.get()) {
+				super.visitInsn(opcode);
+				break;
+			}
 			myStackSize(1);
 
 			// dup the target. stack -> lock | lock
@@ -707,6 +711,10 @@ public class MethodInstrumentor extends AdviceAdapter {
 			
 			break;
 		case Opcodes.MONITOREXIT:
+			if (!Config.lockTrackingOption.get()) {
+				super.visitInsn(opcode);
+				break;
+			}
 			myStackSize(2);
 			
 			super.dup();
@@ -832,7 +840,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 			owner = ClassInstrumentor.OBJECT_WITH_STATE_NAME;
 		    super.visitMethodInsn(opcode, owner, name, desc);
 	
-		} else if (opcode == Opcodes.INVOKEVIRTUAL && owner.equals("java/lang/Object") && name.equals("wait")) {
+		} else if (Config.lockTrackingOption.get() && opcode == Opcodes.INVOKEVIRTUAL && owner.equals("java/lang/Object") && name.equals("wait")) {
 		    myStackSize(3);
 		    
 		    // There are three forms of wait(). Put the arguments aside.
