@@ -38,8 +38,8 @@ public class MethodInstrumentor extends AdviceAdapter {
 		this.isStatic = (access & Opcodes.ACC_STATIC) != 0;
 		this.isMain = (access & Opcodes.ACC_PUBLIC ) != 0 && isStatic && name.equals("main") && desc.equals("([Ljava/lang/String;)V");
 		this.isSynchronized = (access & Opcodes.ACC_SYNCHRONIZED) != 0;
-		this.isConstructor = name.equals("<init>");
-		this.isClinit = name.equals("<clinit>");
+		this.isConstructor = methodDescriptor.isConstructor();
+		this.isClinit = methodDescriptor.isClassInit();
 		final boolean isSynthetic = (access & Opcodes.ACC_SYNTHETIC) != 0;
 				
 		try { // FIXME  Centralize/unify handling of synthetics, missing methods, etc.

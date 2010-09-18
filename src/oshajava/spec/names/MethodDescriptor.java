@@ -136,8 +136,8 @@ public class MethodDescriptor extends Descriptor {
 		return methodName.equals("<init>");
 	}
 	
-	public boolean isMain() {
-		return methodName.equals("main") && returnType.equals(PrimitiveDescriptor.VOID) && paramTypes.size() == 1 && paramTypes.get(0).equals(ArrayTypeDescriptor.STRING_ARRAY);
+	public boolean isClassInit() {
+		return methodName.equals("<clinit>");
 	}
 	
 	public String toSourceString() {
