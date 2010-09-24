@@ -9,6 +9,7 @@ import oshajava.spec.exceptions.ModuleMapNotFoundException;
 import oshajava.spec.exceptions.ModuleSpecNotFoundException;
 import oshajava.spec.names.CanonicalName;
 import oshajava.spec.names.Descriptor;
+import oshajava.spec.names.ObjectTypeDescriptor;
 import oshajava.support.acme.util.Assert;
 import oshajava.util.ColdStorage;
 
@@ -39,7 +40,7 @@ public class Spec {
 	 * Map module name to ModuleSpec.
 	 */
 	protected static final HashMap<CanonicalName,ModuleSpec> nameToModule = new HashMap<CanonicalName,ModuleSpec>();
-	protected static final HashMap<CanonicalName,ModuleMap> classToMap = new HashMap<CanonicalName,ModuleMap>();
+	protected static final HashMap<ObjectTypeDescriptor,ModuleMap> classToMap = new HashMap<ObjectTypeDescriptor,ModuleMap>();
 	protected static final ArrayList<ModuleSpec> idToModule = new ArrayList<ModuleSpec>();
 	
 	/**
@@ -54,7 +55,7 @@ public class Spec {
 	    	loader = ClassLoader.getSystemClassLoader();
 	    }
 		try {
-			final InputStream res = loader.getResourceAsStream(qualifiedName.toInternalString() + CompiledModuleSpec.EXT);
+			final InputStream res = loader.getResourceAsStream(qualifiedName.getInternalName() + CompiledModuleSpec.EXT);
 			if (res == null) {
 				throw new ModuleSpecNotFoundException(qualifiedName + ", referenced by " + requester);
 			}
@@ -93,7 +94,7 @@ public class Spec {
 		return idToModule.get(Spec.getModuleID(uid));
 	}
 	
-	public static synchronized ModuleMap getModuleMap(CanonicalName className, ClassLoader loader) throws ModuleMapNotFoundException {
+	public static synchronized ModuleMap getModuleMap(ObjectTypeDescriptor className, ClassLoader loader) throws ModuleMapNotFoundException {
 		if (classToMap.containsKey(className)) {
 			return classToMap.get(className);
 		}
@@ -102,22 +103,22 @@ public class Spec {
 	    	loader = ClassLoader.getSystemClassLoader();
 		}
 		try {
-			final InputStream res = loader.getResourceAsStream(className.toInternalString() + ModuleMap.EXT);
+			final InputStream res = loader.getResourceAsStream(className.getInternalName() + ModuleMap.EXT);
 			if (res == null) {
 				Assert.warn("Loader could not find ModuleMap for class %s.", className);
-				throw new ModuleMapNotFoundException(className);
+				throw new ModuleMapNotFoundException(className.getTypeName());
 			}
 			final ModuleMap ms = (ModuleMap)ColdStorage.load(res);
 			if (ms == null) {
 				Assert.warn("ModuleMap for class %s was null on disk.", className);
-				throw new ModuleMapNotFoundException(className);
+				throw new ModuleMapNotFoundException(className.getTypeName());
 			}
 			classToMap.put(className, ms);
 			return ms;
 		} catch (IOException e) {
-			throw new ModuleMapNotFoundException(className);
+			throw new ModuleMapNotFoundException(className.getTypeName());
 		} catch (ClassNotFoundException e) {
-			throw new ModuleMapNotFoundException(className);
+			throw new ModuleMapNotFoundException(className.getTypeName());
 		}
 	}
 	

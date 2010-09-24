@@ -9,19 +9,19 @@ public abstract class Name implements Serializable {
 	/**
 	 * @return The source format String for the name.
 	 */
-	public abstract String toSourceString();
+	public abstract String getSourceName();
 	
 	/**
 	 * @return The internal format String for the name.
 	 */
-	public abstract String toInternalString();
+	public abstract String getInternalName();
 	
 	/**
 	 * @return The source format String for the name.
 	 */
 	@Override
 	public String toString() {
-		return toSourceString();
+		return getSourceName();
 	}
 	
 	@Override

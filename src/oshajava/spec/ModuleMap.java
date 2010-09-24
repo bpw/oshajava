@@ -23,8 +23,8 @@ public class ModuleMap extends SpecFile {
 	
 //	private boolean hasExplicitConstructor = false;
 
-	public ModuleMap(CanonicalName className) {
-		super(className);
+	public ModuleMap(CanonicalName classType) {
+		super(classType);
 	}
 	
 	public void put(MethodDescriptor method, CanonicalName module) {

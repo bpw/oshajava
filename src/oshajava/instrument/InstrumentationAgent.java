@@ -7,10 +7,14 @@ import java.lang.instrument.ClassFileTransformer;
 import java.lang.instrument.IllegalClassFormatException;
 import java.lang.instrument.Instrumentation;
 import java.security.ProtectionDomain;
-import java.util.HashMap;
+import java.util.HashSet;
 
 import oshajava.runtime.Config;
 import oshajava.spec.exceptions.ModuleSpecNotFoundException;
+import oshajava.spec.names.FieldDescriptor;
+import oshajava.spec.names.MethodDescriptor;
+import oshajava.spec.names.ObjectTypeDescriptor;
+import oshajava.spec.names.TypeDescriptor;
 import oshajava.support.acme.util.Assert;
 import oshajava.support.acme.util.Debug;
 import oshajava.support.acme.util.StringMatchResult;
@@ -23,8 +27,6 @@ import oshajava.support.acme.util.option.Option;
 import oshajava.support.org.objectweb.asm.ClassReader;
 import oshajava.support.org.objectweb.asm.ClassVisitor;
 import oshajava.support.org.objectweb.asm.ClassWriter;
-import oshajava.support.org.objectweb.asm.commons.RemappingClassAdapter;
-import oshajava.support.org.objectweb.asm.commons.SimpleRemapper;
 import oshajava.support.org.objectweb.asm.util.CheckClassAdapter;
 import oshajava.util.count.ConcurrentTimer;
 
@@ -87,8 +89,8 @@ public class InstrumentationAgent implements ClassFileTransformer {
 		"java/text",
 	};
 
-	public static final CommandLineOption<Boolean> fullJDKInstrumentationOption =
-		CommandLine.makeBoolean("instrumentFullJDK", false, Kind.DEPRECATED, "Instrument deep into the JDK.");
+//	public static final CommandLineOption<Boolean> fullJDKInstrumentationOption =
+//		CommandLine.makeBoolean("instrumentFullJDK", false, Kind.DEPRECATED, "Instrument deep into the JDK.");
 	
 	public static final CommandLineOption<Boolean> bytecodeDumpOption =
 		CommandLine.makeBoolean("bytecodeDump", false, Kind.STABLE, "Dump instrumented bytecode.");
@@ -129,7 +131,10 @@ public class InstrumentationAgent implements ClassFileTransformer {
     public static final CommandLineOption<StringMatcher> instrumentMethodsOption =
     	CommandLine.makeStringMatcher("methods", StringMatchResult.ACCEPT, Kind.EXPERIMENTAL, 
     			"Only track memory operations in matching methods (by fully qulified name).", "-^java\\..*", "-^com.sun\\..*", "-^sun\\..*");
-
+    
+    public static final CommandLineOption<Boolean> ignoreFinalFieldsOption =
+    	CommandLine.makeBoolean("ignoreFinalFields", false, Kind.EXPERIMENTAL, "Turn off tracking for all final fields.");
+        
     /*****************/
     
     private static final ConcurrentTimer insTimer = new ConcurrentTimer("Instrumentation time");
@@ -147,9 +152,9 @@ public class InstrumentationAgent implements ClassFileTransformer {
 			if (!framesOption.get()) {
 				chain = new RemoveJava6Adapter(chain);
 			}
-			if (fullJDKInstrumentationOption.get()) {
-				chain = new RemappingClassAdapter(chain, new SimpleRemapper(uninstrumentedLoadedClasses));
-			}
+//			if (fullJDKInstrumentationOption.get()) {
+//				chain = new RemappingClassAdapter(chain, new SimpleRemapper(uninstrumentedLoadedClasses));
+//			}
 			if (preVerifyOption.get()) {
 				chain = new CheckClassAdapter(chain);
 			}
@@ -163,7 +168,7 @@ public class InstrumentationAgent implements ClassFileTransformer {
 
 	/*********************************************************************************************/
 
-	protected static final HashMap<String,String> uninstrumentedLoadedClasses = new HashMap<String,String>();
+//	protected static final HashMap<String,String> uninstrumentedLoadedClasses = new HashMap<String,String>();
 
 	public static void install(Instrumentation inst) {
 		try {
@@ -178,8 +183,10 @@ public class InstrumentationAgent implements ClassFileTransformer {
 					String name = c.getCanonicalName();
 					if (name != null) {
 						name = name.replace('.', '/');
-						if (shouldInstrument(name)) {
-							uninstrumentedLoadedClasses.put(name, InstrumentingClassLoader.ALT_JDK_PKG + "/" + name);
+						ObjectTypeDescriptor type = TypeDescriptor.ofClass(name);
+						if (shouldInstrument(type)) {
+							Assert.warn("Class %s matches the instrumentation filter, but it is already loaded and cannot be instrumented.");
+							uninstrumentedLoadedClasses.add(type);
 						}
 					}
 				}
@@ -191,12 +198,12 @@ public class InstrumentationAgent implements ClassFileTransformer {
 	}
 
 	private static volatile boolean instrumentationOn = false;
-	private static String mainClassInternalName;
+	private static ObjectTypeDescriptor mainClass;
 	private static final Option<String> mainClassOption = new Option<String>("mainClass", "");
 	public static void setMainClass(String cl) {
 		Debug.debugf(DEBUG_KEY, "Setting main application class to %s.", cl);
-		mainClassInternalName = internalName(cl);
-		mainClassOption.set(sourceName(cl));
+		mainClass = TypeDescriptor.ofClass(cl);
+		mainClassOption.set(mainClass.getInternalDescriptor());
 	}
 	public static void stopInstrumentation() {
 		Debug.debug(DEBUG_KEY, "Turning off instrumentation");
@@ -207,19 +214,17 @@ public class InstrumentationAgent implements ClassFileTransformer {
 		appThreadGroupRoot = tg;
 	}
 
+//	@Override
 	public byte[] transform(ClassLoader loader, String className, Class<?> classBeingRedefined, 
 			ProtectionDomain pd, byte[] bytecode) throws IllegalClassFormatException {
 		if (loader == null) {
-			if (shouldTransform(className)) {
+			if (shouldTransform(TypeDescriptor.ofClass(className))) {
 				Assert.warn("Would have transformed %s, but bootstrap class loader in use.", className);
 			}
-//			if (!shouldInstrument(className)) {
-//				System.out.print('.');
-//			}
 			return null;
 		}
 		try {
-			if (!shouldTransform(className)) {
+			if (!shouldTransform(TypeDescriptor.ofClass(className))) {
 				Assert.warn("Not transforming %s, even though it was not loaded by the bootstrap class loader.", className);
 				return null;
 			}
@@ -247,17 +252,21 @@ public class InstrumentationAgent implements ClassFileTransformer {
 		}
 	}
 
-	private static boolean shouldTransform(String className) {
+	private static boolean shouldTransform(ObjectTypeDescriptor className) {
 		if (!instrumentationOn) {
-			if(className.equals(mainClassInternalName)) {
+			if(className.equals(mainClass)) {
 				instrumentationOn = true;
-				Debug.debugf(DEBUG_KEY, "Loading main class (%s) and starting instrumentation.", mainClassInternalName);
+				Debug.debugf(DEBUG_KEY, "Loading main class (%s) and starting instrumentation.", mainClass);
 				return true;
 			}
-			//				Util.logf("Ignoring %s (Instrumentation not started yet.)", className);
+			Debug.debugf(DEBUG_KEY, "Ignoring %s (Instrumentation not started yet.)", className);
 		} else if (appThreadGroupRoot.parentOf(Thread.currentThread().getThreadGroup())
-				&& shouldInstrument(className)
-				&& !hasUninstrumentedOuterClass(className)) {
+				&& shouldInstrument(className)) {
+				if (hasUninstrumentedOuterClass(className)) {
+					// TODO just non-static inners?
+					Assert.warn("Would instrument class %s, but it is an inner class of a pre-loaded uninstrumented class.", className);
+					return false;
+				}
 			// if this is a thread spawned by the app and we don't ignore this class.
 			// TODO this loses finalize methods, called by GC, probably not in an app thread.
 			return true;
@@ -267,21 +276,37 @@ public class InstrumentationAgent implements ClassFileTransformer {
 		return false;
 	}
 
-	protected static boolean shouldInstrument(String className) {
-		for (String prefix : EXCLUDE_PREFIXES) {
-			if (className.startsWith(prefix)) return false;
+	protected static final HashSet<ObjectTypeDescriptor> uninstrumentedLoadedClasses = new HashSet<ObjectTypeDescriptor>();
+	protected static boolean isUninstrumented(ObjectTypeDescriptor classType) {
+		synchronized (uninstrumentedLoadedClasses) {
+			return uninstrumentedLoadedClasses.contains(classType);
 		}
-		return true;
+	}
+	protected static boolean isUninstrumented(MethodDescriptor method) {
+		return isUninstrumented(method.getClassType());
+	}
+	
+	protected static boolean isOrWillBeUninstrumented(ObjectTypeDescriptor classType) {
+		return isUninstrumented(classType) || !shouldInstrument(classType);
+	}
+	protected static boolean isOrWillBeUninstrumented(MethodDescriptor method) {
+		return isUninstrumented(method) || !shouldInstrument(method);
 	}
 
-	private static boolean hasUninstrumentedOuterClass(String className) {
-		final int i = className.lastIndexOf('$');
-		if (i == -1) {
-			return false;
-		} else {
-			final String cn = className.substring(0, i);
-			return uninstrumentedLoadedClasses.containsKey(cn) || hasUninstrumentedOuterClass(cn);
-		}
+	protected static boolean shouldInstrument(ObjectTypeDescriptor className) {
+		return instrumentClassesOption.get().test(className.getSourceName()) == StringMatchResult.ACCEPT;
+	}
+	protected static boolean shouldInstrument(FieldDescriptor field) {
+		return shouldInstrument(field.getDeclaringType()) && instrumentFieldsOption.get().test(field.getSourceName()) == StringMatchResult.ACCEPT;
+	}
+	protected static boolean shouldInstrument(MethodDescriptor method) {
+		return shouldInstrument(method.getClassType()) && 
+			instrumentMethodsOption.get().test(method.getSourceName()) == StringMatchResult.ACCEPT;
+	}
+	
+	private static boolean hasUninstrumentedOuterClass(ObjectTypeDescriptor type) {
+		Debug.debugf(DEBUG_KEY, "hasUninstrumentedOuterClasses(%s)", type);
+		return type.isInner() && uninstrumentedLoadedClasses.contains(type.getOuterType());
 	}
 	
 	// -- Utilities for instrumentation --------------

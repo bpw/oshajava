@@ -1,14 +1,21 @@
 package oshajava.spec.names;
 
-import javax.lang.model.element.TypeElement;
-import javax.lang.model.type.DeclaredType;
-import javax.lang.model.util.Elements;
+import oshajava.support.acme.util.Assert;
+
 
 public class ObjectTypeDescriptor extends TypeDescriptor {
 	private static final long serialVersionUID = 1L;
-	public static final ObjectTypeDescriptor OBJECT = ObjectTypeDescriptor.of(CanonicalName.of("java.lang.Object"));
 	
 	protected final CanonicalName typeName;
+	/**
+	 * NOTE: perhaps a dangerous decision, but the outer type will not be considered in hashCode or equals because
+	 * if two descriptors have diff. outer types, but the same name, then there is a name collision anyway...
+	 */
+	protected transient ObjectTypeDescriptor outerType;
+	
+	protected transient ObjectTypeDescriptor superType = TypeDescriptor.OBJECT;
+	
+	protected transient boolean isStatic = true;
 	
 	@Override
 	public int hashCode() {
@@ -17,30 +24,63 @@ public class ObjectTypeDescriptor extends TypeDescriptor {
 	
 	@Override
 	public boolean equals(Object other) {
-		return other != null && other instanceof ObjectTypeDescriptor && typeName.equals(((ObjectTypeDescriptor)other).typeName);
+		if (other == this) return true;
+		return other instanceof ObjectTypeDescriptor && typeName.equals(((ObjectTypeDescriptor)other).typeName);
 	}
 	
 	protected ObjectTypeDescriptor(CanonicalName typeName) {
+		Assert.assertTrue(typeName != null);
 		this.typeName = typeName;
 	}
 	
-	public String toSourceString() {
-		return typeName.toSourceString();
-	}
-
-	public String toInternalString() {
-		return "L" + typeName.toInternalString() + ";";
+	public CanonicalName getTypeName() {
+		return typeName;
 	}
 	
-	/*******************************/
+	public ObjectTypeDescriptor getOuterType() {
+		return outerType;
+	}
+	
+	public void setOuterType(ObjectTypeDescriptor outerType, boolean innerIsStatic) {
+		Assert.assertTrue(this.outerType == null);
+		this.outerType = outerType;
+		this.isStatic = innerIsStatic;
+	}
+	
+	public ObjectTypeDescriptor getSuperType() {
+		return superType;
+	}
+	
+	public void setSuperType(ObjectTypeDescriptor superType) {
+		Assert.assertTrue(this.superType == TypeDescriptor.OBJECT);
+		this.superType = superType;
+	}
+	
+	// TODO public boolean isAnonymous() { ...
+	
+	public boolean isStatic() {
+		return isStatic();
+	}
+	
+	public String getSourceName() {
+		return typeName.getSourceName();
+	}
 
-	public static ObjectTypeDescriptor of(final CanonicalName name) {
-//		System.out.println("ObjectTypeDescriptor.of");
-		return name.getType();
+	public String getInternalName() {
+		return typeName.getInternalName();
 	}
-	public static ObjectTypeDescriptor of(DeclaredType type, Elements util) {
-//		System.out.println("ObjectTypeDescriptor.of");
-		return CanonicalName.of((TypeElement)type.asElement(), util).getType();
+	
+	public String getSourceDescriptor() {
+		return getSourceName();
 	}
+
+	public String getInternalDescriptor() {
+		return "L" + getInternalName() + ";";
+	}
+	
+	public boolean isInner() {
+		return outerType != null;
+	}
+	
 }
 

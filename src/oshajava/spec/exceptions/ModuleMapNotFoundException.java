@@ -12,7 +12,7 @@ import oshajava.spec.names.CanonicalName;
 @SuppressWarnings("serial")
 public class ModuleMapNotFoundException extends IllegalClassFormatException {
 	public ModuleMapNotFoundException(CanonicalName name) {
-		super(name.toSourceString());
+		super(name.getSourceName());
 	}
 	
 	public Wrapper wrap() {

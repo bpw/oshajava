@@ -27,6 +27,7 @@ public class AnnotationTesting {
 
     @NonComm
     public static void nonCommTest() {}
+    
 }
 
 class Test {

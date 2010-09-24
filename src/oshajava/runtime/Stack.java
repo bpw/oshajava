@@ -457,10 +457,10 @@ public class Stack {
 					MethodDescriptor[] methods = m.getMethods();
 					for (int i = 0; i < methods.length; i++) {
 						specXml.start("method", "uid", Spec.makeUID(m.getId(), i), 
-									"class", methods[i].getClassName(),
+									"class", methods[i].getClassType(),
 									"name", methods[i].getMethodName(),
 									"return", methods[i].getReturnType(),
-									"internal", methods[i].toInternalString(), 
+									"internal", methods[i].getInternalName(), 
 									"kind", m.getCommunicationKind(Spec.makeUID(m.getId(), i)).toString().toLowerCase());
 						specXml.start("params");
 						for (TypeDescriptor p : methods[i].getParamTypes()) {

@@ -13,7 +13,12 @@ public class InnerClassTest {
 		try {
 			ic.join();
 		} catch (InterruptedException e) {}
-		System.out.println(ic.getX());;
+		System.out.println(ic.getX());
+		Runnable r = new Runnable() {
+			public void run() {
+				
+			}
+		};
 	}
 
 	private class InnerClass extends Thread {
@@ -22,7 +27,7 @@ public class InnerClassTest {
 		public InnerClass(int x, int y, int z) {
 			this.x = x; this.y = y; this.z = z;
 		}
-
+		
 		public int getX() {
 			return x;
 		}
@@ -32,5 +37,17 @@ public class InnerClassTest {
 			y++;
 			z++;
 		}
+	}
+	
+	static class StaticInnerClass {
+		private InnerClassTest this$0;
+	}
+	
+	private void m() {}
+
+	class Foo$Bar {
+	}
+	class $0 {
+		
 	}
 }

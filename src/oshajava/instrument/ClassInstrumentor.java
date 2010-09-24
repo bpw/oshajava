@@ -15,8 +15,10 @@ import oshajava.spec.NullModuleSpec;
 import oshajava.spec.Spec;
 import oshajava.spec.exceptions.ModuleMapNotFoundException;
 import oshajava.spec.exceptions.ModuleSpecNotFoundException;
-import oshajava.spec.names.CanonicalName;
+import oshajava.spec.names.FieldDescriptor;
 import oshajava.spec.names.MethodDescriptor;
+import oshajava.spec.names.ObjectTypeDescriptor;
+import oshajava.spec.names.TypeDescriptor;
 import oshajava.support.acme.util.Assert;
 import oshajava.support.acme.util.Debug;
 import oshajava.support.org.objectweb.asm.ClassAdapter;
@@ -54,8 +56,9 @@ public class ClassInstrumentor extends ClassAdapter {
 	protected static final String ID_FIELD       			= "id";
 	protected static final String CURRENT_STATE_FIELD       = "state";
 	protected static final String THREAD_FIELD              = "thread";
-	protected static final String OBJECT_WITH_STATE_NAME    = Type.getInternalName(oshajava.runtime.ObjectWithState.class);
 	protected static final String SHADOW_INIT_METHOD_PREFIX = "__osha_shadow_field_initer";
+
+	protected static final ObjectTypeDescriptor OBJECT_WITH_STATE = TypeDescriptor.ofClass(oshajava.runtime.ObjectWithState.class.getCanonicalName());
 
 	protected static final Type[] ARGS_NONE              = new Type[0];
 	protected static final Type[] ARGS_INT               = { Type.INT_TYPE };
@@ -115,19 +118,12 @@ public class ClassInstrumentor extends ClassAdapter {
 	/**************************************************************************/
 
 	protected int classAccess;
-	protected CanonicalName className;
-	protected String outerClassDesc = null;
-	protected String outerClassName = null;
-	protected String classDesc;
-	protected Type classType;
-	protected String superName;
+	protected ObjectTypeDescriptor classType, superType;
 	protected Set<String> shadowedInheritedFields;
-	private String packageName;
 	protected final ClassLoader loader;
-	private final ArrayList<String> instanceShadowedFields = new ArrayList<String>();
-	private final ArrayList<String> staticShadowedFields = new ArrayList<String>();
+	private final ArrayList<FieldDescriptor> instanceShadowedFields = new ArrayList<FieldDescriptor>();
+	private final ArrayList<FieldDescriptor> staticShadowedFields = new ArrayList<FieldDescriptor>();
 	private ModuleMap moduleMap;
-	protected boolean isNonStaticInnerClass = false;
 
 	public ClassInstrumentor(ClassVisitor cv, ClassLoader loader) {
 		super(cv);
@@ -203,8 +199,8 @@ public class ClassInstrumentor extends ClassAdapter {
 	 * @param name
 	 * @param desc
 	 */
-	private void addShadowField(int access, String name, String desc) {
-		if (shouldInstrumentField(name, desc)) {
+	private void addShadowField(int access, FieldDescriptor fd) {
+		if (InstrumentationAgent.shouldInstrument(fd)) {
 		    
 		    int newAccess;
 		    if ((classAccess & Opcodes.ACC_INTERFACE) != 0) {
@@ -228,18 +224,18 @@ public class ClassInstrumentor extends ClassAdapter {
 
 	        final FieldVisitor fv = super.visitField(
 					newAccess,
-					name + SHADOW_FIELD_SUFFIX, STATE_DESC, null, null
+					fd.getFieldName() + SHADOW_FIELD_SUFFIX, STATE_DESC, null, null
 			);
 			if (fv != null) {
 				fv.visitEnd();
 			}
-			((access & Opcodes.ACC_STATIC)  == 0 ? instanceShadowedFields : staticShadowedFields).add(name);
+			((access & Opcodes.ACC_STATIC)  == 0 ? instanceShadowedFields : staticShadowedFields).add(fd);
 			
 			// Add stack trace field if requested.
 			if (Config.stackTracesOption.get()) {
 			    final FieldVisitor stfv = super.visitField(
     					newAccess,
-    					name + STACKTRACE_FIELD_SUFFIX, STACKTRACE_DESC, null, null
+    					fd.getFieldName() + STACKTRACE_FIELD_SUFFIX, STACKTRACE_DESC, null, null
     			);
     			if (stfv != null) {
     				stfv.visitEnd();
@@ -269,55 +265,59 @@ public class ClassInstrumentor extends ClassAdapter {
 	@Override
 	public void visit(int version, int access, String name, String signature,
 			String superName, String[] interfaces) {
-		final int lastSep = name.lastIndexOf('/');
-		packageName = lastSep == -1 ? "" : name.substring(0, lastSep);
-		className = CanonicalName.of(packageName, name.substring(lastSep + 1));
-		classDesc = getDescriptor(name);
-		classType = Type.getObjectType(name);
+		// Assume that this is *not* an inner class even if it contains $.  We will rectify this in visitOuterClass()
+		// if this is actually an inner class.
+		classType = TypeDescriptor.ofClass(name);
 		classAccess = access;
 		
-		this.superName = superName;
-		if (Config.objectTrackingOption.get() == Config.Granularity.COARSE && (access & Opcodes.ACC_INTERFACE) == 0 && (superName == null || superName.equals("java/lang/Object"))) {
-			superName = Type.getType(oshajava.runtime.ObjectWithState.class).getInternalName();
+		// The real super type of this class.
+		this.superType = TypeDescriptor.ofClass(superName);
+		
+		// If we're doing object-granularity tracking, we put in some shim right before Object.
+		if (Config.objectTrackingOption.get() == Config.Granularity.COARSE && (access & Opcodes.ACC_INTERFACE) == 0 && 
+				(superName == null || superType.equals(TypeDescriptor.OBJECT))) {
+			superType = TypeDescriptor.ofClass("oshajava.runtime.ObjectWithState");
+			superName = superType.getInternalName();
 		}
 		
+		// Tell the class type about its superclass type.
+		classType.setSuperType(superType);
+
+		// Look up the module map for this class.
 		try {
-			moduleMap = Spec.getModuleMap(className, loader);
+			moduleMap = Spec.getModuleMap(classType, loader);
 		} catch (ModuleMapNotFoundException e) {
-			Assert.warn("No module map for class %s (%s).  Using null module for all member methods.", className, className.toInternalString());
+			Assert.warn("No module map for class %s.  Using null module for all member methods.", classType);
 		}
 
 		// TODO Fix frames so we can actually support Java 6 class file format in full.
 		super.visit((version == Opcodes.V1_6 ? Opcodes.V1_5 : version), access, name, signature, superName, interfaces);
+		
 		// Ensure all fields here (including inherited ones) are shadowed. First, check whether our
 		// superclass is instrumented.
 		shadowedInheritedFields = new HashSet<String>();
-		if (!InstrumentationAgent.shouldInstrument(superName)) {
-		
-			// Get this class' superclass to find inherited fields that need to be shadowed.
-			Class<?> superclass = classForName(Type.getObjectType(superName).getClassName());
-			if (superclass == null) {
-				Assert.fail("superclass not found: " + Type.getObjectType(superName).getClassName());
-			}
-			
-			// Shadow any unshadowed inherited fields. Keep track of which fields we shadow here
-			// to avoid conflicts with fields declared here.
-			for (Field fld : getAllFields(superclass)) {
-				if (!hasShadowField(superclass, name)) {
-					addShadowField(fld.getModifiers(), fld.getName(), Type.getDescriptor(fld.getType()));
-					shadowedInheritedFields.add(fld.getName());
-				}
-			}
-
+		// Get this class' superclass to find inherited fields that need to be shadowed.
+		Class<?> superclass = classForName(superType.getSourceName());
+		if (superclass == null) {
+			Assert.fail("superclass not found: " + Type.getObjectType(superName).getClassName());
 		}
-		
+			
+		// Shadow any unshadowed inherited fields. Keep track of which fields we shadow here
+		// to avoid conflicts with fields declared here.
+		for (Field fld : getAllFields(superclass)) {
+			final FieldDescriptor fd = FieldDescriptor.of(superType, fld.getName(), TypeDescriptor.fromDescriptorString(Type.getDescriptor(fld.getType())));
+			if (InstrumentationAgent.shouldInstrument(fd) && !hasShadowField(superclass, name)) {
+				addShadowField(fld.getModifiers(), fd);
+				shadowedInheritedFields.add(fld.getName());
+			}
+		}
 	}
 	
 	@Override
 	public void visitOuterClass(String owner, String containingMethodName, String containingMethodDesc) {
-	    outerClassName = owner;
-		outerClassDesc = getDescriptor(owner);
-		isNonStaticInnerClass = (classAccess & Opcodes.ACC_STATIC) == 0;
+//	    outerClassName = owner;
+//		outerClassDesc = getDescriptor(owner);
+		classType.setOuterType(TypeDescriptor.ofClass(owner), (classAccess & Opcodes.ACC_STATIC) == 0);
 		super.visitOuterClass(owner, containingMethodName, containingMethodDesc);
 	}
 	
@@ -327,7 +327,7 @@ public class ClassInstrumentor extends ClassAdapter {
 			// TODO option to ignore final fields. how?
 			// We make all state fields non-final to be able to set them from outside a constructor
         	if (!shadowedInheritedFields.contains(name)) {
-        		addShadowField(access, name, desc);
+        		addShadowField(access, FieldDescriptor.of(classType, name, TypeDescriptor.fromDescriptorString(desc)));
         	}
 		}
 		return super.visitField(access, name, desc, signature, value);
@@ -345,7 +345,7 @@ public class ClassInstrumentor extends ClassAdapter {
 		    		//  think, because no "communication" should occur (semantically)
 		    		//  from class loading.) TODO Revisit class initializers.
 		    		ModuleSpec module;
-		    		final MethodDescriptor method = MethodDescriptor.of(className, name, desc, signature);
+		    		final MethodDescriptor method = MethodDescriptor.of(classType, name, desc, signature);
 		    		if (moduleMap == null) {
 			    		// if the module map is null, then we've already warned that this class will be dumped in the null module.
 		    			if (Config.noSpecActionOption.get() == Config.DefaultSpec.UNTRACKED) {
@@ -359,10 +359,12 @@ public class ClassInstrumentor extends ClassAdapter {
 		    				} catch (MissingEntryException e) {
 		    					if ((access & Opcodes.ACC_SYNTHETIC) != 0) {
 		    						// synthetic method.
-			    					Assert.warn("SYNTHETIC method %s missing from module map for class %s (%s).  Using null module.", method, method.toInternalString(), className);
+			    					Assert.warn("SYNTHETIC method %s missing from module map for class %s (%s).  Using null module.", 
+			    							method, method.getInternalName(), classType);
 		    					} else {
 			    					// If a particular method is missing from the module map, we need to warn! (Maybe fail.)
-			    					Assert.warn("Method %s missing from module map for class %s (%s).  Using null module.", method, method.toInternalString(), className);
+			    					Assert.warn("Method %s missing from module map for class %s (%s).  Using null module.", 
+			    							method, method.getInternalName(), classType);
 		    					}
 		    					module = NullModuleSpec.MODULE;
 		    				}
@@ -371,43 +373,22 @@ public class ClassInstrumentor extends ClassAdapter {
 		    			}
 		    		}
 		    		chain = new HandlerSorterAdapter(chain, access, name, desc, signature, exceptions);
-		    		chain = new MethodInstrumentor(chain, access, name, desc, this, module, method);
+		    		chain = new MethodInstrumentor(chain, access, name, desc, module, method);
 		    		chain = new JSRInlinerAdapter(chain, access, name, desc, signature, exceptions);
 		    	}
 			} else if (name.equals("<clinit>") && (classAccess & Opcodes.ACC_INTERFACE) != 0) {
 			    // Class initializer for an interface. Inline the initialization.
 			    visitedClinit = true;
-			    Debug.debugf("clinit", "instrumenting clinit in %s", className);
-			    return new StaticShadowInitInserter(chain, access, name, desc, classType, staticShadowedFields);
-		    } else { // <clinit> for class
+			    Debug.debugf("clinit", "instrumenting clinit in %s", classType);
+			    return new StaticShadowInitInserter(chain, access, name, desc, classType.getAsmType(), staticShadowedFields);
+		    } else { // Generate <clinit> for class
 		    	visitedClinit = true;
-		    	Debug.debugf("clinit", "instrumenting clinit in %s", className);
-		    	return new StaticShadowInitInserter(chain, access, name, desc, classType, null);
+		    	Debug.debugf("clinit", "instrumenting clinit in %s", classType);
+		    	return new StaticShadowInitInserter(chain, access, name, desc, classType.getAsmType(), null);
 		    }
 		}
 		return chain;
 	}
-
-	/**
-	 * Decides whether a field in class owner with name name and type desc should be instrumented.
-	 * Avoids instrumenting this$0, this$1, etc. fields in inner classes.  Just hope there aren't
-	 * any dolts who named things this$foo.  I tried. You can -- no collisions (the special this$'s
-	 * just become this$0$, this$1$, and so on).
-	 * 
-	 * @param owner
-	 * @param name
-	 * @param desc
-	 * @return
-	 */
-	public static boolean shouldInstrumentField(String owner, String name, String desc) {
-		return InstrumentationAgent.shouldInstrument(owner) && shouldInstrumentField(name, desc);
-	}
-	
-	protected static boolean shouldInstrumentField(String name, String desc) {
-		return !name.matches("this\\$\\d.*");
-	}
-	
-
 
 	@Override
 	public void visitEnd() {
@@ -419,27 +400,27 @@ public class ClassInstrumentor extends ClassAdapter {
 			instance.visitCode();
 
 			// call super.initer()
-			if (InstrumentationAgent.shouldInstrument(superName)) {
+			if (InstrumentationAgent.shouldInstrument(superType)) {
 				instance.loadThis();
-				instance.visitMethodInsn(Opcodes.INVOKESPECIAL, superName, INSTANCE_SHADOW_INIT_METHOD.getName(), INSTANCE_SHADOW_INIT_METHOD.getDescriptor());
+				instance.visitMethodInsn(Opcodes.INVOKESPECIAL, superType.getInternalName(), INSTANCE_SHADOW_INIT_METHOD.getName(), INSTANCE_SHADOW_INIT_METHOD.getDescriptor());
 			}
 			if (!instanceShadowedFields.isEmpty()) {
 				int varCurrentState = instance.newLocal(STATE_TYPE);
 				instance.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_CURRENT_STATE);
 				instance.storeLocal(varCurrentState);
 
-				for (String fieldname : instanceShadowedFields) {
+				for (FieldDescriptor field : instanceShadowedFields) {
 				    // Shadow field.
 					instance.loadThis();
 					instance.loadLocal(varCurrentState);
-					instance.visitFieldInsn(Opcodes.PUTFIELD, className.toInternalString(), fieldname + SHADOW_FIELD_SUFFIX, STATE_DESC);
+					instance.visitFieldInsn(Opcodes.PUTFIELD, field.getDeclaringType().getInternalName(), field.getFieldName() + SHADOW_FIELD_SUFFIX, STATE_DESC);
 					
 					// Traceback field.
 					if (Config.stackTracesOption.get()) {
 					    instance.loadThis();
 					    instance.push(0);
 					    instance.newArray(STACKTRACE_TYPE.getElementType());
-					    instance.visitFieldInsn(Opcodes.PUTFIELD, className.toInternalString(), fieldname + STACKTRACE_FIELD_SUFFIX, STACKTRACE_DESC);
+					    instance.visitFieldInsn(Opcodes.PUTFIELD, field.getDeclaringType().getInternalName(), field.getFieldName() + STACKTRACE_FIELD_SUFFIX, STACKTRACE_DESC);
 					}
 				}
 				instance.visitInsn(Opcodes.RETURN);
@@ -460,16 +441,16 @@ public class ClassInstrumentor extends ClassAdapter {
 					stat.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_CURRENT_STATE);
 					stat.storeLocal(varCurrentState);
 					
-					for (String fieldname : staticShadowedFields) {
+					for (FieldDescriptor field : staticShadowedFields) {
 					    // Shadow field.
 						stat.loadLocal(varCurrentState);
-						stat.visitFieldInsn(Opcodes.PUTSTATIC, className.toInternalString(), fieldname + SHADOW_FIELD_SUFFIX, STATE_DESC);
+						stat.visitFieldInsn(Opcodes.PUTSTATIC, field.getDeclaringType().getInternalName(), field.getFieldName() + SHADOW_FIELD_SUFFIX, STATE_DESC);
 						
 						// Traceback field.
     					if (Config.stackTracesOption.get()) {
     					    stat.push(0);
     					    stat.newArray(STACKTRACE_TYPE.getElementType());
-    					    stat.visitFieldInsn(Opcodes.PUTSTATIC, className.toInternalString(), fieldname + STACKTRACE_FIELD_SUFFIX, STACKTRACE_DESC);
+    					    stat.visitFieldInsn(Opcodes.PUTSTATIC, field.getDeclaringType().getInternalName(), field.getFieldName() + STACKTRACE_FIELD_SUFFIX, STACKTRACE_DESC);
     					}
 					}
 					stat.visitInsn(Opcodes.RETURN);
@@ -487,7 +468,7 @@ public class ClassInstrumentor extends ClassAdapter {
 				GeneratorAdapter clinit = new GeneratorAdapter(
 						new StaticShadowInitInserter(
 								super.visitMethod(acc, name, desc, null, null),
-								acc, name, desc, classType, ((classAccess & Opcodes.ACC_INTERFACE) != 0 ? staticShadowedFields : null)),
+								acc, name, desc, classType.getAsmType(), ((classAccess & Opcodes.ACC_INTERFACE) != 0 ? staticShadowedFields : null)),
 								acc, name, desc
 				);
 

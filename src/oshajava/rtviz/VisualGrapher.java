@@ -222,7 +222,7 @@ public class VisualGrapher extends StackEdgeGatherer {
 				synchronized (uidToNode) {
 					if (!uidToNode.containsKey(methId)) {
 						Node n = commGraph.addNode();
-						n.setString("name",module.getMethodSignature(methId).toInternalString());
+						n.setString("name",module.getMethodSignature(methId).getInternalName());
 						uidToNode.put(methId, n);
 					}
 				}

@@ -36,8 +36,6 @@ public class Config {
 	
 	public static final String TOOL_NAME = "oshajava";
 	
-//	public static final Option<String> oshajavaRevision = new Option<String>("revision", "$Revision$".replace("$Revision: ", "").replace(" $", ""));
-	
 	// -- Options ---------------------------------------------------------
 	
 	public static final CommandLineOption<Boolean> helpOption =
@@ -136,6 +134,7 @@ public class Config {
 		cl.add(arrayTrackingOption);
 		cl.add(objectTrackingOption);
 		cl.add(lockTrackingOption);
+//		cl.add(InstrumentationAgent.ignoreFinalFieldsOption);
 		cl.add(InstrumentationAgent.instrumentClassesOption);
 		cl.add(InstrumentationAgent.instrumentFieldsOption);
 		cl.add(InstrumentationAgent.instrumentMethodsOption);
@@ -172,7 +171,7 @@ public class Config {
 		cl.add(InstrumentationAgent.verifyOption);
 		
 		cl.addGroup("Deprecated");
-		cl.add(InstrumentationAgent.fullJDKInstrumentationOption);
+//		cl.add(InstrumentationAgent.fullJDKInstrumentationOption);
 		cl.add(InstrumentationAgent.ignoreMissingMethodsOption);
 		
 		// end command line options -------------------------------------------------------

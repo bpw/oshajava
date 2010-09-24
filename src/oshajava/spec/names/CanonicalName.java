@@ -11,7 +11,7 @@ import javax.lang.model.util.Elements;
  */
 public class CanonicalName extends Name {
 	private static final long serialVersionUID = 1L;
-	
+	// FIXME $ is a valid character in class names.
 	private final String pkg, simple;
 	private ObjectTypeDescriptor type;
 	
@@ -22,7 +22,8 @@ public class CanonicalName extends Name {
 	
 	@Override
 	public boolean equals(Object other) {
-		return other != null && other instanceof CanonicalName && pkg.equals(((CanonicalName)other).pkg) && simple.equals(((CanonicalName)other).simple);
+		if (this == other) return true;
+		return other instanceof CanonicalName && pkg.equals(((CanonicalName)other).pkg) && simple.equals(((CanonicalName)other).simple);
 	}
 	
 	/**
@@ -108,18 +109,18 @@ public class CanonicalName extends Name {
 	/**
 	 * @return The source format String for the full name.
 	 */
-	public String toSourceString() {
+	public String getSourceName() {
 		return pkg == null ? simple.replace('$', '.').replace('/', '.') : pkg.replace('/', '.') + '.' + simple.replace('$', '.').replace('/', '.');
 	}
 	
 	/**
 	 * @return The internal format String for the full name.
 	 */
-	public String toInternalString() {
+	public String getInternalName() {
 		return pkg == null ? simple : pkg + '/' + simple;
 	}
 	
-	public ObjectTypeDescriptor getType() {
+	public synchronized ObjectTypeDescriptor getType() {
 		if (type == null) {
 			type = new ObjectTypeDescriptor(this);
 		}
@@ -131,15 +132,14 @@ public class CanonicalName extends Name {
 	private static final Map<TypeElement,CanonicalName> elementToName = new HashMap<TypeElement,CanonicalName>();
 	
 	public static CanonicalName of(final TypeElement type, final Elements util) {
-//		System.out.println("CanonicalName.of");
-//		new Exception().printStackTrace();
-		if (elementToName.containsKey(type)) {
-			return elementToName.get(type);
-		} else {
-			final CanonicalName name = new CanonicalName(type, util);
-			elementToName.put(type, name);
-//			System.out.println("New CanonicalName " + name.toInternalString());
-			return name;
+		synchronized (elementToName) {
+			if (elementToName.containsKey(type)) {
+				return elementToName.get(type);
+			} else {
+				final CanonicalName name = new CanonicalName(type, util);
+				elementToName.put(type, name);
+				return name;
+			}
 		}
 	}
 	
@@ -150,15 +150,14 @@ public class CanonicalName extends Name {
 	}
 	
 	public static CanonicalName of(final String fullName) {
-//		System.out.println("CanonicalName.of");
-//		new Exception().printStackTrace();
-		if (fullToName.containsKey(fullName)) {
-			return fullToName.get(fullName);
-		} else {
-			final CanonicalName name = new CanonicalName(fullName);
-			fullToName.put(fullName, name);
-//			System.out.println("New CanonicalName " + name.toInternalString());
-			return name;
+		synchronized (fullToName) {
+			if (fullToName.containsKey(fullName)) {
+				return fullToName.get(fullName);
+			} else {
+				final CanonicalName name = new CanonicalName(fullName);
+				fullToName.put(fullName, name);
+				return name;
+			}
 		}
 	}
 

@@ -1,9 +1,5 @@
 package oshajava.spec.names;
 
-import java.util.HashMap;
-import java.util.Map;
-
-import oshajava.support.acme.util.Assert;
 
 public class PrimitiveDescriptor extends TypeDescriptor {
 
@@ -18,31 +14,6 @@ public class PrimitiveDescriptor extends TypeDescriptor {
 	public static final PrimitiveDescriptor LONG    = new PrimitiveDescriptor("long",    "J");
 	public static final PrimitiveDescriptor SHORT   = new PrimitiveDescriptor("short",   "S");
 	public static final PrimitiveDescriptor VOID    = new PrimitiveDescriptor("void",    "V");
-	
-	private static final Map<String,PrimitiveDescriptor> primitives = new HashMap<String,PrimitiveDescriptor>();
-	static {
-		PrimitiveDescriptor[] primitiveTypes = {
-				BOOLEAN,
-				BYTE,
-				CHAR,
-				DOUBLE,
-				FLOAT,
-				INT,
-				LONG,
-				SHORT,
-				VOID
-		};
-		for (PrimitiveDescriptor p : primitiveTypes) {
-			primitives.put(p.internalDescriptor, p);
-			primitives.put(p.sourceDescriptor, p);
-		}
-	}
-	
-	public static PrimitiveDescriptor get(String name) {
-		PrimitiveDescriptor p =  primitives.get(name);
-		Assert.assertTrue(p != null, "No such primitive %s!", name);
-		return p;
-	}
 	
 	private final String sourceDescriptor, internalDescriptor;
 	
@@ -59,7 +30,8 @@ public class PrimitiveDescriptor extends TypeDescriptor {
 	 */
 	@Override
 	public boolean equals(Object other) {
-		return other != null && other instanceof PrimitiveDescriptor && internalDescriptor.equals(((PrimitiveDescriptor)other).internalDescriptor);
+		if (other == this) return true;
+		return other instanceof PrimitiveDescriptor && internalDescriptor.equals(((PrimitiveDescriptor)other).internalDescriptor);
 	}
 	
 	private PrimitiveDescriptor(String sourceDescriptor, String internalDescriptor) {
@@ -68,12 +40,22 @@ public class PrimitiveDescriptor extends TypeDescriptor {
 	}
 
 	@Override
-	public String toSourceString() {
+	public String getSourceName() {
 		return sourceDescriptor;
 	}
 
 	@Override
-	public String toInternalString() {
+	public String getInternalName() {
+		return internalDescriptor;
+	}
+
+	@Override
+	public String getSourceDescriptor() {
+		return sourceDescriptor;
+	}
+
+	@Override
+	public String getInternalDescriptor() {
 		return internalDescriptor;
 	}
 

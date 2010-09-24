@@ -23,21 +23,22 @@ public class MethodDescriptor extends Descriptor {
 	
 	private static final long serialVersionUID = 1L;
 	
-	protected final CanonicalName className;
+	protected final ObjectTypeDescriptor classType;
 	protected final String methodName;
 	protected final TypeDescriptor returnType;
 	protected final List<TypeDescriptor> paramTypes;
 	
 	@Override
 	public int hashCode() {
-		return className.hashCode() ^ methodName.hashCode() ^ returnType.hashCode() ^ paramTypes.hashCode();
+		return classType.hashCode() ^ methodName.hashCode() ^ returnType.hashCode() ^ paramTypes.hashCode();
 	}
 	
 	@Override
 	public boolean equals(Object other) {
-		if (other != null && other instanceof MethodDescriptor) {
+		if (this == other) return true;
+		if (other instanceof MethodDescriptor) {
 			final MethodDescriptor md = (MethodDescriptor)other;
-			return className.equals(md.className) && methodName.equals(md.methodName) && returnType.equals(md.returnType) && paramTypes.equals(md.paramTypes);
+			return classType.equals(md.classType) && methodName.equals(md.methodName) && returnType.equals(md.returnType) && paramTypes.equals(md.paramTypes);
 		}
 		return false;
 	}
@@ -45,9 +46,9 @@ public class MethodDescriptor extends Descriptor {
 	/**
 	 * Construct the JVM method descriptor for an ExecutableElement.
 	 */
-	protected MethodDescriptor(ExecutableElement m, Elements util) {
+	private MethodDescriptor(ExecutableElement m, Elements util) {
 		TypeElement cls = (TypeElement)m.getEnclosingElement();
-		this.className = CanonicalName.of(cls, util);
+		this.classType = TypeDescriptor.ofClass(cls, util);
 		this.methodName = m.getSimpleName().toString();
 		this.paramTypes = new ArrayList<TypeDescriptor>();
 		this.returnType = TypeDescriptor.of(m.getReturnType(), util);
@@ -68,8 +69,8 @@ public class MethodDescriptor extends Descriptor {
 		
 	}
 
-	private MethodDescriptor(CanonicalName className, String methodName, String methodTypeDescriptor, String sig) {
-		this.className = className;
+	private MethodDescriptor(ObjectTypeDescriptor classType, String methodName, String methodTypeDescriptor, String sig) {
+		this.classType = classType;
 		this.methodName = methodName;
 		this.paramTypes  = new ArrayList<TypeDescriptor>();
 		
@@ -84,10 +85,10 @@ public class MethodDescriptor extends Descriptor {
 				final TypeDescriptor type;
 				if (desc.charAt(start + arrayDepth) == 'L') {
 					int semi = desc.indexOf(';', start + arrayDepth);
-					type = ObjectTypeDescriptor.of(CanonicalName.of(desc.substring(start + arrayDepth + 1, semi)));
+					type = TypeDescriptor.ofClass(desc.substring(start + arrayDepth + 1, semi));
 					start = semi + 1;
 				} else {
-					type = PrimitiveDescriptor.get(desc.substring(start + arrayDepth, start + arrayDepth + 1));
+					type = TypeDescriptor.ofPrimitive(desc.substring(start + arrayDepth, start + arrayDepth + 1));
 					start = start + arrayDepth + 1;
 				}
 				if (arrayDepth == 0) {
@@ -105,9 +106,9 @@ public class MethodDescriptor extends Descriptor {
 		}
 		final TypeDescriptor type;
 		if (returnDesc.charAt(arrayDepth) == 'L') {
-			type = ObjectTypeDescriptor.of(CanonicalName.of(returnDesc.substring(arrayDepth + 1, returnDesc.length() - 1)));
+			type = TypeDescriptor.ofClass(returnDesc.substring(arrayDepth + 1, returnDesc.length() - 1));
 		} else {
-			type = PrimitiveDescriptor.get(returnDesc.substring(arrayDepth, arrayDepth + 1));
+			type = TypeDescriptor.ofPrimitive(returnDesc.substring(arrayDepth, arrayDepth + 1));
 		}
 		if (arrayDepth == 0) {
 			returnType = type;
@@ -116,8 +117,8 @@ public class MethodDescriptor extends Descriptor {
 		}
 	}
 	
-	public CanonicalName getClassName() {
-		return className;
+	public ObjectTypeDescriptor getClassType() {
+		return classType;
 	}
 
 	public String getMethodName() {
@@ -140,19 +141,27 @@ public class MethodDescriptor extends Descriptor {
 		return methodName.equals("<clinit>");
 	}
 	
-	public String toSourceString() {
+	public String getSourceName() {
 		String out = "";
 		if (isConstructor()) {
-			out += className.toSourceString() + '.';
-			String cls = className.getSimpleName();
+			out += classType.getSourceName() + '.';
+			String cls = classType.getTypeName().getSimpleName();
 			int i = cls.lastIndexOf('.');
 			out += i == -1 ? cls : cls.substring(i);
 		} else {
-			out += returnType.toSourceString() + ' ' + className.toSourceString() + '.' + methodName;
+			out += returnType.getSourceName() + ' ' + classType.getSourceName() + '.' + methodName;
 		}
-		out += '(';
+		return out;
+	}
+	
+	public String getInternalName() {
+		return classType.getInternalName() + '.' + methodName;
+	}
+	
+	public String getSourceDescriptor() {
+		String out = getSourceName() + '(';
 		for (TypeDescriptor p : paramTypes) {
-			out += p.toSourceString() + ", ";
+			out += p.getSourceName() + ", ";
 		}
 		if (!paramTypes.isEmpty()) {
 			out = out.substring(0, out.length() - 2);
@@ -160,12 +169,12 @@ public class MethodDescriptor extends Descriptor {
 		return out + ')';
 	}
 	
-	public String toInternalString() {
-		String out = className.toInternalString() + '.' + methodName + '(';
+	public String getInternalDescriptor() {
+		String out = getInternalName() + '(';
 		for (TypeDescriptor p : paramTypes) {
-			out += p.toInternalString();
+			out += p.getInternalName();
 		}
-		return out + ')' + returnType.toInternalString();
+		return out + ')' + returnType.getInternalName();
 	}
 	
 	/*******************************************/
@@ -186,13 +195,12 @@ public class MethodDescriptor extends Descriptor {
 	// Runtime.
 	private static final Map<String,MethodDescriptor> stringToDescriptor = new HashMap<String,MethodDescriptor>();
 
-	public static MethodDescriptor of(CanonicalName className, String methodName, String methodTypeDescriptor, String sig) {
-//		System.out.println(methodTypeDescriptor);
-		String s = className.toInternalString() + '.' + methodName + methodTypeDescriptor;
+	public static MethodDescriptor of(ObjectTypeDescriptor classType, String methodName, String methodTypeDescriptor, String sig) {
+		String s = classType.getInternalName() + '.' + methodName + methodTypeDescriptor;
 		if (stringToDescriptor.containsKey(s)) {
 			return stringToDescriptor.get(s);
 		} else {
-			MethodDescriptor d = new MethodDescriptor(className, methodName, methodTypeDescriptor, sig);
+			MethodDescriptor d = new MethodDescriptor(classType, methodName, methodTypeDescriptor, sig);
 			stringToDescriptor.put(s, d);
 			return d;
 		}
