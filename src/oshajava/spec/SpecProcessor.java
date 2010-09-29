@@ -486,6 +486,7 @@ public class SpecProcessor extends AbstractProcessor {
 				// Get the right module.
 				final Module module = processedModules.get(m);
 				MethodDescriptor sig = MethodDescriptor.of(m, processingEnv.getElementUtils());
+				Assert.assertTrue(module != null, "null module for method element %s", sig);
 				if (verbose) {
 //					System.out.println(sig + ": " + r);
 				}
