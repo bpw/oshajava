@@ -26,7 +26,7 @@ public class NullModuleSpec extends ModuleSpec {
 	protected final HashMap<MethodDescriptor,Integer> methodSigToId = new HashMap<MethodDescriptor,Integer>();
 	
 	private NullModuleSpec() {
-        super(CanonicalName.of("__NullModuleSpec__"));
+        super(CanonicalName.ofModule("__NullModuleSpec__"));
     }
     
     @Override

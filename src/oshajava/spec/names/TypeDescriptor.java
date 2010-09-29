@@ -1,7 +1,5 @@
 package oshajava.spec.names;
 
-import java.io.IOException;
-import java.io.ObjectInputStream;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -22,13 +20,8 @@ public abstract class TypeDescriptor extends Descriptor {
 
 	protected transient Type asmType;
 	
-	private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
-		in.defaultReadObject();
-		asmType = Type.getType(getInternalDescriptor());
-	}
-	
 	public Type getAsmType() {
-		return asmType;
+		return Type.getType(getInternalDescriptor());
 	}
 	
 	/*******************************/
@@ -59,7 +52,7 @@ public abstract class TypeDescriptor extends Descriptor {
 	
 	
 	public static ObjectTypeDescriptor ofClass(String name) {
-		return CanonicalName.of(name).getType(); // FIXME may be null
+		return CanonicalName.ofInternalClassName(name).getType(); // FIXME may be null
 	}
 	public static ObjectTypeDescriptor ofClass(TypeElement t, Elements util) {
 		return CanonicalName.of(t, util).getType();

@@ -63,6 +63,8 @@ import oshajava.util.count.ConcurrentTimer;
 public class InstrumentationAgent implements ClassFileTransformer {
 
 	protected static final String DEBUG_KEY = "inst";
+	protected static final String IGNORED_DEBUG_KEY = "filter";
+	protected static final String INNER_CLASS_DEBUG_KEY = "innerclass";
 
 	protected static final String[] EXCLUDE_PREFIXES = { // TODO replace with the string matcher options.
 		"oshajava/", 
@@ -120,17 +122,17 @@ public class InstrumentationAgent implements ClassFileTransformer {
     public static final CommandLineOption<StringMatcher> instrumentClassesOption =
     	CommandLine.makeStringMatcher("classes", StringMatchResult.ACCEPT, Kind.EXPERIMENTAL, 
     			"Only track memory operations on fields and in methods in matching classes (by fully qualified name).", 
-    			"-^java\\..*", "-^com.sun\\..*", "-^sun\\..*");
+    			"-^oshajava\\..*", "-^java\\..*", "-^com.sun\\..*", "-^sun\\..*", "-.*\\[\\]$");
 
     // TODO
     public static final CommandLineOption<StringMatcher> instrumentFieldsOption =
     	CommandLine.makeStringMatcher("fields", StringMatchResult.ACCEPT, Kind.EXPERIMENTAL, 
-    			"Only track memory operations on matching fields (by fully qulified name).", "-^java\\..*", "-^com.sun\\..*", "-^sun\\..*");
+    			"Only track memory operations on matching fields (by fully qulified name).", "-.*this\\$.*");
 
     // TODO
     public static final CommandLineOption<StringMatcher> instrumentMethodsOption =
     	CommandLine.makeStringMatcher("methods", StringMatchResult.ACCEPT, Kind.EXPERIMENTAL, 
-    			"Only track memory operations in matching methods (by fully qulified name).", "-^java\\..*", "-^com.sun\\..*", "-^sun\\..*");
+    			"Only track memory operations in matching methods (by fully qulified name).");
     
     public static final CommandLineOption<Boolean> ignoreFinalFieldsOption =
     	CommandLine.makeBoolean("ignoreFinalFields", false, Kind.EXPERIMENTAL, "Turn off tracking for all final fields.");
@@ -185,7 +187,7 @@ public class InstrumentationAgent implements ClassFileTransformer {
 						name = name.replace('.', '/');
 						ObjectTypeDescriptor type = TypeDescriptor.ofClass(name);
 						if (shouldInstrument(type)) {
-							Assert.warn("Class %s matches the instrumentation filter, but it is already loaded and cannot be instrumented.");
+							Assert.warn("Class %s matches the instrumentation filter, but it is already loaded and cannot be instrumented.", type);
 							uninstrumentedLoadedClasses.add(type);
 						}
 					}
@@ -245,7 +247,7 @@ public class InstrumentationAgent implements ClassFileTransformer {
 			Assert.fail(e);
 			return null;
 		} catch (Throwable e) {
-			Assert.panic("Problem running oshajava instrumentor: ", e);
+			Assert.fail("Problem running oshajava instrumentor: ", e);
 			return null;
 		} finally {
 			insTimer.stop();
@@ -259,7 +261,7 @@ public class InstrumentationAgent implements ClassFileTransformer {
 				Debug.debugf(DEBUG_KEY, "Loading main class (%s) and starting instrumentation.", mainClass);
 				return true;
 			}
-			Debug.debugf(DEBUG_KEY, "Ignoring %s (Instrumentation not started yet.)", className);
+			Debug.debugf(IGNORED_DEBUG_KEY, "Ignoring %s (Instrumentation is off.)", className);
 		} else if (appThreadGroupRoot.parentOf(Thread.currentThread().getThreadGroup())
 				&& shouldInstrument(className)) {
 				if (hasUninstrumentedOuterClass(className)) {
@@ -271,7 +273,7 @@ public class InstrumentationAgent implements ClassFileTransformer {
 			// TODO this loses finalize methods, called by GC, probably not in an app thread.
 			return true;
 		} else {
-			Debug.debugf(DEBUG_KEY, "Ignoring %s", className);
+			Debug.debugf(IGNORED_DEBUG_KEY, "Ignoring %s", className);
 		}
 		return false;
 	}
@@ -305,7 +307,7 @@ public class InstrumentationAgent implements ClassFileTransformer {
 	}
 	
 	private static boolean hasUninstrumentedOuterClass(ObjectTypeDescriptor type) {
-		Debug.debugf(DEBUG_KEY, "hasUninstrumentedOuterClasses(%s)", type);
+		Debug.debugf(INNER_CLASS_DEBUG_KEY, "hasUninstrumentedOuterClasses(%s)", type);
 		return type.isInner() && uninstrumentedLoadedClasses.contains(type.getOuterType());
 	}
 	

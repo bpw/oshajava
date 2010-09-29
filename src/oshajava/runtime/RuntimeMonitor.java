@@ -501,7 +501,7 @@ public class RuntimeMonitor {
 		final String threadName = Thread.currentThread().getName();
 		Thread.currentThread().setName("oshajava");
 		
-		Util.logf("%s, Peak Memory: %d", Config.premainFiniTimer, peakMem);
+		Util.logf("%s ms, Peak Memory: %d bytes", Config.premainFiniTimer, peakMem);
 		
 
 		// Report some stats.

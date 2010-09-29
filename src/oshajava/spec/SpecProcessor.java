@@ -281,7 +281,7 @@ public class SpecProcessor extends AbstractProcessor {
 			if (memberDecl != null) {
 				Module m;
 				try {
-					m = modules.getOrCreate(CanonicalName.of(memberDecl.value()));
+					m = modules.getOrCreate(CanonicalName.ofModule(memberDecl.value()));
 				} catch (IOException e1) {
 					error("Could not access module info on filesystem.");
 					throw new RuntimeException(e1);
