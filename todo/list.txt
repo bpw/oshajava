@@ -12,13 +12,15 @@
 
 * Inline lock/array shadow caches.
 
-* @Unchecked option.
+* @Untracked, for fields, methods, classes, packages.  When loading an @Untracked thing at runtime, update the instrumentation filters so it shows in the log.
+
+* @Accessor, shorthand for @Reader and @Writer.
 
 * Fix Volatile shadows (REf)
 
 * Implement added options.
 
-* Clean up instrumentation filtering.
+* Clean up.
 
 * JDK rewriting
 
