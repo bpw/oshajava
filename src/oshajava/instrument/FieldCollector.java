@@ -5,12 +5,15 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.zip.InflaterInputStream;
 
 import com.sun.xml.internal.ws.org.objectweb.asm.Opcodes;
 
 import oshajava.spec.names.FieldDescriptor;
 import oshajava.spec.names.ObjectTypeDescriptor;
 import oshajava.spec.names.TypeDescriptor;
+import oshajava.support.acme.util.Assert;
+import oshajava.support.acme.util.Debug;
 import oshajava.support.org.objectweb.asm.AnnotationVisitor;
 import oshajava.support.org.objectweb.asm.Attribute;
 import oshajava.support.org.objectweb.asm.ClassReader;
@@ -76,6 +79,7 @@ public class FieldCollector implements ClassVisitor {
 	private static final HashMap<ObjectTypeDescriptor,List<FieldDescriptor>> table = new HashMap<ObjectTypeDescriptor,List<FieldDescriptor>>();
 
 	public static List<FieldDescriptor> collect(final ObjectTypeDescriptor className, final ClassLoader loader) throws IOException {
+		Debug.debugf("fieldCollector", "collect(\"%s\", ...)", className);
 		if (className.equals(TypeDescriptor.OBJECT)) return EMPTY;
 //		if (InstrumentationAgent.isUntouchable(className)) return EMPTY;
 		if (table.containsKey(className)) {
@@ -86,7 +90,12 @@ public class FieldCollector implements ClassVisitor {
 		try {
 			new ClassReader(bytecode).accept(fc, ClassReader.SKIP_CODE);
 		} catch (IOExceptionWrapper e) {
-			e.toss();
+			if (InstrumentationAgent.shouldInstrument(className)) {
+				e.toss();
+			} else {
+				Assert.warn("Cannot find class %s while looking for super fields!  Hoping for the best.", className); InflaterInputStream i;
+				return EMPTY;
+			}
 		}
 		table.put(className, fc.getFields());
 		return fc.getFields();
@@ -95,17 +104,18 @@ public class FieldCollector implements ClassVisitor {
 	private static final int INC = 4096;
 	private static byte[] getBytes(final InputStream in) throws IOException {
 		byte[] bytes = new byte[0];
-		int bytesRead = INC, totalBytesRead = 0;
+		int bytesRead = 0, totalBytesRead = 0, nextReadSize = INC;
 		do {
-			byte[] newBytes = new byte[bytes.length + bytesRead];
-			System.arraycopy(bytes, 0, newBytes, 0, bytes.length);
-			bytesRead = in.read(newBytes, totalBytesRead, bytesRead);
+			byte[] newBytes = new byte[bytes.length + nextReadSize];
+			bytesRead = in.read(newBytes, bytes.length, nextReadSize);
 			if (bytesRead == -1) { // EOF
 				break;
 			}
+			System.arraycopy(bytes, 0, newBytes, 0, bytes.length);
 			bytes = newBytes;
 			totalBytesRead += bytesRead;
-		} while (bytesRead == bytes.length / 2);
+			nextReadSize = nextReadSize * 2;
+		} while (totalBytesRead == bytes.length);
 		in.close();
 		if (totalBytesRead < bytes.length) {
 			byte[] oldBytes = bytes;

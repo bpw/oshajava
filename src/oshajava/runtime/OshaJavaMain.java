@@ -46,6 +46,7 @@ public class OshaJavaMain {
 				} catch (OshaRuntimeException e) {
 					Assert.fail(e);
 				} catch (Throwable e) {
+					Assert.warn(e.getCause());
 					Assert.fail(e);
 				} finally {
 					mainTimer.stop();
