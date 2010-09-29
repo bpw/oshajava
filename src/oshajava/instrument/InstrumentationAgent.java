@@ -186,7 +186,7 @@ public class InstrumentationAgent implements ClassFileTransformer {
 					if (name != null) {
 						ObjectTypeDescriptor type = TypeDescriptor.ofClass(name);
 						if (shouldInstrument(type)) {
-							Assert.warn("Class %s matches the instrumentation filter, but it is already loaded and cannot be instrumented.", type);
+							Assert.warn("Class %s matches the instrumentation filter, but it is already loaded and will NOT be instrumented.", type);
 							uninstrumentedLoadedClasses.add(type);
 						}
 					}
@@ -220,13 +220,13 @@ public class InstrumentationAgent implements ClassFileTransformer {
 			ProtectionDomain pd, byte[] bytecode) throws IllegalClassFormatException {
 		if (loader == null) {
 			if (shouldTransform(TypeDescriptor.ofClass(className))) {
-				Assert.warn("Would have transformed %s, but bootstrap class loader in use.", className);
+				Assert.warn("Would have transformed %s, but bootstrap class loader in use.  This probably means you have an unwise instrumentatino filter.", className);
 			}
 			return null;
 		}
 		try {
 			if (!shouldTransform(TypeDescriptor.ofClass(className))) {
-				Assert.warn("Not transforming %s, even though it was not loaded by the bootstrap class loader.", className);
+//				Assert.warn("Not transforming %s, even though it was not loaded by the bootstrap class loader.", className);
 				return null;
 			}
 
