@@ -9,7 +9,7 @@ import javax.lang.model.util.Elements;
 import oshajava.support.acme.util.Assert;
 
 /**
- * Structured storage of canonical names packages, types, modules, etc.
+ * Structured storage of canonical names packages, types, modules, etc. $ (not .) is the delimiter for nested classes...
  */
 public class CanonicalName extends Name {
 	private static final long serialVersionUID = 1L;
@@ -143,15 +143,13 @@ public class CanonicalName extends Name {
 		}
 	}
 	
-	public static CanonicalName ofInternalClassName(String fullName) {
-		Assert.assertTrue(fullName != null, "null fullName");
-		int i = fullName.lastIndexOf('/');
-		String pkg = i == -1 ? null : fullName.substring(0, i);
-		String simpleName = i == -1 ? fullName : fullName.substring(i + 1);
-		return CanonicalName.of(pkg, simpleName);
-	}
 
-	public static CanonicalName ofModule(String fullName) {
+	/**
+	 * Takes names of the form a.b.C$D$E or a/b/C$D$E, but NOT a.b.C.D.E or a/b/C.D.E
+	 * @param fullName
+	 * @return
+	 */
+	public static CanonicalName of(String fullName) {
 		fullName = fullName.replace('/', '.');
 		synchronized (fullToName) {
 			if (fullToName.containsKey(fullName)) {

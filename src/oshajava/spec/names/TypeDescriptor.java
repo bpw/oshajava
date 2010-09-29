@@ -50,9 +50,13 @@ public abstract class TypeDescriptor extends Descriptor {
 	}
 	
 	
-	
+	/**
+	 * Takes names of the form a.b.C$D$E or a/b/C$D$E, but NOT a.b.C.D.E or a/b/C.D.E
+	 * @param name
+	 * @return
+	 */
 	public static ObjectTypeDescriptor ofClass(String name) {
-		return CanonicalName.ofInternalClassName(name).getType(); // FIXME may be null
+		return CanonicalName.of(name).getType(); // FIXME may be null
 	}
 	public static ObjectTypeDescriptor ofClass(TypeElement t, Elements util) {
 		return CanonicalName.of(t, util).getType();

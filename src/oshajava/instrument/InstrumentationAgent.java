@@ -184,7 +184,6 @@ public class InstrumentationAgent implements ClassFileTransformer {
 				for (Class<?> c : inst.getAllLoadedClasses()) {
 					String name = c.getCanonicalName();
 					if (name != null) {
-						name = name.replace('.', '/');
 						ObjectTypeDescriptor type = TypeDescriptor.ofClass(name);
 						if (shouldInstrument(type)) {
 							Assert.warn("Class %s matches the instrumentation filter, but it is already loaded and cannot be instrumented.", type);
@@ -203,9 +202,9 @@ public class InstrumentationAgent implements ClassFileTransformer {
 	private static ObjectTypeDescriptor mainClass;
 	private static final Option<String> mainClassOption = new Option<String>("mainClass", "");
 	public static void setMainClass(String cl) {
-		Debug.debugf(DEBUG_KEY, "Setting main application class to %s.", cl);
 		mainClass = TypeDescriptor.ofClass(cl);
-		mainClassOption.set(mainClass.getInternalDescriptor());
+		Debug.debugf(DEBUG_KEY, "Setting main application class to %s.", mainClass);
+		mainClassOption.set(mainClass.getInternalName());
 	}
 	public static void stopInstrumentation() {
 		Debug.debug(DEBUG_KEY, "Turning off instrumentation");
@@ -256,6 +255,7 @@ public class InstrumentationAgent implements ClassFileTransformer {
 
 	private static boolean shouldTransform(ObjectTypeDescriptor className) {
 		if (!instrumentationOn) {
+			Debug.debugf(DEBUG_KEY, "%s .equals( %s ", Util.objectToIdentityString(className), Util.objectToIdentityString(mainClass));
 			if(className.equals(mainClass)) {
 				instrumentationOn = true;
 				Debug.debugf(DEBUG_KEY, "Loading main class (%s) and starting instrumentation.", mainClass);
