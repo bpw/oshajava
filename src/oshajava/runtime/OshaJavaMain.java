@@ -3,7 +3,8 @@ package oshajava.runtime;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
-import oshajava.instrument.InstrumentationAgent;
+import oshajava.instrument.Filter;
+import oshajava.instrument.Agent;
 import oshajava.runtime.exceptions.OshaRuntimeException;
 import oshajava.support.acme.util.Assert;
 import oshajava.support.acme.util.Debug;
@@ -20,9 +21,8 @@ public class OshaJavaMain {
 			Assert.fail("No main class given.");
 		}
 		final String mainClass = args[0];
-		InstrumentationAgent.setMainClass(mainClass);
 		final ThreadGroup appGroup = new ThreadGroup("application thread group root");
-		InstrumentationAgent.setAppThreadGroupRoot(appGroup);
+		final ClassLoader loader = Filter.getMappingLoader();
 		final Thread app = new Thread(appGroup, "application main") {
 			public void run() {
 				final SequentialTimer mainTimer = new SequentialTimer("Main time");
@@ -32,7 +32,7 @@ public class OshaJavaMain {
 					final Class<?> cl;
 					final Method main;
 					try {
-						cl = ClassLoader.getSystemClassLoader().loadClass(args[0]);
+						cl = loader.loadClass(args[0]);
 						main = cl.getMethod("main", String[].class);
 					} catch (Throwable e) {
 						Assert.fail(e);
@@ -55,10 +55,12 @@ public class OshaJavaMain {
 		};
 		Runtime.getRuntime().addShutdownHook(new Thread() {
 			public void run() {
-				InstrumentationAgent.stopInstrumentation();
+				Agent.stopInstrumentation();
 				RuntimeMonitor.fini(mainClass);
 			}
 		});
+		app.setContextClassLoader(loader);
+		Agent.initializeProgram(mainClass, appGroup);
 		Debug.debugf("main", "Starting %s", mainClass);
 		app.start();
 		try {

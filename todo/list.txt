@@ -1,5 +1,5 @@
 * Separate instrumentation parts into different visitors for simpler
-  selection via options.
+  selection via options.  This may not be easy/possible.
 
 * Incremental compilation.
 

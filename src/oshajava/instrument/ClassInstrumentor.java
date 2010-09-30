@@ -198,7 +198,7 @@ public class ClassInstrumentor extends ClassAdapter {
 	 * @param desc
 	 */
 	private void addShadowField(FieldDescriptor fd) {
-		if (InstrumentationAgent.shouldInstrument(fd)) {
+		if (Filter.shouldInstrument(fd)) {
 		    
 		    int newAccess;
 		    if ((classAccess & Opcodes.ACC_INTERFACE) != 0) {
@@ -216,7 +216,7 @@ public class ClassInstrumentor extends ClassAdapter {
 		    }
 		    
 		    // Option to make all shadows volatile.
-	        if (InstrumentationAgent.volatileShadowOption.get()) {
+	        if (Agent.volatileShadowOption.get()) {
 	        	newAccess |= Opcodes.ACC_VOLATILE;
 	        }
 
@@ -299,7 +299,7 @@ public class ClassInstrumentor extends ClassAdapter {
 		}
 		
 		for (FieldDescriptor fd : superFields) {
-			if (!InstrumentationAgent.shouldInstrument(superType) && InstrumentationAgent.shouldInstrument(fd)) {
+			if (!Filter.shouldInstrument(superType) && Filter.shouldInstrument(fd)) {
 				addShadowField(fd);
 			}
 		}
@@ -406,7 +406,7 @@ public class ClassInstrumentor extends ClassAdapter {
 			instance.visitCode();
 
 			// call super.initer()
-			if (InstrumentationAgent.shouldInstrument(superType)) {
+			if (Filter.shouldInstrument(superType)) {
 				instance.loadThis();
 				instance.visitMethodInsn(Opcodes.INVOKESPECIAL, superType.getInternalName(), INSTANCE_SHADOW_INIT_METHOD.getName(), INSTANCE_SHADOW_INIT_METHOD.getDescriptor());
 			}

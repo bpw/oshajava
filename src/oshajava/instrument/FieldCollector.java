@@ -85,12 +85,11 @@ public class FieldCollector implements ClassVisitor {
 		if (table.containsKey(className)) {
 			return table.get(className);
 		}
-		byte[] bytecode = getBytes(loader.getResourceAsStream(className.getInternalName() + ".class"));
 		FieldCollector fc = new FieldCollector(className, loader);
 		try {
-			new ClassReader(bytecode).accept(fc, ClassReader.SKIP_CODE);
+			new ClassReader(loader.getResourceAsStream(className.getInternalName() + ".class")).accept(fc, ClassReader.SKIP_CODE);
 		} catch (IOExceptionWrapper e) {
-			if (InstrumentationAgent.shouldInstrument(className)) {
+			if (Filter.shouldInstrument(className)) {
 				e.toss();
 			} else {
 				Assert.warn("Cannot find class %s while looking for super fields!  Hoping for the best.", className); InflaterInputStream i;
@@ -101,30 +100,6 @@ public class FieldCollector implements ClassVisitor {
 		return fc.getFields();
 	}
 	
-	private static final int INC = 4096;
-	private static byte[] getBytes(final InputStream in) throws IOException {
-		byte[] bytes = new byte[0];
-		int bytesRead = 0, totalBytesRead = 0, nextReadSize = INC;
-		do {
-			byte[] newBytes = new byte[bytes.length + nextReadSize];
-			bytesRead = in.read(newBytes, bytes.length, nextReadSize);
-			if (bytesRead == -1) { // EOF
-				break;
-			}
-			System.arraycopy(bytes, 0, newBytes, 0, bytes.length);
-			bytes = newBytes;
-			totalBytesRead += bytesRead;
-			nextReadSize = nextReadSize * 2;
-		} while (totalBytesRead == bytes.length);
-		in.close();
-		if (totalBytesRead < bytes.length) {
-			byte[] oldBytes = bytes;
-			bytes = new byte[totalBytesRead];
-			System.arraycopy(oldBytes, 0, bytes, 0, totalBytesRead);
-		}
-		return bytes;
-	}
-
 	public void visitSource(String source, String debug) {
 		// TODO Auto-generated method stub
 		

@@ -61,7 +61,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 				Assert.warn("Anonymous class %s has method %s not in module %s. Inlining.", methodDescriptor.getClassType(), methodDescriptor, module.getName());
 				policy = CommunicationKind.INLINE;
 			} else {
-				if (InstrumentationAgent.ignoreMissingMethodsOption.get()) {
+				if (Agent.ignoreMissingMethodsOption.get()) {
 					Assert.warn("IGNORED and INLINED: in module " + module.getName() + ", " + methodDescriptor + " not found");
 				} else {
 					Assert.fail("Method " + methodDescriptor + " not found in " + module);
@@ -392,8 +392,8 @@ public class MethodInstrumentor extends AdviceAdapter {
 	 */
 	@Override
 	public void visitFieldInsn(int opcode, String owner, String name, String desc) {
-
-		if (InstrumentationAgent.shouldInstrument(FieldDescriptor.of(TypeDescriptor.ofClass(owner), name, TypeDescriptor.fromDescriptorString(desc)))) {
+		FieldDescriptor field = FieldDescriptor.of(TypeDescriptor.ofClass(owner), name, TypeDescriptor.fromDescriptorString(desc));
+		if (Filter.shouldInstrument(field)) {
 
 			// TODO figure out how to add visitFrame where needed below (GOTOs) to
 			// avoid cost of computing the frames...?
@@ -513,7 +513,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 				// stack -> obj | state readerState
 				pushCurrentState();
 				// push field name. stack -> obj | state readerState [trace] name
-				super.push(InstrumentationAgent.makeFieldSourceName(owner, name));
+				super.push(field.getSourceName());
 				if (Config.stackTracesOption.get()) {
 					// stack -> obj | state readerState trace
 				    super.loadLocal(traceVar);
@@ -578,7 +578,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 				// stack -> state readerState
 				pushCurrentState();
 				// push field name. stack -> obj | state readerState [trace] name
-				super.push(InstrumentationAgent.makeFieldSourceName(owner, name));
+				super.push(field.getSourceName());
 				if (Config.stackTracesOption.get()) {
 					// stack -> obj | state readerState trace
 				    super.getStatic(ownerType, stacktraceFieldName, ClassInstrumentor.STACKTRACE_TYPE);
@@ -781,7 +781,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 			calledOtherConstructor = true;
 			
 			// Patch calls to super/this constructors that should not be or is not instrumented.
-			if (InstrumentationAgent.isOrWillBeUninstrumented(invokedMethod)) { 
+			if (Filter.isOrWillBeUninstrumented(invokedMethod)) { 
 				// First, invoke the uninstrumented constructor.
     		    super.visitMethodInsn(opcode, invokedMethod.getClassType().getInternalName(), name, desc);
     		    // Then initialize the shadow fields.
