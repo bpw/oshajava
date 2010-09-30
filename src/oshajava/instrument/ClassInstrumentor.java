@@ -19,6 +19,7 @@ import oshajava.spec.names.ObjectTypeDescriptor;
 import oshajava.spec.names.TypeDescriptor;
 import oshajava.support.acme.util.Assert;
 import oshajava.support.acme.util.Debug;
+import oshajava.support.acme.util.StringMatchResult;
 import oshajava.support.org.objectweb.asm.ClassAdapter;
 import oshajava.support.org.objectweb.asm.ClassVisitor;
 import oshajava.support.org.objectweb.asm.FieldVisitor;
@@ -285,7 +286,9 @@ public class ClassInstrumentor extends ClassAdapter {
 		try {
 			moduleMap = Spec.getModuleMap(classType, loader);
 		} catch (ModuleMapNotFoundException e) {
-			Assert.warn("No module map for class %s.  Using null module for all member methods.", classType);
+			if (Config.noSpecOption.get().test(classType.getSourceName()) != StringMatchResult.ACCEPT) {
+				Assert.warn("No module map for class %s.  Using null module for all member methods.", classType);
+			}
 		}
 
 		// TODO Fix frames so we can actually support Java 6 class file format in full.
@@ -369,8 +372,10 @@ public class ClassInstrumentor extends ClassAdapter {
 			    							method, method.getInternalName(), classType);
 		    					} else {
 			    					// If a particular method is missing from the module map, we need to warn! (Maybe fail.)
-			    					Assert.warn("Method %s missing from module map for class %s (%s).  Using null module.", 
-			    							method, method.getInternalName(), classType);
+		    						if (Config.noSpecOption.get().test(classType.getSourceName()) != StringMatchResult.ACCEPT) {
+		    							Assert.warn("Method %s missing from module map for class %s (%s).  Using null module.", 
+		    									method, method.getInternalName(), classType);
+		    						}
 		    					}
 		    					module = NullModuleSpec.MODULE;
 		    				}

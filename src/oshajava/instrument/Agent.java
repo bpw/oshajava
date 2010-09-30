@@ -3,22 +3,17 @@ package oshajava.instrument;
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.lang.instrument.ClassFileTransformer;
 import java.lang.instrument.IllegalClassFormatException;
-import java.lang.instrument.Instrumentation;
 import java.security.ProtectionDomain;
-import java.util.HashSet;
 
 import oshajava.runtime.Config;
 import oshajava.spec.exceptions.ModuleSpecNotFoundException;
-import oshajava.spec.names.FieldDescriptor;
-import oshajava.spec.names.MethodDescriptor;
 import oshajava.spec.names.ObjectTypeDescriptor;
 import oshajava.spec.names.TypeDescriptor;
 import oshajava.support.acme.util.Assert;
 import oshajava.support.acme.util.Debug;
-import oshajava.support.acme.util.StringMatchResult;
-import oshajava.support.acme.util.StringMatcher;
 import oshajava.support.acme.util.Util;
 import oshajava.support.acme.util.option.CommandLine;
 import oshajava.support.acme.util.option.CommandLineOption;
@@ -46,7 +41,7 @@ import oshajava.util.count.ConcurrentTimer;
  * and it should not be instrumented.
  * 
  * TODO When instrumenting a class, the java.* types it uses should be rewritten as follows:
- * If their initializing class loader was an ICL or if they are not loaded, then do not rewrite.
+ * If their initializing class classLoader was an ICL or if they are not loaded, then do not rewrite.
  * If their initializing class laoder was not an ICL, they were not
  * instrumented, so rewrite them to be javacopy.*.
  * As ICL loads classes, it records the names/types it loaded so this is easy to determine.
@@ -54,10 +49,10 @@ import oshajava.util.count.ConcurrentTimer;
  * TODO When loading a javacopy.* class, open the classes.jar behind the scenes, pull out the
  * corresponding java.* class and rewrite it to be javacopy.* before the restof instrumentation.
  * 
- * TODO in transform(), if loader is ICL, do the instrumentation.  If not, don't.  Actually, push this
+ * TODO in transform(), if classLoader is ICL, do the instrumentation.  If not, don't.  Actually, push this
  * all to the ICL? No, because we don't get to hook the byte array there.
  * 
- * TODO in premain, set the system class loader to be an ICL.
+ * TODO in premain, set the system class classLoader to be an ICL.
  * 
  * @author bpw
  *
@@ -94,7 +89,10 @@ public class Agent implements ClassFileTransformer {
     public static final CommandLineOption<Boolean> ignoreFinalFieldsOption =
     	CommandLine.makeBoolean("ignoreFinalFields", false, Kind.EXPERIMENTAL, "Turn off tracking for all final fields.");
         
-    /*****************/
+    public static final CommandLineOption<Boolean> remapOption =
+    	CommandLine.makeBoolean("remap", false, Kind.EXPERIMENTAL, "Remap uses of preloaded classes to allow them to be instrumented.");
+    
+   /*****************/
     
     /**
      * A timer for instrumentation.
@@ -149,7 +147,11 @@ public class Agent implements ClassFileTransformer {
 	 */
 	public byte[] transform(ClassLoader loader, String className, Class<?> classBeingRedefined, 
 			ProtectionDomain pd, byte[] bytecode) throws IllegalClassFormatException {
-		final ObjectTypeDescriptor cls = TypeDescriptor.ofClass(className);
+		if (remapOption.get() && !isMapped(className)) {
+			Debug.debugf(IGNORED_DEBUG_KEY, "Ignoring %s (raw)", className);
+			return null;
+		}
+		final ObjectTypeDescriptor cls = TypeDescriptor.ofClass(unmap(className));
 		
 		if (!instrumenting) {
 			if(cls.equals(mainClass)) {
@@ -164,11 +166,13 @@ public class Agent implements ClassFileTransformer {
 			Debug.debugf(IGNORED_DEBUG_KEY, "Ignoring %s", className);
 			// FIXME add to remapping list.
 			return null;
+		} else if (Filter.isArrayClass(className)) {
+			return null;
 		} else if (loader == null) {
-			loader = Filter.getMappingLoader();
+			loader = classLoader;
 //			// FIXME Really skip these?
 //			if (Filter.shouldInstrument(cls) && !Filter.shouldRemap(cls)) {
-//				Assert.warn("%s was not instrumented and will not be remapped!  [Implementation detail: Consider substituting system class loader.]", className);
+//				Assert.warn("%s was not instrumented and will not be remapped!  [Implementation detail: Consider substituting system class classLoader.]", className);
 //			}
 //			// FIXME add to remapping list.
 //			return null;
@@ -190,16 +194,14 @@ public class Agent implements ClassFileTransformer {
 					chain = new CheckClassAdapter(chain);
 				}
 				
-				// Remap things like java.util.* to __osha__.java.util.*
-				chain = new RemappingClassAdapter(chain, Filter.remapper);
+				// Remap things like java.util.* to __$osha$__java.util.*
+				if (remapOption.get()) {
+					chain = new RemappingClassAdapter(chain, mapper);
+				}
 				
 				// If the class matches the instrumentation filter, instrument it.
 				if (Filter.shouldInstrument(cls)) { // TODO check.
-					if (Filter.hasUninstrumentedOuterClass(cls)) {
-						Assert.warn("Would instrument class %s, but it is an inner class of a pre-loaded uninstrumented class.", className);
-					} else {
-						chain = new ClassInstrumentor(chain, loader);
-					}
+					chain = new ClassInstrumentor(chain, loader);
 				}
 				
 				// Optionally treat frames correctly instead of downgrading to Java 1.5 bytecodes.
@@ -244,5 +246,74 @@ public class Agent implements ClassFileTransformer {
 			insTimer.stop();
 		}
 	}
+
+	/*******************************/
+	
+	/**
+	 * Prefix to use when mapping classes.
+	 */
+	public static final String PREFIX = "__$osha$__";
+	
+	/**
+	 * For remapping things like java.util.* to __$osha$__java.util.*.
+	 */
+	protected static final Remapper mapper = new Remapper() {
+		@Override
+		public String map(String typeName) {
+			return Agent.map(typeName);
+		}
+	};
+	
+	public static String map(String typeName) {
+		if (remapOption.get() && !typeName.startsWith(PREFIX) && Filter.shouldInstrument(TypeDescriptor.ofClass(typeName))) {
+			return PREFIX + typeName;
+		}
+		return typeName;
+	}
+	
+	public static String unmap(String mappedName) {
+		if (mappedName.startsWith(PREFIX)) return mappedName.substring(PREFIX.length());
+		return mappedName;
+	}
+	
+	private static boolean isMapped(String name) {
+		return name.startsWith(PREFIX);
+	}
+
+	/**
+	 * The mapping classLoader.
+	 */
+	private static final ClassLoader classLoader = new ClassLoader(ClassLoader.getSystemClassLoader()) {
+		@Override
+		protected synchronized Class<?> findClass(String name) throws ClassNotFoundException {
+			if (name.startsWith(PREFIX)) {
+				ClassReader cr;
+				final String actualClass = unmap(name);
+				try {
+					Debug.debugf("remap", "%s -> %s", name, actualClass);
+					cr = new ClassReader(getResourceAsStream(actualClass.replace('.', '/') + ".class"));
+				} catch (IOException e) {
+					ClassNotFoundException c = new ClassNotFoundException("IOException trying to load class file for" + actualClass, e);
+					throw c;
+				}
+				final ClassWriter cw = new ClassWriter(cr, 0);
+				cr.accept(cw, 0);
+				final byte[] bytecode = cw.toByteArray();
+				return defineClass(name, bytecode, 0, bytecode.length);
+			} else {
+				throw new ClassNotFoundException();
+			}
+		}
+		// FIXME rewrite all calls to ClassLoader.getSystemClassLoader() etc. to be calls to InstrumentingClassLoader.get()...
+	};
+	
+	/**
+	 * Get the mapping classLoader.
+	 * @return
+	 */
+	public static ClassLoader getMappingLoader() {
+		return classLoader;
+	}
+
 
 }

@@ -1,13 +1,9 @@
 package oshajava.instrument;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.zip.InflaterInputStream;
-
-import com.sun.xml.internal.ws.org.objectweb.asm.Opcodes;
 
 import oshajava.spec.names.FieldDescriptor;
 import oshajava.spec.names.ObjectTypeDescriptor;
@@ -17,9 +13,11 @@ import oshajava.support.acme.util.Debug;
 import oshajava.support.org.objectweb.asm.AnnotationVisitor;
 import oshajava.support.org.objectweb.asm.Attribute;
 import oshajava.support.org.objectweb.asm.ClassReader;
-import oshajava.support.org.objectweb.asm.FieldVisitor;
 import oshajava.support.org.objectweb.asm.ClassVisitor;
+import oshajava.support.org.objectweb.asm.FieldVisitor;
 import oshajava.support.org.objectweb.asm.MethodVisitor;
+
+import com.sun.xml.internal.ws.org.objectweb.asm.Opcodes;
 
 /**
  * Collects the fields of a class, recursively walking up the inheritance chain.
@@ -92,7 +90,7 @@ public class FieldCollector implements ClassVisitor {
 			if (Filter.shouldInstrument(className)) {
 				e.toss();
 			} else {
-				Assert.warn("Cannot find class %s while looking for super fields!  Hoping for the best.", className); InflaterInputStream i;
+				Assert.warn("Cannot find class %s while looking for super fields!  Hoping for the best.", className);
 				return EMPTY;
 			}
 		}

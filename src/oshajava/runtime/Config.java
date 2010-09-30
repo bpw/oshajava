@@ -141,7 +141,6 @@ public class Config {
 		cl.add(Filter.instrumentClassesOption);
 		cl.add(Filter.instrumentFieldsOption);
 		cl.add(Filter.instrumentMethodsOption);
-		cl.add(Filter.remapTypesOption);
 		cl.add(Agent.volatileShadowOption);
 		cl.add(intraThreadOption);
 		
@@ -166,8 +165,9 @@ public class Config {
 		cl.add(profileExtOption);
 		cl.add(idOption);
 		
-		cl.addGroup("Instrumentation Debugging)");
+		cl.addGroup("Instrumentation");
 		
+		cl.add(Agent.remapOption);
 		cl.add(Agent.bytecodeDumpOption);
 		cl.add(Agent.bytecodeDumpDirOption);
 		cl.add(Agent.framesOption);
@@ -201,8 +201,8 @@ public class Config {
 			try {
 				Debug.debug(Agent.DEBUG_KEY, "Installing oshajava instrumentation agent.");
 				inst.addTransformer(new Agent());
-				Debug.debug(Filter.DEBUG_KEY, "Registering preloaded classes with filter remapper.");
-				Filter.init(inst);
+				Debug.debug(Filter.DEBUG_KEY, "Registering preloaded classes with filter mapper.");
+//				Filter.init(inst);
 			} catch (Throwable e) {
 				Assert.fail("Problem installing oshajava instrumentor", e);
 			}

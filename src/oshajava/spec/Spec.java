@@ -5,12 +5,14 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 
+import oshajava.runtime.Config;
 import oshajava.spec.exceptions.ModuleMapNotFoundException;
 import oshajava.spec.exceptions.ModuleSpecNotFoundException;
 import oshajava.spec.names.CanonicalName;
 import oshajava.spec.names.Descriptor;
 import oshajava.spec.names.ObjectTypeDescriptor;
 import oshajava.support.acme.util.Assert;
+import oshajava.support.acme.util.StringMatchResult;
 import oshajava.util.ColdStorage;
 
 /**
@@ -61,7 +63,7 @@ public class Spec {
 			}
 			final CompiledModuleSpec ms = (CompiledModuleSpec)ColdStorage.load(res);
 			if (ms == null) {
-				Assert.warn("ModuleSpec %s was null on disk.", qualifiedName);
+				Assert.fail("ModuleSpec %s was null on disk.", qualifiedName);
 				throw new ModuleSpecNotFoundException(qualifiedName + ", referenced by " + requester);
 			}
 			return ms;
@@ -105,12 +107,14 @@ public class Spec {
 		try {
 			final InputStream res = loader.getResourceAsStream(className.getInternalName() + ModuleMap.EXT);
 			if (res == null) {
-				Assert.warn("Loader could not find ModuleMap for class %s.", className);
+				if (Config.noSpecOption.get().test(className.getSourceName()) != StringMatchResult.ACCEPT) {
+					Assert.warn("Loader could not find ModuleMap for class %s.", className);
+				}
 				throw new ModuleMapNotFoundException(className.getTypeName());
 			}
 			final ModuleMap ms = (ModuleMap)ColdStorage.load(res);
 			if (ms == null) {
-				Assert.warn("ModuleMap for class %s was null on disk.", className);
+				Assert.fail("ModuleMap for class %s was null on disk.", className);
 				throw new ModuleMapNotFoundException(className.getTypeName());
 			}
 			classToMap.put(className, ms);

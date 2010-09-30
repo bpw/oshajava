@@ -1,6 +1,5 @@
 package oshajava.runtime.exceptions;
 
-import oshajava.instrument.Agent;
 import oshajava.runtime.RuntimeMonitor;
 import oshajava.runtime.State;
 

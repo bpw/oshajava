@@ -3,7 +3,6 @@ package oshajava.runtime;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
-import oshajava.instrument.Filter;
 import oshajava.instrument.Agent;
 import oshajava.runtime.exceptions.OshaRuntimeException;
 import oshajava.support.acme.util.Assert;
@@ -22,7 +21,7 @@ public class OshaJavaMain {
 		}
 		final String mainClass = args[0];
 		final ThreadGroup appGroup = new ThreadGroup("application thread group root");
-		final ClassLoader loader = Filter.getMappingLoader();
+		final ClassLoader loader = Agent.getMappingLoader();
 		final Thread app = new Thread(appGroup, "application main") {
 			public void run() {
 				final SequentialTimer mainTimer = new SequentialTimer("Main time");
@@ -32,7 +31,7 @@ public class OshaJavaMain {
 					final Class<?> cl;
 					final Method main;
 					try {
-						cl = loader.loadClass(args[0]);
+						cl = loader.loadClass(Agent.map(args[0]));
 						main = cl.getMethod("main", String[].class);
 					} catch (Throwable e) {
 						Assert.fail(e);

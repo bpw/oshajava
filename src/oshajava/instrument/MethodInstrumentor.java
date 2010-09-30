@@ -781,7 +781,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 			calledOtherConstructor = true;
 			
 			// Patch calls to super/this constructors that should not be or is not instrumented.
-			if (Filter.isOrWillBeUninstrumented(invokedMethod)) { 
+			if (!Filter.shouldInstrument(invokedMethod)) { 
 				// First, invoke the uninstrumented constructor.
     		    super.visitMethodInsn(opcode, invokedMethod.getClassType().getInternalName(), name, desc);
     		    // Then initialize the shadow fields.
