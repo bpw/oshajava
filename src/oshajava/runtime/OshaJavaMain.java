@@ -4,6 +4,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
 import oshajava.instrument.Agent;
+import oshajava.instrument.Rewriter;
 import oshajava.runtime.exceptions.OshaRuntimeException;
 import oshajava.support.acme.util.Assert;
 import oshajava.support.acme.util.Debug;
@@ -31,7 +32,7 @@ public class OshaJavaMain {
 					final Class<?> cl;
 					final Method main;
 					try {
-						cl = loader.loadClass(Agent.map(args[0]));
+						cl = loader.loadClass(Rewriter.map(args[0]));
 						main = cl.getMethod("main", String[].class);
 					} catch (Throwable e) {
 						Assert.fail(e);

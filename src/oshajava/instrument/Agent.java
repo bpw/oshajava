@@ -147,11 +147,11 @@ public class Agent implements ClassFileTransformer {
 	 */
 	public byte[] transform(ClassLoader loader, String className, Class<?> classBeingRedefined, 
 			ProtectionDomain pd, byte[] bytecode) throws IllegalClassFormatException {
-		if (remapOption.get() && !isMapped(className)) {
+		if (remapOption.get() && !Rewriter.isMapped(className)) {
 			Debug.debugf(IGNORED_DEBUG_KEY, "Ignoring %s (raw)", className);
 			return null;
 		}
-		final ObjectTypeDescriptor cls = TypeDescriptor.ofClass(unmap(className));
+		final ObjectTypeDescriptor cls = TypeDescriptor.ofClass(Rewriter.unmap(className));
 		
 		if (!instrumenting) {
 			if(cls.equals(mainClass)) {
@@ -194,9 +194,9 @@ public class Agent implements ClassFileTransformer {
 					chain = new CheckClassAdapter(chain);
 				}
 				
-				// Remap things like java.util.* to __$osha$__java.util.*
+				// Remap things like java.util.* to __osha__java.util.*
 				if (remapOption.get()) {
-					chain = new RemappingClassAdapter(chain, mapper);
+					chain = new Rewriter(chain);
 				}
 				
 				// If the class matches the instrumentation filter, instrument it.
@@ -250,45 +250,14 @@ public class Agent implements ClassFileTransformer {
 	/*******************************/
 	
 	/**
-	 * Prefix to use when mapping classes.
-	 */
-	public static final String PREFIX = "__$osha$__";
-	
-	/**
-	 * For remapping things like java.util.* to __$osha$__java.util.*.
-	 */
-	protected static final Remapper mapper = new Remapper() {
-		@Override
-		public String map(String typeName) {
-			return Agent.map(typeName);
-		}
-	};
-	
-	public static String map(String typeName) {
-		if (remapOption.get() && !typeName.startsWith(PREFIX) && Filter.shouldInstrument(TypeDescriptor.ofClass(typeName))) {
-			return PREFIX + typeName;
-		}
-		return typeName;
-	}
-	
-	public static String unmap(String mappedName) {
-		if (mappedName.startsWith(PREFIX)) return mappedName.substring(PREFIX.length());
-		return mappedName;
-	}
-	
-	private static boolean isMapped(String name) {
-		return name.startsWith(PREFIX);
-	}
-
-	/**
 	 * The mapping classLoader.
 	 */
 	private static final ClassLoader classLoader = new ClassLoader(ClassLoader.getSystemClassLoader()) {
 		@Override
 		protected synchronized Class<?> findClass(String name) throws ClassNotFoundException {
-			if (name.startsWith(PREFIX)) {
+			if (name.startsWith(Rewriter.PREFIX)) {
 				ClassReader cr;
-				final String actualClass = unmap(name);
+				final String actualClass = Rewriter.unmap(name);
 				try {
 					Debug.debugf("remap", "%s -> %s", name, actualClass);
 					cr = new ClassReader(getResourceAsStream(actualClass.replace('.', '/') + ".class"));
