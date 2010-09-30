@@ -3,7 +3,7 @@ package oshajava.spec.names;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.sun.xml.internal.ws.org.objectweb.asm.Opcodes;
+import oshajava.support.org.objectweb.asm.Opcodes;
 
 public class FieldDescriptor extends Descriptor {
 

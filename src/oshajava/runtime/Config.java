@@ -2,8 +2,11 @@ package oshajava.runtime;
 
 import java.lang.instrument.Instrumentation;
 
-import oshajava.instrument.InstrumentationAgent;
+import oshajava.instrument.Filter;
+import oshajava.instrument.Agent;
 import oshajava.rtviz.StackCommMonitor;
+import oshajava.support.acme.util.Assert;
+import oshajava.support.acme.util.Debug;
 import oshajava.support.acme.util.StringMatchResult;
 import oshajava.support.acme.util.StringMatcher;
 import oshajava.support.acme.util.Util;
@@ -123,7 +126,7 @@ public class Config {
 	public static void configure(String[] args){
 		// add command line options here --------------------------------------------------
 
-		cl.addGroup("Error reporting");
+		cl.addGroup("Error Reporting");
 		
 		cl.add(errorActionOption);
 		cl.add(stackTracesOption);
@@ -135,13 +138,14 @@ public class Config {
 		cl.add(objectTrackingOption);
 		cl.add(lockTrackingOption);
 //		cl.add(InstrumentationAgent.ignoreFinalFieldsOption);
-		cl.add(InstrumentationAgent.instrumentClassesOption);
-		cl.add(InstrumentationAgent.instrumentFieldsOption);
-		cl.add(InstrumentationAgent.instrumentMethodsOption);
-		cl.add(InstrumentationAgent.volatileShadowOption);
+		cl.add(Filter.instrumentClassesOption);
+		cl.add(Filter.instrumentFieldsOption);
+		cl.add(Filter.instrumentMethodsOption);
+		cl.add(Filter.remapTypesOption);
+		cl.add(Agent.volatileShadowOption);
 		cl.add(intraThreadOption);
 		
-		cl.addGroup("Specification handling");
+		cl.addGroup("Specification Handling");
 		
 		cl.add(noSpecOption);
 		cl.add(noSpecActionOption);
@@ -162,17 +166,17 @@ public class Config {
 		cl.add(profileExtOption);
 		cl.add(idOption);
 		
-		cl.addGroup("Instrumentation (for debugging oshajava)");
+		cl.addGroup("Instrumentation Debugging)");
 		
-		cl.add(InstrumentationAgent.bytecodeDumpOption);
-		cl.add(InstrumentationAgent.bytecodeDumpDirOption);
-		cl.add(InstrumentationAgent.framesOption);
-		cl.add(InstrumentationAgent.preVerifyOption);
-		cl.add(InstrumentationAgent.verifyOption);
+		cl.add(Agent.bytecodeDumpOption);
+		cl.add(Agent.bytecodeDumpDirOption);
+		cl.add(Agent.framesOption);
+		cl.add(Agent.preVerifyOption);
+		cl.add(Agent.verifyOption);
 		
 		cl.addGroup("Deprecated");
 //		cl.add(InstrumentationAgent.fullJDKInstrumentationOption);
-		cl.add(InstrumentationAgent.ignoreMissingMethodsOption);
+		cl.add(Agent.ignoreMissingMethodsOption);
 		
 		// end command line options -------------------------------------------------------
 			
@@ -194,7 +198,14 @@ public class Config {
 			helpOption.set(true);
 		}
 		if (!noInstrumentOption.get()) {
-			InstrumentationAgent.install(inst);
+			try {
+				Debug.debug(Agent.DEBUG_KEY, "Installing oshajava instrumentation agent.");
+				inst.addTransformer(new Agent());
+				Debug.debug(Filter.DEBUG_KEY, "Registering preloaded classes with filter remapper.");
+				Filter.init(inst);
+			} catch (Throwable e) {
+				Assert.fail("Problem installing oshajava instrumentor", e);
+			}
 		}
 		premainTimer.stop();
 		premainFiniTimer.start();
