@@ -19,7 +19,6 @@
 	<property name="runtime.bin"  value="${bin.dir}/oshajava" />
 	<property name="compiler.bin" value="${bin.dir}/oshajavac" />
 	<property name="paths.script" value="setup.sh" />
-	<property name="module.compressor.bin" value="${bin.dir}/oshamodcompress" />
 	<property name="module.rm.bin" value="${bin.dir}/oshamodrm" />
 	<property name="module.prettyprinter" value="${bin.dir}/oshamodpp" />
 	

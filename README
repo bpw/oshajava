@@ -1,28 +1,23 @@
 Contact Ben Wood <bpw@cs.washington.edu> with issues or questions.
 
+Contents:
+* LICENSE   - license for the OshaJava distribution
+* README    - this file
+* build.xml - ant build file
+* libs      - third party libs used by OshaJava, renamed for
+  	   		  instrumentation reentrancy
+* src       - the OshaJava source
+* todo      - to-do lists
+
 Required:
-  * Java 1.6 or higher
-  * ant
-  * sh (or compatible shell)
+* Java 1.6 or higher
+* ant
+* sh-compatible shell
  
 Build:
-$ ant
+1. Run ant in the top-level directory.  
+2. Source setup.sh in any shell where you want to use oshajava.  It
+   sets some environment variables and puts a few utilities on your
+   path.
 
-Usage:
-After building, you should source setup.sh in any shell in which you
-want to use oshajava. This puts a couple things on your path:
-
-  * oshajavac: Use this in place of javac to compile java files that
-    use oshajava annotations.  Alternatively, use javac and make sure
-    that $OSHAJAVA_ANNOTATION_CLASSPATH is on your classpath.
-
-  * oshajava: Use this in place of java to run a java program under
-    the oshajava runtime. Usage is slightly different from java:
-        oshajava [oshajava args] [-javaOptions [java args]] -- ClassToRun [application args]
-    runs the same program that you would run with normal java as:
-    	java [java args] ClassToRun [application args]
-    For running jars:
-    	oshajava [oshajava args] -javaOptions [java args] -jar jartorun.jar [application args]
-    For help:
-    	oshajava -help
-
+See http://bitbucket.org/bpw/oshajava for more documentation.
