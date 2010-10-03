@@ -1,3 +1,19 @@
+* Remove prefuse.jar or update license text on main page.
+
+* This is  a little confusing: f is a reader in group G in module B.  Make sure the tool handles this correctly!  In fact, maybe the spec default should be wiped when you hit a {{{@Module}}} annotation?
+{{{
+#!java
+@Module("A")
+@Reader("G")
+class C {
+	@Module("B")
+	void f() { ... }
+}
+}}}
+
+* Change group @Group(id="A") and the @Groups to just @Groups({"A", "B"}), @InterfaceGroups({"C", "D"}) etc.  
+
+
 * Separate instrumentation parts into different visitors for simpler
   selection via options.  This may not be easy/possible.
 
