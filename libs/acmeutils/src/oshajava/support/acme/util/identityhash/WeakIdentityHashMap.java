@@ -1,9 +1,9 @@
 /******************************************************************************
 
-Copyright (c) 2009, Cormac Flanagan (University of California, Santa Cruz)
+Copyright (c) 2010, Cormac Flanagan (University of California, Santa Cruz)
                     and Stephen Freund (Williams College) 
 
-All rights reserved.
+All rights reserved.  Revision 7939 (Wed Aug 11 12:11:58 EDT 2010)
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are
@@ -39,7 +39,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /*
  * @(#)WeakHashMap.java	1.30 04/02/19
  *
- * Copyright 2004 Sun Microsystems, Inc. All rights reserved.
+ * Copyright 2004 Sun Microsystems, Inc. All rights reserved.  Revision 7939 (Wed Aug 11 12:11:58 EDT 2010)
  * SUN PROPRIETARY/CONFIDENTIAL. Use is subject to license terms.
  */
 
@@ -51,7 +51,8 @@ import java.util.Map;
 
 
 /**
- * Hacked version to remove some cruft not necessary here. Adds the method
+ * Version of the java library class that removes some unnecessary features and works
+ * with Util.identityHashcode. Also adds the method
  * <code>applyToAllActiveValues</code>, for applying a "higher-order" function
  * to all values with non-null keys. (i.e. keys whose references haven't 
  * disappeared). There are no absolute guarantees that a value's key is still

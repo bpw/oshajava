@@ -73,7 +73,7 @@ public class DirectMappedShadowCache<K,V> extends ShadowCache<K,V> {
 		}
 		if (COUNT && misses != null) misses.inc();
 		final V val = store.get(key);
-		if (val != null) {
+		if (val != null) { // TODO maybe set it anyway?
 			keys[slot] = key;
 			values[slot] = val;
 		}

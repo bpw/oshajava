@@ -1,12 +1,13 @@
 package oshajava.util.cache;
 
+import oshajava.runtime.Config;
 import oshajava.util.WeakConcurrentIdentityHashMap;
 
 public class CachedShadowMap<V> {
 	
 	private final int cacheSize;
 	
-	private final WeakConcurrentIdentityHashMap<Object,V> store = new WeakConcurrentIdentityHashMap<Object,V>();
+	private final WeakConcurrentIdentityHashMap<Object,V> store = new WeakConcurrentIdentityHashMap<Object,V>(Config.shadowStoreGCoption.get());
 	
 	private final ThreadLocal<DirectMappedShadowCache<Object,V>> caches = new ThreadLocal<DirectMappedShadowCache<Object,V>>() {
 		protected DirectMappedShadowCache<Object,V> initialValue() {

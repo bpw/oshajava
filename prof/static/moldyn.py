@@ -1,1 +1,0 @@
-{"Total methods" : {4 : 1, 23 : 1}, "Inlined methods" : {2 : 1, 9 : 1}, "Communication groups" : {1 : 1, 5 : 1}, "Interface groups" : {0 : 2}, "Group membership annotations" : {3 : 1, 23 : 1}, "Group declaration annotations" : {1 : 1, 5 : 1}, "Non-communicator annotations" : {0 : 1, 6 : 1}, "Inline annotations" : {0 : 2}, "Module membership annotations" : {0 : 1, 1 : 1}}

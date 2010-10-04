@@ -1,5 +1,6 @@
 package oshajava.runtime.exceptions;
 
+import oshajava.runtime.Config;
 import oshajava.runtime.RuntimeMonitor;
 
 public abstract class OshaRuntimeException extends RuntimeException {
@@ -10,13 +11,9 @@ public abstract class OshaRuntimeException extends RuntimeException {
 	private static final long serialVersionUID = -2528906495574526086L;
 	
 	private static final String CANONICAL_NAME = RuntimeMonitor.class.getCanonicalName();
-	
-	private static final boolean fudgeStackTraces = false;
-	
-	// TODO option to disable stack trace fudging.	
-
+		
 	public OshaRuntimeException() {
-		if (fudgeStackTraces) {
+		if (Config.fudgeExceptionTracesOption.get()) {
 			// fudge the stack to remove the top frame(s?) belonging to the RuntimeMonitor and make it
 			// look like the VM threw the exception inside whatever user code method caused it.
 			StackTraceElement[] stack = getStackTrace();

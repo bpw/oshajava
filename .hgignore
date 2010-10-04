@@ -1,7 +1,13 @@
+syntax: glob
+
+*.class
+*.omi
+*.oms
+*.omm
+.DS_Store
+*.pyc
+
 syntax: regexp
 
-^test/.*\.class$
-^test/.*\.graphml$
-^build/.*
-^setup\.sh$
-\.DS_Store$
+^build/
+^setup.sh

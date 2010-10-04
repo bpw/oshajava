@@ -1,9 +1,9 @@
 /******************************************************************************
 
-Copyright (c) 2009, Cormac Flanagan (University of California, Santa Cruz)
+Copyright (c) 2010, Cormac Flanagan (University of California, Santa Cruz)
                     and Stephen Freund (Williams College) 
 
-All rights reserved.
+All rights reserved.  Revision 7939 (Wed Aug 11 12:11:58 EDT 2010)
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are
@@ -41,6 +41,9 @@ package oshajava.support.acme.util.io;
 import java.io.PrintWriter;
 import java.util.Stack;
 
+/**
+ * A writer to facilitate generating proper XML.
+ */
 public class XMLWriter {
 
 	protected PrintWriter out;
@@ -60,18 +63,29 @@ public class XMLWriter {
 		}
 	}
 	
+	/**
+	 * Enter the scope of a new XML tag.
+	 */
 	public void push(String tag) {
 		pad();
 		out.println("<" + tag + ">");
 		openTags.push(tag);
 	}
 	
+	/**
+	 * Leave the scope of a tag
+	 */
 	public void pop() {
 		String tag = openTags.pop();
 		pad();
 		out.println("</" + tag + ">");
 	}
 
+	/**
+	 * Takes a flag to include a newline and pairs stored in an array:
+	 * 
+	 * printWithFixedWidths(true, "k1", v1, "k2", v2);
+	 */
 	protected void print(boolean addNewLine, Object... keysAndValues) {
 		for (int i = 0; i < keysAndValues.length; i += 2) {
 			String p = String.format("<%s> %s </%s> ", keysAndValues[i], keysAndValues[i+1], keysAndValues[i]);

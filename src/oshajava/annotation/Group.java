@@ -3,7 +3,7 @@ package oshajava.annotation;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Target;
 
-@Target({ElementType.TYPE})
+@Target({ElementType.PACKAGE, ElementType.TYPE, ElementType.METHOD, ElementType.CONSTRUCTOR})
 public @interface Group {
 
 	/**
@@ -11,14 +11,19 @@ public @interface Group {
 	 */
 	String id();
 	
-	/**
-	 * List of groups this group delegates to.
-	 */
-	String[] delegate() default {};
-	
-	/**
-	 * List of groups this group merge.
-	 */
-	String[] merge() default {};
+//	/**
+//	 * The module this group belongs to.
+//	 */
+//	String group() default "";
+//	
+//	/**
+//	 * List of groups this group delegates to.
+//	 */
+//	String[] delegate() default {};
+//	
+//	/**
+//	 * List of groups this group merge.
+//	 */
+//	String[] merge() default {};
 
 }

@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.io.StringWriter;
 import java.util.Map;
 
-import oshajava.util.intset.BitVectorIntSet;
 
 
 public class Py {

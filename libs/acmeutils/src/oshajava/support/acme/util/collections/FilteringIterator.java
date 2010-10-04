@@ -1,9 +1,9 @@
 /******************************************************************************
 
-Copyright (c) 2009, Cormac Flanagan (University of California, Santa Cruz)
+Copyright (c) 2010, Cormac Flanagan (University of California, Santa Cruz)
                     and Stephen Freund (Williams College) 
 
-All rights reserved.
+All rights reserved.  Revision 7939 (Wed Aug 11 12:11:58 EDT 2010)
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are
@@ -40,6 +40,10 @@ package oshajava.support.acme.util.collections;
 
 import java.util.Iterator;
 
+/**
+ * An iterator that returns the values from an iterator that match
+ * the criteria specified in the test method.
+ */
 public abstract class FilteringIterator<T> implements Iterator<T> {
 
 	private Iterator<T> iter;

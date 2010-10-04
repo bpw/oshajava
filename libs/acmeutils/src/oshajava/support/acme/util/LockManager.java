@@ -1,9 +1,9 @@
 /******************************************************************************
 
-Copyright (c) 2009, Cormac Flanagan (University of California, Santa Cruz)
+Copyright (c) 2010, Cormac Flanagan (University of California, Santa Cruz)
                     and Stephen Freund (Williams College) 
 
-All rights reserved.
+All rights reserved.  Revision 7939 (Wed Aug 11 12:11:58 EDT 2010)
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are
@@ -38,6 +38,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 package oshajava.support.acme.util;
 
+/**
+ * An array of locks that can be used for locks.
+ */
 public class LockManager {
 
 	private final int size;
@@ -45,7 +48,7 @@ public class LockManager {
 	private final Object locks[];
 
 	public LockManager(int size) {
-		Util.assertTrue( size > 0 && (size & (size - 1)) == 0, "Lock Manager size must be power of 2, not " + size); // power of 2?
+		Assert.assertTrue( size > 0 && (size & (size - 1)) == 0, "Lock Manager size must be power of 2, not " + size); // power of 2?
 		this.size = size;
 		this.mask = (size - 1);
 		locks = new Object[size];

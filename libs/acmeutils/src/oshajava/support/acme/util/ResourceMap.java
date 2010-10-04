@@ -1,9 +1,9 @@
 /******************************************************************************
 
-Copyright (c) 2009, Cormac Flanagan (University of California, Santa Cruz)
+Copyright (c) 2010, Cormac Flanagan (University of California, Santa Cruz)
                     and Stephen Freund (Williams College) 
 
-All rights reserved.
+All rights reserved.  Revision 7939 (Wed Aug 11 12:11:58 EDT 2010)
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are
@@ -44,6 +44,9 @@ import oshajava.support.acme.util.collections.ArrayIterator;
 
 
 
+/**
+ * An extensibe array for mapping integers to numbered resources.
+ */
 public final class ResourceMap<T> implements Iterable<T> {
 	
 	private final Object[] store;

@@ -1,9 +1,9 @@
 /******************************************************************************
 
-Copyright (c) 2009, Cormac Flanagan (University of California, Santa Cruz)
+Copyright (c) 2010, Cormac Flanagan (University of California, Santa Cruz)
                     and Stephen Freund (Williams College) 
 
-All rights reserved.
+All rights reserved.  Revision 7939 (Wed Aug 11 12:11:58 EDT 2010)
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are
@@ -40,6 +40,9 @@ package oshajava.support.acme.util.decorations;
 
 import java.io.Serializable;
 
+/**
+ * Construct a default value of type V for an object of type T.
+ */
 public interface DefaultValue<T,V> extends Serializable {
 
 	public V get(T t);

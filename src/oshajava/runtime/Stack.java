@@ -2,27 +2,36 @@ package oshajava.runtime;
 
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.Map;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
-import oshajava.sourceinfo.Graph;
-import oshajava.sourceinfo.ModuleSpec;
-import oshajava.sourceinfo.Spec;
+import oshajava.rtviz.StackCommMonitor;
+import oshajava.spec.ModuleSpec;
+import oshajava.spec.Spec;
+import oshajava.spec.names.MethodDescriptor;
+import oshajava.spec.names.TypeDescriptor;
+import oshajava.support.acme.util.Assert;
 import oshajava.support.acme.util.Util;
 import oshajava.support.acme.util.identityhash.ConcurrentIdentityHashMap;
-import oshajava.support.acme.util.identityhash.IdentityHashSet;
-import oshajava.util.GraphMLWriter;
+import oshajava.util.BitVectorIntSet;
+import oshajava.util.ExpandableGraph;
+import oshajava.util.Graph;
 import oshajava.util.Py;
 import oshajava.util.PyWriter;
+import oshajava.util.XMLWriter;
 import oshajava.util.count.Counter;
 import oshajava.util.count.DistributionCounter;
 import oshajava.util.count.SetSizeCounter;
-import oshajava.util.intset.BitVectorIntSet;
 
 public class Stack {
 	
 	public static final boolean RECORD = Config.recordOption.get();
+
+	private static final List<Stack> allStacks = new LinkedList<Stack>();
 
 	public static final Counter stacksCreated = new Counter("Distinct stacks created");
 	public static final DistributionCounter communicatingStackDepths = new DistributionCounter("Communicating stack depths");
@@ -34,8 +43,10 @@ public class Stack {
 	public static final DistributionCounter segCountDist = new DistributionCounter("Segments on a communicating stack");
 	public static final SetSizeCounter<ModuleSpec> modulesUsed = new SetSizeCounter<ModuleSpec>("Modules used");
 	
-	public static final HashMap<ModuleSpec,Graph> commGraphs = new HashMap<ModuleSpec,Graph>();
-	public static final HashMap<ModuleSpec,Graph> interfaceGraphs = new HashMap<ModuleSpec,Graph>();
+	// for the -record option
+	public static final HashMap<ModuleSpec,ExpandableGraph> commGraphs = new HashMap<ModuleSpec,ExpandableGraph>();
+	public static final HashMap<ModuleSpec,ExpandableGraph> interfaceGraphs = new HashMap<ModuleSpec,ExpandableGraph>();
+	private final HashSet<Stack> allReaders = new HashSet<Stack>();
 	
 	public static final Counter stackWalks = new Counter("Full stack walks");
 	public static final Counter memo2Hits = new Counter("Level 2 memo hits");
@@ -44,7 +55,16 @@ public class Stack {
 	
 	protected static final Stack root = new Stack(-1, null);
 	protected static final Stack classInitializer = new Stack(-1, null);
-
+	static {
+		if (RECORD) {
+			synchronized (allStacks) {
+				allStacks.add(root);
+				allStacks.add(classInitializer);
+			}
+		}
+	}
+	
+	
 	/**
 	 * The Stack for the caller of the top of this stack.
 	 */
@@ -72,9 +92,9 @@ public class Stack {
 	 * have it in the (actual hardware) cache.  If we load the readerset from
 	 * a state representing a write, chances are it's not in the cache...
 	 */
-	public final BitVectorIntSet writerCache = new BitVectorIntSet();
+	public transient final BitVectorIntSet writerCache = new BitVectorIntSet();
 	
-	private final IdentityHashSet<Stack> writerMemoTable = new IdentityHashSet<Stack>();
+	private final HashSet<Stack> writerMemoTable = new HashSet<Stack>();
 	
 	private Stack(final int methodUID, final Stack parent) {
 		this.methodUID = methodUID;
@@ -110,11 +130,11 @@ public class Stack {
 			stack = new Stack(methodUID,parent);
 			final Stack s = t.putIfAbsent(parent, stack);
 			if (s == null) {
+				synchronized (allStacks) {
+					allStacks.add(stack);
+				}
 				return stack;
 			} else {
-				synchronized(Stack.class) {
-					idCounter--;
-				}
 				return s;
 			}
 		} else {
@@ -168,6 +188,15 @@ public class Stack {
 			if (COUNT_STACKS) {
 				stackWalks.inc();
 			}
+			if (RECORD) {
+				synchronized (writer.allReaders) {
+					writer.allReaders.add(this);
+				}
+			}
+			// Real-time visualizer
+			if (StackCommMonitor.VISUALIZE) {
+				StackCommMonitor.def.addCommunicationAndFlush(writer, this);
+			}
 			if (walkStacks(writer, this, 0)) {
 				synchronized (writerMemoTable) {
 					writerMemoTable.add(writer);
@@ -204,7 +233,7 @@ public class Stack {
 		}
 		if (writer == root && reader != root || writer != root && reader == root) {
 			// Layer mismatch at root of stacks.
-			// FIXME pop/throw to find a compositional module...
+			// TODO pop/throw to find a compositional module...
 			return false;
 		}
 		
@@ -214,7 +243,7 @@ public class Stack {
 			// Find the reader layer.
 			final BitVectorIntSet layer = new BitVectorIntSet();
 			final Stack readerLayerTop = reader.expandLayer(layer, writerMod, 0);
-			Util.assertTrue(!layer.isEmpty());
+			Assert.assertTrue(!layer.isEmpty());
 			// Find the writer layer and check the layer mapping.
 			final ModuleSpec layerModule = Spec.getModule(writer.methodUID);
 			if (COUNT_STACKS) {
@@ -230,14 +259,7 @@ public class Stack {
 			// Is the communication exposed?
 			if (layerModule.isPublic(writerLayerTop.methodUID, readerLayerTop.methodUID)) {
 				if (RECORD) {
-					synchronized (interfaceGraphs) {
-						if (!interfaceGraphs.containsKey(layerModule)) {
-						    Graph g = new Graph(layerModule.numInterfaceMethods());
-						    g.fill();
-							interfaceGraphs.put(layerModule, g);
-						}
-						interfaceGraphs.get(layerModule).addEdge(Spec.getMethodID(writerLayerTop.methodUID), Spec.getMethodID(readerLayerTop.methodUID));
-					}
+					recordInterface(writerLayerTop, readerLayerTop, layerModule);
 				}
 				// communication is exposed here. Must check rest of stacks.
 				return walkStacks(writerLayerTop.parent, readerLayerTop.parent, segDepth + 1);
@@ -255,7 +277,7 @@ public class Stack {
 			// THen try coming back down to merge with callees if needed.
 			// The general case is going to have pretty high worst-case theoretical
 			// time
-			// FIXME
+			// TODO Implement compositional modules
 			return false;
 		}
 	}
@@ -271,7 +293,7 @@ public class Stack {
 	private Stack expandLayer(final BitVectorIntSet layer, final int moduleID, final int depth) {
 	    // Should only be called on a stack with at least one method from
 	    // the module.
-	    Util.assertTrue(moduleID == Spec.getModuleID(methodUID));
+	    Assert.assertTrue(moduleID == Spec.getModuleID(methodUID));
 	        
         layer.add(Spec.getMethodID(methodUID));
         if (moduleID != Spec.getModuleID(parent.methodUID)) {
@@ -297,23 +319,13 @@ public class Stack {
 	 * @throws IllegalInternalEdgeException if there was an illegal internal edge
 	 */
 	private Stack checkLayer(final BitVectorIntSet layer, final ModuleSpec module, int depth) throws IllegalInternalEdgeException {
-	    Util.assertTrue(module.getId() == Spec.getModuleID(methodUID));
+	    Assert.assertTrue(module.getId() == Spec.getModuleID(methodUID));
 	    
 	    if (COUNT_STACKS) {
 	    	segSizeDist.add(layer.size());
 	    }
 		if (RECORD) {
-			synchronized (commGraphs) {
-				if (!commGraphs.containsKey(module)) {
-					commGraphs.put(module, new Graph(module.numCommMethods()));
-				}
-				BitVectorIntSet s = commGraphs.get(module).getOutEdges(Spec.getMethodID(methodUID));
-				if (s == null) {
-					s = new BitVectorIntSet();
-					commGraphs.get(module).setOutEdges(Spec.getMethodID(methodUID), s);
-				}
-				s.addAll(layer);
-			}
+			recordLayer(layer, module);
 		}
 		if (module.allAllowed(methodUID, layer)) {
 			if (module.getId() != Spec.getModuleID(parent.methodUID)) {
@@ -328,6 +340,30 @@ public class Stack {
 			}
 		} else {
 			throw new IllegalInternalEdgeException();
+		}
+	}
+	
+	protected void recordLayer(final BitVectorIntSet layer, final ModuleSpec module) {
+		synchronized (commGraphs) {
+			if (!commGraphs.containsKey(module)) {
+				commGraphs.put(module, new ExpandableGraph(module.getMethods().length));
+			}
+			BitVectorIntSet s = commGraphs.get(module).getOutEdges(Spec.getMethodID(methodUID));
+			if (s == null) {
+				s = new BitVectorIntSet();
+				commGraphs.get(module).setOutEdges(Spec.getMethodID(methodUID), s);
+			}
+			s.addAll(layer);
+		}		
+	}
+	
+	protected static void recordInterface(Stack writerLayerTop, Stack readerLayerTop, ModuleSpec layerModule) {
+		synchronized (interfaceGraphs) {
+			if (!interfaceGraphs.containsKey(layerModule)) {
+			    ExpandableGraph g = new ExpandableGraph(layerModule.numInterfaceMethods());
+				interfaceGraphs.put(layerModule, g);
+			}
+			interfaceGraphs.get(layerModule).addEdge(Spec.getMethodID(writerLayerTop.methodUID), Spec.getMethodID(readerLayerTop.methodUID));
 		}
 	}
 	
@@ -375,14 +411,17 @@ public class Stack {
 		return idCounter;
 	}
 
-	public static void dumpGraphs(String mainClass) {
+	public static void dumpRecordedGraphs(String mainClass) {
 		if (RECORD) {
 			try {
 				final PyWriter commpy = new PyWriter("oshajava-communication-pairs.py", false);
 				final PyWriter ifpy = new PyWriter("oshajava-interface-pairs.py", false);
 //				final PyWriter nodepy = new PyWriter("oshajava-nodes.py", false);
-				final GraphMLWriter commGraphml = new GraphMLWriter(mainClass + ".oshajava.comm.graphml");
-				final GraphMLWriter interfaceGraphml = new GraphMLWriter(mainClass + ".oshajava.intfc.graphml");
+//				final GraphMLWriter commGraphml = new GraphMLWriter(mainClass + ".oshajava.comm.graphml");
+//				final GraphMLWriter interfaceGraphml = new GraphMLWriter(mainClass + ".oshajava.intfc.graphml");
+				final XMLWriter execXml = new XMLWriter(mainClass + "-oshajava-exec-" + Config.idOption.get() + ".xml");
+				final XMLWriter specXml = execXml; //new XMLWriter(mainClass + "-oshajava-spec.xml");
+				
 				final Counter specCommNodes = new Counter("Total comm nodes in used specs");
 				final Counter specCommEdges = new Counter("Total comm edges in used specs");
 				final Counter specINodes = new Counter("Total interface nodes in used specs");
@@ -401,22 +440,111 @@ public class Stack {
 //				nodepy.startList();
 				commpy.startList();
 				ifpy.startList();
+								
+				// Start exec.
+//				specXml.start("spec", "main", mainClass);
+				execXml.start("execution", "main", mainClass);
+				execXml.start("modules");
+//				specXml.start("modules");
+				int modulesRecorded = 0;
+				for (ModuleSpec m : Spec.loadedModules()) {
+					modulesRecorded++;
+//					execXml.singleton("module", "id", m.getId(), "name", InstrumentationAgent.sourceName(m.getName()));
+//					specXml.start("module", /*"id", m.getId(),*/ "name", InstrumentationAgent.sourceName(m.getName()));
+					specXml.start("module", "id", m.getId(), "name", m.getName());
+					specXml.start("methods");
+
+					MethodDescriptor[] methods = m.getMethods();
+					for (int i = 0; i < methods.length; i++) {
+						specXml.start("method", "uid", Spec.makeUID(m.getId(), i), 
+									"class", methods[i].getClassType(),
+									"name", methods[i].getMethodName(),
+									"return", methods[i].getReturnType(),
+									"internal", methods[i].getInternalName(), 
+									"kind", m.getCommunicationKind(Spec.makeUID(m.getId(), i)).toString().toLowerCase());
+						specXml.start("params");
+						for (TypeDescriptor p : methods[i].getParamTypes()) {
+							specXml.singleton("param", "type", p);
+						}
+						specXml.end("params");
+						specXml.end("method");
+					}
+					specXml.end("methods");
+//					specXml.start("spec");
+					specXml.start("communication");
+					for (Graph.Edge e : m.getCommunication()) {
+						specXml.singleton("pair", "writer", Spec.makeUID(m.getId(), e.source), "reader", Spec.makeUID(m.getId(), e.sink));
+					}
+					specXml.end("communication");
+					specXml.start("interface");
+					for (Graph.Edge e : m.getInterface()) {
+						specXml.singleton("pair", "writer", Spec.makeUID(m.getId(), e.source), "reader", Spec.makeUID(m.getId(), e.sink));
+					}
+					specXml.end("interface");
+					specXml.end("module");					
+				}
+				execXml.end("modules");
+//				specXml.end("spec");
+//				specXml.close();
+
+				execXml.start("stacks");
+				int patchedID = idCounter;
+				IdentityHashMap<Stack,Integer> patchedStackIDs = new IdentityHashMap<Stack,Integer>();
+				int stacksRecorded = 0;
+				for (Stack s : allStacks) {
+					stacksRecorded++;
+					int sid = s.id == Integer.MAX_VALUE ? ++patchedID : s.id;
+					patchedStackIDs.put(s, sid);
+					execXml.start("stack", "id", sid);
+					int lastMod = -1;
+					while (s != root && s != classInitializer) {
+						int thisMod = Spec.getModuleID(s.methodUID);
+						if (lastMod != thisMod) {
+							if (lastMod != -1) {
+								execXml.end("segment");
+							}
+							execXml.start("segment", "moduleid", thisMod);
+							lastMod = thisMod;
+						}
+						execXml.singleton("frame", "methoduid", s.methodUID);
+						s = s.parent;
+					}
+					if (lastMod != -1) execXml.end("segment");
+					execXml.end("stack");
+				}
+				execXml.end("stacks");
+				
+				execXml.start("stackpairs");
+				int pairsRecorded = 0;
+				for (Stack source : allStacks) {
+					int sid = patchedStackIDs.get(source);
+					for (Stack sink : source.allReaders) {
+						pairsRecorded++;
+						execXml.singleton("pair", "writer", sid, "reader", patchedStackIDs.get(sink));
+					}
+				}
+				execXml.end("stackpairs");
+				execXml.end("execution");
+				execXml.close();
+				Util.logf("modules: %d, stacks: %d, stack pairs: %d", modulesRecorded, stacksRecorded, pairsRecorded);
+				// End exec.
 				
 				Set<Integer> recordedNodes = new HashSet<Integer>();
-				for (Map.Entry<ModuleSpec,Graph> e : commGraphs.entrySet()) {
+				for (Map.Entry<ModuleSpec, ? extends Graph> e : commGraphs.entrySet()) {
 					ModuleSpec mod = e.getKey();
 					Graph g = e.getValue();
 					for (int i = 0; i < mod.numCommMethods(); i++) {
-						int uid = Spec.makeUID(mod.getId(), i);
-						commGraphml.writeNode(uid + "", mod.getMethodSignature(uid), "");
-						interfaceGraphml.writeNode(uid + "", mod.getMethodSignature(uid), "");
+//						int uid = Spec.makeUID(mod.getId(), i);
+//						commGraphml.writeNode(uid + "", mod.getMethodSignature(uid), "");
+//						interfaceGraphml.writeNode(uid + "", mod.getMethodSignature(uid), "");
 						BitVectorIntSet bv = g.getOutEdges(i);
 						if (bv != null && ! bv.isEmpty()) {
-							// FIXME
-							// commGraphml.writeEdge(uid + "", destID, "rw");
+							// TODO something here to fix?
 							final int srcuid = Spec.makeUID(mod.getId(), i);
 							for (int j : bv.toJavaSet()) {
+//								int destID = Spec.makeUID(mod.getId(), j);
 								commpy.writeElem(Py.tuple(srcuid, Spec.makeUID(mod.getId(), j)));
+//								commGraphml.writeEdge(uid + "", destID + "", "rw");
 								if (recordedNodes.add(Spec.makeUID(mod.getId(), j)))
 								    runCommNodes.inc();
 							}
@@ -428,18 +556,19 @@ public class Stack {
 				}
 				
 				recordedNodes = new HashSet<Integer>();
-				for (Map.Entry<ModuleSpec,Graph> e : interfaceGraphs.entrySet()) {
+				for (Map.Entry<ModuleSpec, ? extends Graph> e : interfaceGraphs.entrySet()) {
 					ModuleSpec mod = e.getKey();
 					Graph g = e.getValue();
 					for (int i = 0; i < mod.numInterfaceMethods(); i++) {
-						int uid = Spec.makeUID(mod.getId(), i);
+//						int uid = Spec.makeUID(mod.getId(), i);
 						BitVectorIntSet bv = g.getOutEdges(i);
 						if (bv != null && ! bv.isEmpty()) {
-							// FIXME
-							// interfaceGraphml.writeEdge(uid + "", destID, "rw");
+							// TODO something here to fix?
 							final int srcuid = Spec.makeUID(mod.getId(), i);
 							for (int j : bv.toJavaSet()) {
-								ifpy.writeElem(Py.tuple(srcuid, Spec.makeUID(mod.getId(), j)));
+								int destID = Spec.makeUID(mod.getId(), j);
+								ifpy.writeElem(Py.tuple(srcuid, destID));
+//								interfaceGraphml.writeEdge(uid + "", destID + "", "rw");
 								if (recordedNodes.add(Spec.makeUID(mod.getId(), j)))
 								    runINodes.inc();
 							}
@@ -450,8 +579,8 @@ public class Stack {
 					}
 				}
 
-				commGraphml.close();
-				interfaceGraphml.close();
+//				commGraphml.close();
+//				interfaceGraphml.close();
 				commpy.endList();
 				ifpy.endList();
 				commpy.close();
@@ -461,6 +590,4 @@ public class Stack {
 			}
 		}
 	}
-
-
 }

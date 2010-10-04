@@ -1,9 +1,9 @@
 /******************************************************************************
 
-Copyright (c) 2009, Cormac Flanagan (University of California, Santa Cruz)
+Copyright (c) 2010, Cormac Flanagan (University of California, Santa Cruz)
                     and Stephen Freund (Williams College) 
 
-All rights reserved.
+All rights reserved.  Revision 7939 (Wed Aug 11 12:11:58 EDT 2010)
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are
@@ -40,11 +40,23 @@ package oshajava.support.acme.util.decorations;
 
 import java.io.Serializable;
 
+/**
+ * A Decoration placed on an existing structure.
+ * @param <T>  Type of object that is decorated by this decoration
+ * @param <V>  Type of value stored on the decoration.
+ */
 public final class Decoration<T extends Decoratable, V> implements Serializable {
 
+	/** INTERNAL */
 	protected final int slot;
+	
+	/** Name of the decoration */
 	protected final String name;
+
+	/** The default value for a T object that has not yet been decorated. */
 	protected final DefaultValue<T,V> defaultValue;
+	
+	/** The factory that created this decoration */
 	protected final DecorationFactory<T> factory;
 
 	Decoration(DecorationFactory<T> fact, String decorationName, int slot, DefaultValue<T,V> defaultValue) {
@@ -92,8 +104,4 @@ public final class Decoration<T extends Decoratable, V> implements Serializable 
 		return name;
 	}
 
-	public String toString(T n) {
-		V val = get(n);
-		return "[Decoration "+name+" "+ ( val==null? "" : val.toString() ) +"]";
-	}
 }

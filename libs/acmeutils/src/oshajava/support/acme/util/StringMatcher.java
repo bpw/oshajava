@@ -1,9 +1,9 @@
 /******************************************************************************
 
-Copyright (c) 2009, Cormac Flanagan (University of California, Santa Cruz)
+Copyright (c) 2010, Cormac Flanagan (University of California, Santa Cruz)
                     and Stephen Freund (Williams College) 
 
-All rights reserved.
+All rights reserved.  Revision 7939 (Wed Aug 11 12:11:58 EDT 2010)
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are
@@ -43,6 +43,19 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.regex.Pattern;
 
+/**
+ * A general pattern matcher that can accept, reject, or do nothing.
+ * Patterns are regular expressions preceded by a + or - to indicate accept or reject.
+ * A matcher query will test the patterns added to the matcher in the order they
+ * were added, returning ACCEPT if a positive pattern is matched, REJECT if a negative
+ * pattern is matched, or NOTHING is no patterns match.   
+ * 
+ * <p>
+ * new StringMatcher(StringMatchResult.NOTHING, "+.*moo.*", "-.*cow.*")
+ * <p>
+ * accepts all string containing moo, rejects all strings containing cow (but not moo), and 
+ * does nothing for all other Strings.
+ */
 public class StringMatcher {
 	private HashMap<String,StringMatchResult> cache = new HashMap<String,StringMatchResult>();
 	
@@ -59,6 +72,7 @@ public class StringMatcher {
 			if (m && !positive) return StringMatchResult.REJECT;
 			return StringMatchResult.NOTHING;
 		}
+		@Override
 		public String toString() {
 			return (positive?"+":"-")+pattern;
 		}
@@ -102,6 +116,7 @@ public class StringMatcher {
 		entries.add(entries.size() - defaultLen, new Entry(s));
 	}
 	
+	@Override
 	public String toString() {
 		StringBuffer res = new StringBuffer("[");
 		for (Entry p: entries) {

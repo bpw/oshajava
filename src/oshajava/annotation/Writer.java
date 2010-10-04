@@ -3,7 +3,7 @@ package oshajava.annotation;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Target;
 
-@Target({ElementType.METHOD, ElementType.CONSTRUCTOR})
+@Target({ElementType.METHOD, ElementType.CONSTRUCTOR, ElementType.PACKAGE, ElementType.TYPE})
 public @interface Writer {
 	/**
 	 * List of IDs of channels to which this method writes.

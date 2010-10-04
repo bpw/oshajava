@@ -2,9 +2,13 @@ package oshajava.instrument;
 
 
 import oshajava.runtime.Config;
-import oshajava.sourceinfo.ModuleSpec;
-import oshajava.sourceinfo.ModuleSpec.CommunicationKind;
-import oshajava.support.acme.util.Util;
+import oshajava.spec.CompiledModuleSpec;
+import oshajava.spec.ModuleSpec;
+import oshajava.spec.ModuleSpec.CommunicationKind;
+import oshajava.spec.names.FieldDescriptor;
+import oshajava.spec.names.MethodDescriptor;
+import oshajava.spec.names.TypeDescriptor;
+import oshajava.support.acme.util.Assert;
 import oshajava.support.org.objectweb.asm.Label;
 import oshajava.support.org.objectweb.asm.MethodVisitor;
 import oshajava.support.org.objectweb.asm.Opcodes;
@@ -17,58 +21,53 @@ public class MethodInstrumentor extends AdviceAdapter {
 	protected final boolean isMain;
 	protected final boolean isSynchronized;
 	protected final boolean isConstructor;
-	protected boolean usesThisConstructor = false;
 	protected final boolean isClinit;
 	protected final boolean isStatic;
+	protected final MethodDescriptor method;
+	private int methodUID;
 	
-	protected final String fullNameAndDesc;
+//	protected final int accessFlags;
 	
-	private final int methodUID;
+	protected CommunicationKind policy;
 	
-	protected final CommunicationKind policy;
-
-	protected final ClassInstrumentor inst;
-
 	protected int myMaxStackAdditions = 0;
 
 	protected int originalMaxLocals = UNINITIALIZED, originalMaxStack = UNINITIALIZED;
 	
-	public MethodInstrumentor(MethodVisitor next, int access, String name, String desc, ClassInstrumentor inst, ModuleSpec module) {
+	public MethodInstrumentor(MethodVisitor next, int access, String name, String desc, ModuleSpec module, MethodDescriptor methodDescriptor) {
 		super(next, access, name, desc);
-		this.inst = inst;
-		isStatic = (access & Opcodes.ACC_STATIC) != 0;
-		isMain = (access & Opcodes.ACC_PUBLIC ) != 0 && isStatic
-		&& name.equals("main") && desc.equals("([Ljava/lang/String;)V");
-		isSynchronized = (access & Opcodes.ACC_SYNCHRONIZED) != 0;
-		isConstructor = name.equals("<init>");
-		isClinit = name.equals("<clinit>");
-		fullNameAndDesc = inst.className + "." + name + desc;
-		
-		// Synthetic methods are, in general, not seen by the annotation
-		// processor. If they're not, then we emit a warning and inline
-		// the method.
-		methodUID = module.getMethodUID(fullNameAndDesc);
-		if (methodUID == -1 && (access & Opcodes.ACC_SYNTHETIC) != 0) {
-			policy = CommunicationKind.INLINE;
-			// Such is also the case with methods inside anonymous classes.
-		} else if (methodUID == -1 &&
-				   inst.className.matches(".*\\$\\d.*")) {
-			policy = CommunicationKind.INLINE;
-			// Raise an error for other methods that are not found.
-		} else if (methodUID == -1) {
-			if (InstrumentationAgent.ignoreMissingMethodsOption.get()) {
-				Util.log("IGNORED and INLINED: in module " + module.getName() + ", " + fullNameAndDesc + " not found");
-			} else {
-				module.describe();
-				Util.fail("in module " + module.getName() + ", " + fullNameAndDesc + " not found");
-			}
-			policy = CommunicationKind.INLINE; // avoid warning
+//		this.accessFlags = access;
+		this.method = methodDescriptor;
+		this.isStatic = (access & Opcodes.ACC_STATIC) != 0;
+		this.isMain = (access & Opcodes.ACC_PUBLIC ) != 0 && isStatic && name.equals("main") && desc.equals("([Ljava/lang/String;)V");
+		this.isSynchronized = (access & Opcodes.ACC_SYNCHRONIZED) != 0;
+		this.isConstructor = methodDescriptor.isConstructor();
+		this.isClinit = methodDescriptor.isClassInit();
+		final boolean isSynthetic = (access & Opcodes.ACC_SYNTHETIC) != 0;
+				
+		try { // FIXME  Centralize/unify handling of synthetics, missing methods, etc.
+			methodUID = module.getMethodUID(methodDescriptor);
 			// Set policy appropriately if method is found.
-		} else {
 			policy = module.getCommunicationKind(methodUID);
+		} catch (CompiledModuleSpec.MethodNotFoundException e) {
+			methodUID = -1;
+			if (isSynthetic) {
+				// Synthetic methods are, in general, not seen by the annotation
+				// processor. If they're not, then we inline the method.
+				Assert.warn("Inlining synthetic method %s", methodDescriptor.getInternalName());
+				policy = CommunicationKind.INLINE;
+			} else if (methodDescriptor.getClassType().getInternalName().matches(".*\\$\\d.*")) {
+				// Such is also the case with methods inside anonymous classes.
+				Assert.warn("Anonymous class %s has method %s not in module %s. Inlining.", methodDescriptor.getClassType(), methodDescriptor, module.getName());
+				policy = CommunicationKind.INLINE;
+			} else {
+				if (InstrumentationAgent.ignoreMissingMethodsOption.get()) {
+					Assert.warn("IGNORED and INLINED: in module " + module.getName() + ", " + methodDescriptor + " not found");
+				} else {
+					Assert.fail("Method " + methodDescriptor + " not found in " + module);
+				}
+			}
 		}
-		
-//		readHook = ClassInstrumentor.HOOK_READ; //RuntimeMonitor.RECORD ? ClassInstrumentor.HOOK_RECORD_READ : ClassInstrumentor.HOOK_READ;
 	}
 
 	protected void myStackSize(int size) {
@@ -233,11 +232,11 @@ public class MethodInstrumentor extends AdviceAdapter {
 	}
 
 	protected void makeReleaseExitHook(int extraStack) {
-		if (isSynchronized) {
+		if (isSynchronized && Config.lockTrackingOption.get()) {
 			myStackSize(2 + extraStack);
 			if (isStatic) {
 				// get class (lock). stack -> lock
-				super.push(inst.classType);
+				super.push(method.getClassType().getInternalName());
 			} else {
 				// get object (lock). stack -> lock
 				super.loadThis();
@@ -254,7 +253,8 @@ public class MethodInstrumentor extends AdviceAdapter {
 
 	private void xastore(int opcode, int local, int width) {
 		// stack == array index value |
-		if (!Config.arrayIndexStatesOption.get()) {
+		switch (Config.arrayTrackingOption.get()) {
+		case COARSE:
 			myStackSize(3 - width);
 			Label afterHook = super.newLabel();
 			// stack -> array index _ |
@@ -281,7 +281,8 @@ public class MethodInstrumentor extends AdviceAdapter {
 			super.swap();
 			// stack -> array index value |
 			super.loadLocal(local);
-		} else {
+			break;
+		case FINE:
 			myStackSize(4 - width);
 			// stack -> array index _ |
 			super.storeLocal(local);
@@ -294,6 +295,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 			super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_ARRAY_STORE);
 			// stack -> array index value |
 			super.loadLocal(local);
+			break;
 		}
 
 	}
@@ -333,11 +335,11 @@ public class MethodInstrumentor extends AdviceAdapter {
 		initializeStateAndCacheVars();
 		// To init those ^^^ lazily, you need to know about control flow. We don't.
 		
-		if (isSynchronized) {
+		if (isSynchronized && Config.lockTrackingOption.get()) {
 			myStackSize(3);
 			if (isStatic) {
 				// get class (lock). stack -> lock
-				super.push(inst.classType);
+				super.push(method.getClassType().getInternalName());
 			} else {
 				// get object (lock). stack -> lock
 				super.loadThis();
@@ -351,7 +353,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 		// exit hook for non-inlined methods and the release hook for syncrhonized methods.
 		// Even though we've hit an error condition, we still want to preserve instrumentation that is
 		// in sync with reality because a programmer could catch our exception and continue.
-		if (policy != CommunicationKind.INLINE || isSynchronized) {
+		if (policy != CommunicationKind.INLINE || (isSynchronized && Config.lockTrackingOption.get())) {
 			mv.visitTryCatchBlock(beginTry, endTryBeginHandler, endTryBeginHandler, null);
 			super.mark(beginTry);
 		}
@@ -362,7 +364,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 		// If this is a non-abstract, non-interface, real, warm-blooded method.
 		if (originalMaxStack != UNINITIALIZED) {
 			// on ICEs, call release and exit hooks as needed 
-			if (policy != CommunicationKind.INLINE || isSynchronized) {
+			if (policy != CommunicationKind.INLINE || (isSynchronized && Config.lockTrackingOption.get())) {
 				super.mark(endTryBeginHandler);
 				makeReleaseExitHook(1);
 				super.throwException();
@@ -382,7 +384,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 	}
 
 	@Override
-	public void visitFrame(int type, int nLocal, Object[] local, int nStack, Object[] stack) {//TODO
+	public void visitFrame(int type, int nLocal, Object[] local, int nStack, Object[] stack) {//TODO implement frames correctly
 	}
 	
 	/**
@@ -391,7 +393,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 	@Override
 	public void visitFieldInsn(int opcode, String owner, String name, String desc) {
 
-		if (inst.shouldInstrumentField(owner, name, desc)) {
+		if (InstrumentationAgent.shouldInstrument(FieldDescriptor.of(TypeDescriptor.ofClass(owner), name, TypeDescriptor.fromDescriptorString(desc)))) {
 
 			// TODO figure out how to add visitFrame where needed below (GOTOs) to
 			// avoid cost of computing the frames...?
@@ -399,7 +401,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 			final Type ownerType = Type.getType(ClassInstrumentor.getDescriptor(owner));
 			final String stateFieldName;
             final String stacktraceFieldName;
-			if (Config.objectStatesOption.get() && (opcode == Opcodes.PUTFIELD || opcode == Opcodes.GETFIELD)){
+			if (Config.objectTrackingOption.get() == Config.Granularity.COARSE && (opcode == Opcodes.PUTFIELD || opcode == Opcodes.GETFIELD)){
 				stateFieldName = ClassInstrumentor.SHADOW_FIELD_SUFFIX;
 				stacktraceFieldName = ClassInstrumentor.STACKTRACE_FIELD_SUFFIX;
 			} else {
@@ -466,24 +468,29 @@ public class MethodInstrumentor extends AdviceAdapter {
 				    super.storeLocal(traceVar);
 			    }
 				// if profiling, count the read! SLOOOOOOW
-				if (Config.profileOption.get()) {
+				if (Config.profileOption.get() == Config.ProfileLevel.DEEP) {
 					super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_COUNT_READ);
 				}
 				// dup the target. stack -> obj | obj
 				super.dup();
 				// Get the State for this field. stack -> obj | state
 				super.getField(ownerType, stateFieldName, ClassInstrumentor.STATE_TYPE);
-				// stack -> obj | state state
-				super.dup();
-				// stack -> obj | state writerThread
-				loadThreadFromState();
-				// stack -> obj | state writerThread currentThread -> obj | state
-				ifSameThreadGoto(homeFree); // FAST PATH if same thread we're done, else check stacks
+				
+				// IF INTER-THREAD ONLY -----------
+				if (!Config.intraThreadOption.get()) {
+					// stack -> obj | state state
+					super.dup();
+					// stack -> obj | state writerThread
+					loadThreadFromState();
+					// stack -> obj | state writerThread currentThread -> obj | state
+					ifSameThreadGoto(homeFree); // FAST PATH if same thread we're done, else check stacks
+				}
+				// END IF INTER-THREAD ONLY -------
 				
 				// Fairly Fast Path
 				
 				// if profiling, count the communication! SLOW
-				if (Config.profileOption.get()) {
+				if (Config.profileOption.get() == Config.ProfileLevel.DEEP) {
 					super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_COUNT_COMM);
 				}
 				// stack -> obj | state state    <------ TODO maybe don't dup and just reload from field later if needed.
@@ -527,22 +534,28 @@ public class MethodInstrumentor extends AdviceAdapter {
 				myStackSize(3);
 				Label sHomeFree = super.newLabel();
 				// if profiling, count the read! SLOOOOOOW
-				if (Config.profileOption.get()) {
+				if (Config.profileOption.get() == Config.ProfileLevel.DEEP) {
 					super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_COUNT_READ);
 				}
 				// Get the State for this field. stack -> state
 				super.getStatic(ownerType, stateFieldName, ClassInstrumentor.STATE_TYPE);
-				// stack -> state state
-				super.dup();
-				// stack -> state writerThread
-				loadThreadFromState();
-				// stack -> state writerThread currentThread -> state
-				ifSameThreadGoto(sHomeFree); // FAST PATH if same thread we're done, else check stacks
+				
+				
+				// IF INTER-THREAD ONLY -----------
+				if (!Config.intraThreadOption.get()) {
+					// stack -> state state
+					super.dup();
+					// stack -> state writerThread
+					loadThreadFromState();
+					// stack -> state writerThread currentThread -> state
+					ifSameThreadGoto(sHomeFree); // FAST PATH if same thread we're done, else check stacks
+				}
+				// END IF INTER-THREAD ONLY -------
 				
 				// Fairly Fast Path
 				
 				// if profiling, count the communication! SLOW
-				if (Config.profileOption.get()) {
+				if (Config.profileOption.get() == Config.ProfileLevel.DEEP) {
 					super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_COUNT_COMM);
 				}
 				// stack -> state state    <------ TODO maybe don't dup and just reload from field later if needed.
@@ -602,7 +615,8 @@ public class MethodInstrumentor extends AdviceAdapter {
 		case Opcodes.IALOAD:
 		case Opcodes.LALOAD:			
 		case Opcodes.SALOAD:
-			if (!Config.arrayIndexStatesOption.get()) {
+			switch (Config.arrayTrackingOption.get()) {
+			case COARSE:
 				myStackSize(3);
 				// stack -> index array
 				super.swap();
@@ -614,7 +628,8 @@ public class MethodInstrumentor extends AdviceAdapter {
 				pushWriterCache();
 				// call the hook. stack -> array index
 				super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_COARSE_ARRAY_LOAD);
-			} else {
+				break;
+			case FINE:
 				myStackSize(4);
 				// stack -> array index array index
 				super.dup2();
@@ -624,6 +639,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 				pushWriterCache();
 				// stack -> array index _
 				super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_ARRAY_LOAD);
+				break;
 			}
 			super.visitInsn(opcode);
 			break;
@@ -676,6 +692,10 @@ public class MethodInstrumentor extends AdviceAdapter {
 			super.visitInsn(opcode);
 			break;
 		case Opcodes.MONITORENTER:
+			if (!Config.lockTrackingOption.get()) {
+				super.visitInsn(opcode);
+				break;
+			}
 			myStackSize(1);
 
 			// dup the target. stack -> lock | lock
@@ -692,6 +712,10 @@ public class MethodInstrumentor extends AdviceAdapter {
 			
 			break;
 		case Opcodes.MONITOREXIT:
+			if (!Config.lockTrackingOption.get()) {
+				super.visitInsn(opcode);
+				break;
+			}
 			myStackSize(2);
 			
 			super.dup();
@@ -707,65 +731,17 @@ public class MethodInstrumentor extends AdviceAdapter {
 		case Opcodes.RETURN:
 			makeReleaseExitHook(0);
 			super.visitInsn(opcode);
+			break;
 		default:
 			super.visitInsn(opcode);
 		break;			
 		}
 	}
 	
-	//	@Override
-	//	public void visitIntInsn(int opcode, int operand) {
-	//		if (opcode == Opcodes.NEWARRAY) {
-	//			myStackSize(1);
-	//			// stack == length
-	//			// stack -> length length
-	//			super.dup();
-	//			// stack -> length array
-	//			super.visitIntInsn(opcode, operand);
-	//			// stack -> array length array
-	//			super.dupX1();
-	//			// stack -> array
-	//			super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_NEW_ARRAY);
-	//		} else {
-	//			super.visitIntInsn(opcode, operand);
-	//		}
-	//	}
-
-	//	@Override
-	//	public void visitTypeInsn(int opcode, String type) {
-	//		if (opcode == Opcodes.ANEWARRAY) {
-	//			myStackSize(1);
-	//			// stack == length
-	//			// stack -> length length
-	//			super.dup();
-	//			// stack -> length array
-	//			super.visitTypeInsn(opcode, type);
-	//			// stack -> array length array
-	//			super.dupX1();
-	//			// stack -> array
-	//			super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_NEW_ARRAY);
-	//		} else {
-	//			super.visitTypeInsn(opcode, type);
-	//		}
-	//	}
-
-	//	@Override
-	//	public void visitMultiANewArrayInsn(String desc, int dims) {
-	//		// stack -> array
-	//		super.visitMultiANewArrayInsn(desc, dims);
-	//		// stack -> array array
-	//		super.dup();
-	//		// stack -> array array dims
-	//		super.push(dims);
-	//		// stack -> array
-	//		super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_NEW_MULTI_ARRAY);
-	//		
-	//	}
-
 	@Override
 	public void visitVarInsn(int opcode, int var) {
 		if (opcode == Opcodes.RET) {
-			Util.fail("RET not supported.");
+			Assert.fail("RET not supported.");
 		} else {
 			super.visitVarInsn(opcode, var);
 		}
@@ -774,7 +750,7 @@ public class MethodInstrumentor extends AdviceAdapter {
 	@Override
 	public void visitJumpInsn(int opcode, Label label) {
 		if (opcode == Opcodes.JSR) {
-			Util.fail("JSR not supported.");
+			Assert.fail("JSR not supported.");
 		} else {
 			super.visitJumpInsn(opcode, label);
 		}
@@ -788,49 +764,54 @@ public class MethodInstrumentor extends AdviceAdapter {
 			// No call to this() or super() (i.e., this is a root class like Object).
 			myStackSize(1);
 			super.loadThis();
-			super.invokeVirtual(inst.classType, ClassInstrumentor.INSTANCE_SHADOW_INIT_METHOD);
+			super.invokeVirtual(method.getClassType().getAsmType(), ClassInstrumentor.INSTANCE_SHADOW_INIT_METHOD);
 		}
 		methodEntered = true;
 	}
+	
+	private static final MethodDescriptor WAIT = MethodDescriptor.of(TypeDescriptor.OBJECT, "wait", "()V", null),
+		WAIT_MILLIS = MethodDescriptor.of(TypeDescriptor.OBJECT, "wait", "(J)V", null),
+		WAIT_MILLIS_NANOS = MethodDescriptor.of(TypeDescriptor.OBJECT, "wait", "(JI)V", null);
 
 	@Override
 	public void visitMethodInsn(int opcode, String owner, String name, String desc) {
+		MethodDescriptor invokedMethod = MethodDescriptor.of(TypeDescriptor.ofClass(owner), name, desc, null);
 	    if (isConstructor && !methodEntered && opcode == Opcodes.INVOKESPECIAL && name.equals("<init>")) {
-			// Call to another constructor at the beginning of this constructor (i.e., this is not
-			// Object).
+			// Call to another constructor at the beginning of this constructor (i.e., this is not Object).
 			calledOtherConstructor = true;
 			
-			// Is this a call to a super constructor in an uninstrumented class?
-			if (owner.equals(inst.superName) && !InstrumentationAgent.shouldInstrument(inst.superName)) {
-    		    super.visitMethodInsn(opcode, owner, name, desc); // invoke the constructor
-    		    // init shadow fields after uninstrumented construction finishes
+			// Patch calls to super/this constructors that should not be or is not instrumented.
+			if (InstrumentationAgent.isOrWillBeUninstrumented(invokedMethod)) { 
+				// First, invoke the uninstrumented constructor.
+    		    super.visitMethodInsn(opcode, invokedMethod.getClassType().getInternalName(), name, desc);
+    		    // Then initialize the shadow fields.
     			myStackSize(1);
     			super.loadThis();
-    			super.invokeVirtual(inst.classType, ClassInstrumentor.INSTANCE_SHADOW_INIT_METHOD);
+    			super.invokeVirtual(method.getClassType().getAsmType(), ClassInstrumentor.INSTANCE_SHADOW_INIT_METHOD);
     			return;
 			}
 		}
-	    
-		if (isConstructor && inst.superName.equals(ClassInstrumentor.OBJECT_WITH_STATE_NAME) 
-				&& opcode == Opcodes.INVOKESPECIAL && owner.equals("java/lang/Object") && name.equals("<init>")) {
-			owner = ClassInstrumentor.OBJECT_WITH_STATE_NAME;
-		    super.visitMethodInsn(opcode, owner, name, desc);
-	
-		} else if (opcode == Opcodes.INVOKEVIRTUAL && owner.equals("java/lang/Object") && name.equals("wait")) {
+	    	    
+		if (isConstructor && method.getClassType().getSuperType().equals(ClassInstrumentor.OBJECT_WITH_STATE) 
+				&& opcode == Opcodes.INVOKESPECIAL && invokedMethod.getClassType().equals(TypeDescriptor.OBJECT) && name.equals("<init>")) {
+			// Shim in object-granularity tracking.
+		    super.visitMethodInsn(opcode, ClassInstrumentor.OBJECT_WITH_STATE.getInternalName(), name, desc);
+		    return;
+		} else if (Config.lockTrackingOption.get() && opcode == Opcodes.INVOKEVIRTUAL && invokedMethod.getClassType().equals(TypeDescriptor.OBJECT) && name.equals("wait")) {
 		    myStackSize(3);
 		    
 		    // There are three forms of wait(). Put the arguments aside.
 		    final int longArg = super.newLocal(Type.LONG_TYPE);
 		    final int intArg = super.newLocal(Type.INT_TYPE);
-		    if (desc.equals("()V")) {
+		    if (invokedMethod.getReturnType().equals(MethodInstrumentor.WAIT)) {
 		        // No arguments. Do nothing.
-		    } else if (desc.equals("(J)V")) {
+		    } else if (invokedMethod.getReturnType().equals(MethodInstrumentor.WAIT_MILLIS)) {
 		        super.storeLocal(longArg);
-		    } else if (desc.equals("(JI)V")) {
+		    } else if (invokedMethod.getReturnType().equals(MethodInstrumentor.WAIT_MILLIS_NANOS)) {
 		        super.storeLocal(intArg);
 		        super.storeLocal(longArg);
 		    } else {
-		        Util.fail("wait() call with unknown descriptor");
+		    	Assert.fail("wait() call with unknown descriptor");
 		    }
 		    
 		    // stack -> lock lock
@@ -854,16 +835,17 @@ public class MethodInstrumentor extends AdviceAdapter {
 		    }
 		    
 		    // Invoke wait(). stack -> lock depth
-		    super.visitMethodInsn(opcode, owner, name, desc);
+		    super.visitMethodInsn(opcode, invokedMethod.getClassType().getInternalName(), name, desc);
 		    // stack -> lock depth thread
 		    pushCurrentThread();
 		    // stack -> lock depth thread state
 		    pushCurrentState();
 		    // stack -> 
 			super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_POSTWAIT);
-		
+			return;
 		} else {
-		    super.visitMethodInsn(opcode, owner, name, desc);
+		    super.visitMethodInsn(opcode, invokedMethod.getClassType().getInternalName(), name, desc);
+		    return;
         }
 	}
 

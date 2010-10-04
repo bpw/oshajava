@@ -21,6 +21,7 @@
 	<property name="paths.script" value="setup.sh" />
 	<property name="module.compressor.bin" value="${bin.dir}/oshamodcompress" />
 	<property name="module.rm.bin" value="${bin.dir}/oshamodrm" />
+	<property name="module.prettyprinter" value="${bin.dir}/oshamodpp" />
 	
 	<property name="agent.jar"      value="${build.dir}/${ant.project.name}.jar" />
 	<property name="annotation.jar" value="${agent.jar}" />
@@ -28,7 +29,7 @@
 	<property name="agent.class" value="${top.package}.instrument.InstrumentationAgent" />
 	<property name="premain.class" value="${top.package}.runtime.Config" />
 	<property name="main.class" value="${top.package}.runtime.OshaJavaMain" />
-	<property name="processor.class" value="${top.package}.sourceinfo.SpecProcessor" />
+	<property name="processor.class" value="${top.package}.spec.SpecProcessor" />
 	<property name="class.loader" value="${top.package}.instrument.InstrumentingClassLoader" />
 	
 	<!-- build targets -->
@@ -37,6 +38,7 @@
 		
 	<target name="clean" description="Clean build files.">
 		<delete dir="${build.dir}" />
+		<delete file="${paths.script}" />
 	</target>
 	
 	<target name="compile">
@@ -44,16 +46,19 @@
 		<javac srcdir="${asm.src.dir}" destdir="${classes.dir}" />
 		<javac srcdir="${acme.src.dir}" destdir="${classes.dir}" />
 		<javac srcdir="${src.dir}" destdir="${classes.dir}">
+		   <classpath path=".:libs/prefuse.jar"/>
 		</javac>
 	</target>
 		
 	<target name="jar" depends="compile">
-		<property name="manifest" value="${classes.dir}/Manifest.mf" />
-<echo file="${manifest}">Premain-Class: ${premain.class}
-Agent-Class: ${agent.class}
-</echo>
-		<jar destfile="${agent.jar}" index="true" manifest="${manifest}">	
+		<jar destfile="${agent.jar}" index="true">
+			<manifest>
+				<attribute name="Premain-Class" value="${premain.class}" />
+				<attribute name="Agent-Class" value="${agent.class}" />
+			</manifest>
+			<service type="javax.annotation.processing.Processor" provider="${processor.class}" />
 			<fileset dir="${classes.dir}" includes="**/*.class" />
+			<zipfileset src="libs/prefuse.jar" />
 			<!-- <indexjars refid="libs.classpath" /> -->
 		</jar>
 	</target>
@@ -63,8 +68,9 @@ Agent-Class: ${agent.class}
 		
 		<!-- Generate setup.sh to set some environment variables. -->
 		<echo file="${paths.script}">export PATH=$$PATH:${basedir}/${bin.dir}
-			export OSHAJAVA_ANNOTATION_CLASSPATH=${basedir}/${annotation.jar}
-			export OSHAJAVA_CLASSPATH=${basedir}/${agent.jar}
+			export OSHAJAVA_JAR=${basedir}/${agent.jar}
+			export OSHAJAVA_ANNOTATION_CLASSPATH=$$OSHAJAVA_JAR
+			export OSHAJAVA_CLASSPATH=$$OSHAJAVA_JAR
 			export OSHAJAVA_PROCESSOR_CLASS=${processor.class}
 		</echo>
 		
@@ -81,10 +87,9 @@ case "$1" in
     shift
     ;;	  
 esac
-echo $JAVAC -Xbootclasspath/a:${basedir}/${annotation.jar} -processorpath ${basedir}/${annotation.jar} $$@
-$JAVAC -Xbootclasspath/a:${basedir}/${annotation.jar} -processorpath ${basedir}/${annotation.jar} $$@
+#echo $JAVAC -Xbootclasspath/a:${basedir}/${agent.jar} -processorpath ${basedir}/${agent.jar} -processor ${processor.class} $$@
+$$JAVAC -Xbootclasspath/a:${basedir}/${agent.jar} -processorpath ${basedir}/${agent.jar} -processor ${processor.class} $$@
 </echo>
-		
 		<!-- Generate the java wrapper script -->
 		<echo file="${runtime.bin}">#!/bin/sh
 OSHA_ARGS=""
@@ -155,27 +160,12 @@ fi
 test -z "$1" &amp;&amp; OSHA_ARGS="$OSHA_ARGS,-help"
 
 export CLASSPATH
-echo $$JVM -javaagent:${basedir}/${agent.jar}=$$OSHA_ARGS -Xbootclasspath/a:${basedir}/${agent.jar} $$JVM_ARGS ${main.class} $$MAIN $$@
+#echo $$JVM -javaagent:${basedir}/${agent.jar}=$$OSHA_ARGS -Xbootclasspath/a:${basedir}/${agent.jar} $$JVM_ARGS ${main.class} $$MAIN $$@
+$$JVM -version
 $$JVM -javaagent:${basedir}/${agent.jar}=$$OSHA_ARGS -Xbootclasspath/a:${basedir}/${agent.jar} $$JVM_ARGS ${main.class} $$MAIN $$@
 
 		</echo>
-		
-		<!-- Generate the module compressor script -->
-		<echo file="${module.compressor.bin}">#!/usr/bin/env ruby
-classpath = ENV['CLASSPATH']
-args = ""
-if ARGV.first == "-stats"
-  args = ARGV.shift
-end
-if ARGV.first == "-cp" or ARGV.first == "-classpath"
-	classpath = ARGV[1]
-end
-classpath ||= "."
-classpath.split(":").each do |d|
-	system "find #{d} -name '*.omb' | xargs java -cp ${basedir}/${agent.jar} oshajava.sourceinfo.ModuleSpecCompressor #{args}"
-end
-		</echo>	
-		
+
 		<!-- Generate the module rm script -->
 		<echo file="${module.rm.bin}">#!/usr/bin/env ruby
 classpath = ENV['CLASSPATH']
@@ -184,10 +174,15 @@ if ARGV.first == "-cp" or ARGV.first == "-classpath"
 end
 classpath ||= "."
 classpath.split(":").each do |d|
-	system "find #{d} -name '*.omb' -delete"
-	system "find #{d} -name '*.omg' -delete"
+	system "find #{d} -name '*.omi' -delete"
+	system "find #{d} -name '*.oms' -delete"
+	system "find #{d} -name '*.omm' -delete"
 end
 		</echo>	
+		
+		<echo file="${module.prettyprinter}">#!/bin/sh
+			java -cp ${basedir}/${agent.jar} oshajava.util.ObjectFilePrinter $@
+		</echo>
 		
 		<!-- make everything in build/bin executable -->
 		<chmod perm="a+x" type="file">

@@ -1,24 +1,28 @@
-Contact Ben <bpw@cs.washington.edu> with issues or questions.
+Contact Ben Wood <bpw@cs.washington.edu> with issues or questions.
 
-System requirements:
-Java 1.5 or higher 
-
-To build:
+Required:
+  * Java 1.6 or higher
+  * ant
+  * sh (or compatible shell)
+ 
+Build:
 $ ant
 
-You also may wish to use the included Eclipse project, though it does
-not do the full jar/tools build.
-
+Usage:
 After building, you should source setup.sh in any shell in which you
 want to use oshajava. This puts a couple things on your path:
 
   * oshajavac: Use this in place of javac to compile java files that
-    uses oshajava annotations.  Alternatively, use javac and make sure
-    that OSHAJAVA_ANNOTATION_CLASSPATH is on your classpath.
+    use oshajava annotations.  Alternatively, use javac and make sure
+    that $OSHAJAVA_ANNOTATION_CLASSPATH is on your classpath.
 
   * oshajava: Use this in place of java to run a java program under
     the oshajava runtime. Usage is slightly different from java:
-        oshajava [java args] -- ClassToRun [application args]
+        oshajava [oshajava args] [-javaOptions [java args]] -- ClassToRun [application args]
     runs the same program that you would run with normal java as:
     	java [java args] ClassToRun [application args]
+    For running jars:
+    	oshajava [oshajava args] -javaOptions [java args] -jar jartorun.jar [application args]
+    For help:
+    	oshajava -help
 

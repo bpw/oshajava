@@ -7,47 +7,25 @@ import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryMXBean;
 import java.lang.management.MemoryPoolMXBean;
 import java.lang.reflect.Array;
-import java.util.Set;
 import java.util.HashSet;
+import java.util.Set;
 
 import oshajava.runtime.exceptions.IllegalCommunicationException;
 import oshajava.runtime.exceptions.IllegalSharingException;
 import oshajava.runtime.exceptions.IllegalSynchronizationException;
+import oshajava.support.acme.util.Assert;
+import oshajava.support.acme.util.Debug;
 import oshajava.support.acme.util.Util;
 import oshajava.support.acme.util.option.Option;
+import oshajava.util.BitVectorIntSet;
 import oshajava.util.Py;
 import oshajava.util.PyWriter;
 import oshajava.util.WeakConcurrentIdentityHashMap;
 import oshajava.util.cache.DirectMappedShadowCache;
 import oshajava.util.count.AbstractCounter;
 import oshajava.util.count.Counter;
-import oshajava.util.count.ConcurrentTimer;
-import oshajava.util.intset.BitVectorIntSet;
 
 /**
- * TODO Possible optimizations:
- *  
- * 2. Don't call the enter and exit hooks for non-inlined methods that:
- *    - do not contain field accesses (except private reads);
- *    - do not contain any synchronization (including being a synchronized method);
- *    - do not contain any method calls to inlined methods.
- *    
- * 9. When code is stable, customize and diversify array read/writer hooks.
- * 
- * 12. Choose array granularity on some level other than "yes or no for all."  Asin coarse for
- *     some, fine for others.
- *     
- * 13. Encode state (w/o reader set) as an int 
- *     low bits for method, high for thread... 12 bits for tid, 20 for mid. each thread
- *     has an array of reader sets... 
- *     
- *    
- * TODO Things to fix, add, or consider.
- * 
- * + Copy (partial) of java.*
- * 
- * + Graph recording as annotation inference? i.e. insert annotations in the bytecode?
- * 
  * @author bpw
  */
 public class RuntimeMonitor {
@@ -56,8 +34,9 @@ public class RuntimeMonitor {
 	/**
 	 * Record profiling information.
 	 */
-	public static final boolean PROFILE = Config.profileOption.get();
+	public static final boolean PROFILE = Config.profileOption.get() == Config.ProfileLevel.DEEP;
  	public static final boolean CREATE = Config.createOption.get();
+ 	public static final boolean INTRA_THREAD = Config.intraThreadOption.get();
 
 	public static final Counter fieldReadCounter = new Counter("All field reads");
 	public static final Counter fieldCommCounter = new Counter("Communicating field reads");
@@ -77,17 +56,16 @@ public class RuntimeMonitor {
 		}
 	};
 
-	// TODO test the WCIHM implementation to make sure it actually works and isn't just dropping
-	// all the keys or something weird.
+	// TODO Stress test the WCIHM.
 	protected static final WeakConcurrentIdentityHashMap<Object,LockState> lockStates = 
-		new WeakConcurrentIdentityHashMap<Object,LockState>();
+		new WeakConcurrentIdentityHashMap<Object,LockState>(Config.shadowStoreGCoption.get());
 	protected static final WeakConcurrentIdentityHashMap<Object,State[]> arrayStates = 
-		new WeakConcurrentIdentityHashMap<Object,State[]>();
+		new WeakConcurrentIdentityHashMap<Object,State[]>(Config.shadowStoreGCoption.get());
 	protected static final WeakConcurrentIdentityHashMap<Object,Ref<State>> coarseArrayStates = 
-		new WeakConcurrentIdentityHashMap<Object,Ref<State>>();
+		new WeakConcurrentIdentityHashMap<Object,Ref<State>>(Config.shadowStoreGCoption.get());
 
 	static class Ref<T> {
-		T contents;
+		T contents; // FIXME make volatile if volatileShadows option is set...
 	}
 
 	/*******************************************************************/
@@ -129,12 +107,7 @@ public class RuntimeMonitor {
 			fieldSlowPathCounter.inc();
 		}
 		if (!read.stack.checkWriter(write.stack)) {
-		    IllegalSharingException exc = new IllegalSharingException(write, read, null, on);
-		    if (Config.failStopOption.get()) {
-		        Util.fail(exc);
-		    } else {
-		        throw exc;
-		    }
+		    error(new IllegalSharingException(write, read, null, on));
 		}
 	}
 	public static void checkFieldRead(final State write, final State read, final String on, 
@@ -146,16 +119,11 @@ public class RuntimeMonitor {
 		    createEdge(trace);
 		}
 		if (!read.stack.checkWriter(write.stack)) {
-			IllegalSharingException exc = new IllegalSharingException(write, read, trace, on);
-		    if (Config.failStopOption.get()) {
-		        Util.fail(exc);
-		    } else {
-		        throw exc;
-		    }
+		    error(new IllegalSharingException(write, read, trace, on));
 		}
 	}
 	private static void checkArrayRead(final State write, final ThreadState reader, final BitVectorIntSet wCache, final StackTraceElement[] trace) {
-		if (write.thread != reader) {
+		if (INTRA_THREAD || write.thread != reader) {
 			if (PROFILE) {
 				arrayCommCounter.inc();
 			}
@@ -167,12 +135,7 @@ public class RuntimeMonitor {
 					arraySlowPathCounter.inc();
 				}
 				if (!reader.state.stack.checkWriter(write.stack)) {
-					IllegalSharingException exc = new IllegalSharingException(write, reader.state, trace);
-		    		if (Config.failStopOption.get()) {
-		        		Util.fail(exc);
-		    		} else {
-		        		throw exc;
-		    		}
+					error(new IllegalSharingException(write, reader.state, trace));
 				}
 			}
 		}
@@ -253,16 +216,16 @@ public class RuntimeMonitor {
 	public static void release(final Object lock, final ThreadState holder) {
 		try {
 			final LockState ls = holder.lockStateCache.get(lock);
-			Util.assertTrue(ls.getDepth() >= 0, "Bad lock scoping");
+			Assert.assertTrue(ls.getDepth() >= 0, "Bad lock scoping");
     	    ls.decrementDepth();
 		} catch (Exception t) {
-			Util.fail(t);
+			Assert.fail(t);
 		}
 	}
 	public static void release(final ObjectWithState lock, final ThreadState holder) {
 	    lock.__osha_lock_state.decrementDepth();
 		final int depth = lock.__osha_lock_state.getDepth();
-		if (depth < 0) Util.fail("Bad lock scoping");
+		if (depth < 0) Assert.fail("Bad lock scoping");
 	}
 
 	/**
@@ -282,14 +245,14 @@ public class RuntimeMonitor {
 			if (lockState == null) {
 				final LockState ls = new LockState(holder.state);
 				ls.setDepth(1);
-				Util.assertTrue(
+				Assert.assertTrue(
 						holder.lockStateCache.putIfAbsent(lock, ls) == null);					
 				return;
 			}
 			
 			// check and update the lock state.
 			if (lockState.getDepth() < 0) {
-				Util.fail("Bad lock scoping.");
+				Assert.fail("Bad lock scoping.");
 			} else if (lockState.getDepth() == 0) {
 				// First (non-reentrant) acquire by this thread.
 				// NOTE: this is atomic, because we hold lock and no other thread can call
@@ -305,33 +268,31 @@ public class RuntimeMonitor {
 					// increment depth to 1
 					lockState.incrementDepth();
 					// if last holder was not the same thread
-					if (lastHolderState.thread != holder) {
+					if (INTRA_THREAD || lastHolderState.thread != holder) {
 						if (PROFILE) {
 							lockCommCounter.inc();
 						}
+						
 						// if communication is not allowed, throw an exception.
 						if (!holderState.stack.writerCache.contains(lastHolderState.getStackID())) {
 							if (PROFILE) {
 								lockSlowPathCounter.inc();
 							}
 							if (!holderState.stack.checkWriter(lastHolderState.stack)) {
-							    throw new IllegalSynchronizationException(lastHolderState, holderState);
+							    error(new IllegalSynchronizationException(lastHolderState, holderState));
 							}
 						}
 					}
+					
 				}
 			} else { // depth is > 0. This is a reentrant acquire
 				lockState.incrementDepth();
 			}
 
 		} catch (IllegalCommunicationException e) {
-		    if (Config.failStopOption.get()) {
-		        Util.fail(e);
-		    } else {
-		        throw e;
-		    }
+			throw e;
 		} catch (Throwable t) {
-			Util.fail(t);
+			Assert.fail(t);
 		}
 	}
 //	public static void acquire(final ObjectWithState lock, final ThreadState holder, final State holderState) {
@@ -356,8 +317,8 @@ public class RuntimeMonitor {
 //				if (lastHolderState != null && lastHolderState.thread != holder) {
 //					if (checkStacks(lastHolderState.stack, holderState.stack)) {
 //						throw new IllegalSynchronizationException(
-//								lastHolderState.thread, "FIXME", 
-//								holder, "FIXME"
+//								lastHolderState.thread, "FIX ME", 
+//								holder, "FIX ME"
 //						);
 //					}
 //				}
@@ -377,7 +338,7 @@ public class RuntimeMonitor {
 	 */
 	public static int prewait(final Object lock, final ThreadState holder) {
 		final LockState lockState = holder.lockStateCache.get(lock);
-		Util.assertTrue(lockState.getDepth() > 0, "Bad prewait");
+		Assert.assertTrue(lockState.getDepth() > 0, "Bad prewait");
 		final int depth = lockState.getDepth();
 		lockState.setDepth(0);
 		return depth;
@@ -392,7 +353,7 @@ public class RuntimeMonitor {
 			lockCounter.inc();
 		}
 		final LockState lockState = ts.lockStateCache.get(lock);
-		Util.assertTrue(lockState.getDepth() == 0, "Bad postwait");
+		Assert.assertTrue(lockState.getDepth() == 0, "Bad postwait");
 		lockState.setDepth(resumeDepth);
 		final State lastHolderState = lockState.lastHolder;
 		if (lastHolderState != currentState) { // necessary because of the timeout versions of wait.
@@ -407,12 +368,7 @@ public class RuntimeMonitor {
 					lockSlowPathCounter.inc();
 				}
 				if (!currentState.stack.checkWriter(lastHolderState.stack)) {
-					IllegalSynchronizationException exc = new IllegalSynchronizationException(lastHolderState, currentState);
-    		    	if (Config.failStopOption.get()) {
-    		        	Util.fail(exc);
-    		    	} else {
-    		        	throw exc;
-    		    	}
+					error(new IllegalSynchronizationException(lastHolderState, currentState));
 				}
 			}
 		}
@@ -473,7 +429,7 @@ public class RuntimeMonitor {
 
 	public static <T extends Throwable> T fudgeTrace(T t) {
 		if (Config.fudgeExceptionTracesOption.get()) {
-			Util.debugf("fudge", "Fudging. package name is %s", RuntimeMonitor.class.getPackage().getName());
+			Debug.debugf("fudge", "Fudging. package name is %s", RuntimeMonitor.class.getPackage().getName());
 			StackTraceElement[] stack = t.getStackTrace();
 			int i = 0;
 			while (i < stack.length && (stack[i].getClassName().startsWith(RuntimeMonitor.class.getPackage().getName()))) {
@@ -508,8 +464,23 @@ public class RuntimeMonitor {
 	        Util.log("EDGE: " + edge);
 	    }
         } catch (Throwable t) {
-            Util.fail(t);
+            Assert.fail(t);
         }
+	}
+	
+	private static void error(IllegalCommunicationException ice) {
+		switch (Config.errorActionOption.get()) {
+		case HALT:
+			Assert.fail(ice);
+			break;
+		case THROW:
+			throw ice;
+		case WARN:
+			Assert.warn(ice.toString());
+			break;
+		case NONE:
+			break;
+		}
 	}
 
 	/**
@@ -519,60 +490,65 @@ public class RuntimeMonitor {
 	 */
 	public static void fini(final String mainClass) {
 		Config.premainFiniTimer.stop();
-		// Report some stats.
-		if (PROFILE) {
-			Util.log("---- Profile info ------------------------------------");
-		}    
-		if (Stack.RECORD) {
-			Stack.dumpGraphs(mainClass);
-		}
-
 		// mem and gc
 		MemoryMXBean bean = ManagementFactory.getMemoryMXBean();
 		CompilationMXBean cbean = ManagementFactory.getCompilationMXBean();
 
 		long peakMem = 0;
-
 		for (MemoryPoolMXBean b : ManagementFactory.getMemoryPoolMXBeans()) {
 			peakMem += b.getPeakUsage().getUsed();
 		}
+		final String threadName = Thread.currentThread().getName();
+		Thread.currentThread().setName("oshajava");
+		
+		Util.logf("%s ms, Peak Memory: %d bytes", Config.premainFiniTimer, peakMem);
+		
 
-		// dump profile
-		try {
-			final PyWriter py = new PyWriter(mainClass + Config.profileExtOption.get(), true);
+		// Report some stats.
+		if (PROFILE) {
+			Util.log("---- Profile info ------------------------------------");
+		}    
+		if (Stack.RECORD) {
+			Stack.dumpRecordedGraphs(mainClass);
+		}
+
+		if (Config.profileOption.get() != Config.ProfileLevel.NONE) {
+			// dump profile
 			try {
-				py.startMap();
-				py.writeMapKey("options");
-				py.startMap();
-				for (Option<?> o : Option.all()) {
-					py.writeMapPair(o.getId(), Py.quote(o.get()));
+				final PyWriter py = new PyWriter(mainClass + Config.profileExtOption.get(), !Util.quietOption.get() && Config.summaryOption.get());
+				try {
+					py.startMap();
+					py.writeMapKey("options");
+					py.startMap();
+					for (Option<?> o : Option.all()) {
+						py.writeMapPair(o.getId(), Py.quote(o.get()));
+					}
+					py.endMap();
+					py.writeMapPair("threads", ThreadState.lastID() + 1);
+					py.writeMapPair("frequently communicating stacks", Stack.lastID() + 1);
+					for (final AbstractCounter<?> c : AbstractCounter.all()) {
+						py.writeCounterAsMapPair(c);
+					}
+					py.writeMapPair("Memory peak", peakMem);
+					py.writeMapPair("Memory used", bean.getHeapMemoryUsage().getUsed());
+					py.writeMapPair("Memory max", bean.getHeapMemoryUsage().getMax());
+					if (cbean!=null) {
+						py.writeMapPair("Compile time", cbean.getTotalCompilationTime());
+					}
+					long gcTime = 0;
+					for (GarbageCollectorMXBean gcb : ManagementFactory.getGarbageCollectorMXBeans()) {
+						gcTime += gcb.getCollectionTime();
+					}
+					py.writeMapPair("GC time", gcTime);
+					// times
+					py.endMap();
+					// END PY
+				} finally {
+					py.close();
 				}
-				py.endMap();
-				py.writeMapPair("threads", ThreadState.lastID() + 1);
-				py.writeMapPair("frequently communicating stacks", Stack.lastID() + 1);
-				for (final AbstractCounter<?> c : AbstractCounter.all()) {
-					py.writeCounterAsMapPair(c);
-				}
-				py.writeMapPair("Memory peak", peakMem);
-				py.writeMapPair("Memory used", bean.getHeapMemoryUsage().getUsed());
-				py.writeMapPair("Memory max", bean.getHeapMemoryUsage().getMax());
-				if (cbean!=null) {
-					py.writeMapPair("Compile time", cbean.getTotalCompilationTime());
-				}
-				long gcTime = 0;
-				for (GarbageCollectorMXBean gcb : ManagementFactory.getGarbageCollectorMXBeans()) {
-					gcTime += gcb.getCollectionTime();
-				}
-				py.writeMapPair("GC time", gcTime);
-				// times
-				py.endMap();
-				// END PY
-			} finally {
-				py.close();
+			} catch (IOException e) {
+				Assert.warn("Failed to dump py.");
 			}
-		} catch (IOException e) {
-			Util.fail("Failed to dump py.");
-			//FIXME
 		}
 		
 		if (PROFILE) {
@@ -611,6 +587,7 @@ public class RuntimeMonitor {
 			}
 
 		}
+		Thread.currentThread().setName(threadName);
 	}
 
 

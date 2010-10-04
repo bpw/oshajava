@@ -2,20 +2,18 @@ package oshajava.instrument;
 
 import java.util.List;
 
+import oshajava.spec.names.FieldDescriptor;
 import oshajava.support.org.objectweb.asm.MethodVisitor;
 import oshajava.support.org.objectweb.asm.Type;
-import oshajava.support.org.objectweb.asm.Opcodes;
 import oshajava.support.org.objectweb.asm.commons.AdviceAdapter;
 
 
 public class StaticShadowInitInserter extends AdviceAdapter {
 
 	private final Type classType;
-	private final List<String> inlineInitFields;
-	private final String className;
-	public StaticShadowInitInserter(MethodVisitor mv, int access, String name, String desc, Type classType, List<String> inlineInitFields) {
+	private final List<FieldDescriptor> inlineInitFields;
+	public StaticShadowInitInserter(MethodVisitor mv, int access, String name, String desc, Type classType, List<FieldDescriptor> inlineInitFields) {
 		super(mv, access, name, desc);
-		this.className = name;
 		this.classType = classType;
 		this.inlineInitFields = inlineInitFields;
 	}
@@ -41,10 +39,10 @@ public class StaticShadowInitInserter extends AdviceAdapter {
     	    int varCurrentState = super.newLocal(ClassInstrumentor.STATE_TYPE);
     	    super.invokeStatic(ClassInstrumentor.RUNTIME_MONITOR_TYPE, ClassInstrumentor.HOOK_CURRENT_STATE);
     	    super.storeLocal(varCurrentState);
-    	    for (String fieldname : inlineInitFields) {
+    	    for (FieldDescriptor field : inlineInitFields) {
 			    // Shadow field.
 				super.loadLocal(varCurrentState);
-				super.putStatic(classType, fieldname + ClassInstrumentor.SHADOW_FIELD_SUFFIX, ClassInstrumentor.STATE_TYPE);
+				super.putStatic(classType, field.getFieldName() + ClassInstrumentor.SHADOW_FIELD_SUFFIX, ClassInstrumentor.STATE_TYPE);
 			}
     	}
 	}

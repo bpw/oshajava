@@ -3,7 +3,7 @@ package oshajava.runtime;
 import java.lang.ref.WeakReference;
 
 import oshajava.runtime.RuntimeMonitor.Ref;
-import oshajava.support.acme.util.Util;
+import oshajava.support.acme.util.Assert;
 import oshajava.util.cache.DirectMappedShadowCache;
 import oshajava.util.cache.ShadowCache;
 import oshajava.util.count.Counter;
@@ -46,7 +46,7 @@ public final class ThreadState {
 	 * @return
 	 */
 	private static synchronized int newID() {
-		Util.assertTrue(idCounter < Integer.MAX_VALUE, "Ran out of thread IDs.");
+		Assert.assertTrue(idCounter < Integer.MAX_VALUE, "Ran out of thread IDs.");
 		return ++idCounter;
 	}
 	
@@ -125,12 +125,12 @@ public final class ThreadState {
 	public static final Counter ARRAY_HITS = new Counter("Array hits"), ARRAY_MISSES = new Counter("Array misses");
 	
 	protected final ShadowCache<Object,Ref<State>> arrayStateCache = 
-		Config.arrayIndexStatesOption.get() ? null :
+		Config.arrayTrackingOption.get() == Config.Granularity.FINE ? null :
 			new DirectMappedShadowCache<Object,Ref<State>>(RuntimeMonitor.coarseArrayStates, 
 					Config.arrayCacheSizeOption.get(),	ARRAY_HITS, ARRAY_MISSES);
 	
 	protected final ShadowCache<Object,State[]> arrayIndexStateCache = 
-		Config.arrayIndexStatesOption.get() ?
+		Config.arrayTrackingOption.get() == Config.Granularity.FINE ?
 				new DirectMappedShadowCache<Object,State[]>(RuntimeMonitor.arrayStates, 
 						Config.arrayCacheSizeOption.get(), ARRAY_HITS, ARRAY_MISSES)
 				: null;
@@ -168,242 +168,14 @@ public final class ThreadState {
 //	 * to minimize
 //	 *     ((1 - HitRate(N)) * (N + 10)) + (HitRate(N) * AvgHitTime(N)) 
 //	 */
-////	protected static final int CACHED_ARRAYS = 3;
-//	
-//	protected static final boolean REPOSITION_CURSOR_ON_HIT = true;
-//	
 //	// TODO Do some GC of the cache or use array of WeakRefs to the actual array objects.
-//	protected static final int ARRAY_CACHE_SIZE = 16;
 //	// TODO victim buffer or 2-way associative?
-////	protected static final int VICTIM_BUFFER_SIZE = 2;
-//	
-////	/**
-////	 * Profiling: how many cache slots checked before typical hit.
-////	 */
-////	protected static final Counter[] hitLengths = new Counter[CACHED_ARRAYS];
-////	static {
-////		if (RuntimeMonitor.COUNT_ARRAY_CACHE) {
-////			for (int i = 0; i < CACHED_ARRAYS; i++) {
-////				hitLengths[i] = new Counter();
-////			}
-////		}
-////	}
-//
-//	/**
-//	 * Cached copy of the last accessed array.
-//	 * TODO weak reference or just some GC of my own. e.g. delete after n method calls.	
-//	 */
-//	private final Object[] arrayCache = new Object[ARRAY_CACHE_SIZE];
-//	
-//	/**
-//	 * Cached reference to the coarse array state of the last accessed array. Only used
-//	 * in coarse array state mode.
-//	 */
-//	@SuppressWarnings("unchecked")
-//	private final RuntimeMonitor.Ref<State>[] arrayStateRefCache = new RuntimeMonitor.Ref[ARRAY_CACHE_SIZE];
-//	
-////	/**
-////	 * Always points to last cached array.
-////	 */
-////	private int cachedArrayCursor = 0;
-////	
-//	/**
-//	 * Cached copy of the the array index states for the last accessed array. Only used
-//	 * in array index state mode.
-//	 */
-//	private State[][] arrayIndexStateCache = new State[ARRAY_CACHE_SIZE][];
-//	
-//	/**
-//	 * Get a cached array state array. (For array index states.)
-//	 * @param array
-//	 * @return
-//	 */
-//	protected State[] getCachedArrayStateArray(final Object array) {
-//		final int slot = System.identityHashCode(array) % ARRAY_CACHE_SIZE;
-//		if (arrayCache[slot] == array) {
-//			return arrayIndexStateCache[slot];
-//		} else {
-//			return null;
-//		}	
-//	}
-////	protected State[] getVictimBufferIndexStates(final Object array) {
-////		int hitLength = 0;
-////		for (int i = cachedArrayCursor; i - cachedArrayCursor < CACHED_ARRAYS; i++) {
-////			if (arrayCache[i % CACHED_ARRAYS] == array) {
-////				if (RuntimeMonitor.COUNT_ARRAY_CACHE) hitLengths[hitLength].inc();
-////				if (REPOSITION_CURSOR_ON_HIT) cachedArrayCursor = i % CACHED_ARRAYS;
-////				return arrayIndexStateCache[i % CACHED_ARRAYS];
-////			}
-////			if (RuntimeMonitor.COUNT_ARRAY_CACHE) hitLength++;
-////		}
-////		return null;
-////	}
-//	
-//	/**
-//	 * Only call if the array wasn't in the cache already.
-//	 * @param array
-//	 * @param stateRef
-//	 */
-//	protected void cacheArrayStateArray(final Object array, final State[] states) {
-//		final int slot = System.identityHashCode(array) % ARRAY_CACHE_SIZE;
-//		arrayCache[slot] = array;
-//		arrayIndexStateCache[slot] = states;
-//	}
-//	
-//	/**
-//	 * Get a cached array state ref. (For writes.)
-//	 * @param array
-//	 * @return
-//	 */
-//	protected RuntimeMonitor.Ref<State> getCachedArrayStateRef(final Object array) {
-//		final int slot = System.identityHashCode(array) % ARRAY_CACHE_SIZE;
-//		if (arrayCache[slot] == array) {
-//			return arrayStateRefCache[slot];
-//		} else {
-//			return null;
-//		}
-//	}
-//	
-////	protected RuntimeMonitor.Ref<State> getVictimBufferStateRef(final Object array) {
-////		int hitLength = 0;
-////		for (int i = cachedArrayCursor; i - cachedArrayCursor < CACHED_ARRAYS; i++) {
-////			if (arrayCache[i % CACHED_ARRAYS] == array) {
-////				if (RuntimeMonitor.COUNT_ARRAY_CACHE) hitLengths[hitLength].inc();
-////				if (REPOSITION_CURSOR_ON_HIT) cachedArrayCursor = i % CACHED_ARRAYS;
-////				return arrayStateRefCache[i % CACHED_ARRAYS];
-////			}
-////			if (RuntimeMonitor.COUNT_ARRAY_CACHE) hitLength++;
-////		}
-////		return null;
-////
-////	}
-//
-//	/**
-//	 * Get a cached array state. (For reads.)
-//	 * @param array
-//	 * @return
-//	 */
-//	protected State getCachedArrayState(final Object array) {
-//		final RuntimeMonitor.Ref<State> ref = getCachedArrayStateRef(array);
-//		return ref == null ? null : ref.contents;		
-//	}
-//	
-//	/**
-//	 * Only call if the array wasn't in the cache already.
-//	 * @param array
-//	 * @param stateRef
-//	 */
-//	protected void cacheArrayStateRef(final Object array, final RuntimeMonitor.Ref<State> stateRef) {
-//		final int slot = System.identityHashCode(array) % ARRAY_CACHE_SIZE;
-//		arrayCache[slot] = array;
-//		arrayStateRefCache[slot] = stateRef;
-//	}
-	
+
 	// -- Lock state caching ---------------------------------------------------------
 	
 	public static final Counter LOCK_HITS = new Counter("Lock hits"), LOCK_MISSES = new Counter("Lock misses");
 
 	protected final ShadowCache<Object,LockState> lockStateCache = 
 		new DirectMappedShadowCache<Object,LockState>(RuntimeMonitor.lockStates, 
-				Config.lockCacheSizeOption.get(), LOCK_HITS, LOCK_MISSES);
-	
-//	private static final int LOCK_CACHE_SIZE = 16;
-//	private final Object[] lockStateCacheKeys = new Object[LOCK_CACHE_SIZE];
-//	private final LockState[] lockStateCache = new LockState[LOCK_CACHE_SIZE];
-//	
-//	protected LockState getCachedLockState(final Object lock) {
-//		final int slot = System.identityHashCode(lock) % LOCK_CACHE_SIZE;
-//		if (lockStateCacheKeys[slot] == lock) {
-//			return lockStateCache[slot];
-//		}
-//		return null;
-//	}
-//	
-//	protected void cacheLockState(final Object lock, final LockState lockState) {
-//		final int slot = System.identityHashCode(lock) % LOCK_CACHE_SIZE;
-//		lockStateCacheKeys[slot] = lock;
-//		lockStateCache[slot] = lockState;
-//	}
-//	
-//	/**
-//	 * Initial capacity of the lock state stack.
-//	 */
-//	private static final int INITIAL_LOCK_STACK_CAPACITY = 16;
-//	
-//	/**
-//	 * Stack of lock states representing the locks currently held by this thread.
-//	 */
-//	private LockState[] lockStateStack = new LockState[INITIAL_LOCK_STACK_CAPACITY]; 
-//	
-//	/**
-//	 * Stack of locks mapping to the lock states in the stack.
-//	 */
-//	private Object[] lockStack = new Object[INITIAL_LOCK_STACK_CAPACITY];
-//	
-//	/**
-//	 * Current size of the lock state stack.
-//	 */
-//	private int lockStateStackSize = 0;
-//	
-//	/**
-//	 * Expand the given array to size n.
-//	 * @param array
-//	 * @param n
-//	 * @return
-//	 */
-//	private Object[] expand(final Object[] array, int n) {
-//		final Object[] newArray = new Object[n];
-//		System.arraycopy(array, 0, newArray, 0, array.length);
-//		return newArray;
-//	}
-//	private int[] expand(final int[] array, int n) {
-//		final int[] newArray = new int[n];
-//		System.arraycopy(array, 0, newArray, 0, array.length);
-//		return newArray;
-//	}
-//	
-//	/**
-//	 * Push the given lock state onto the lock state stack.
-//	 * @param ls
-//	 */
-//	protected void pushLock(final Object lock, final LockState ls) {
-//		if (lockStateStackSize == lockStateStack.length) {
-//			lockStateStack = (LockState[])expand(lockStateStack, lockStateStackSize*2);
-//			lockStack = expand(lockStack, lockStateStackSize*2);
-//		}
-//		lockStack[lockStateStackSize] = lock;
-//		lockStateStack[lockStateStackSize++] = ls;
-//	}
-//	
-//	/**
-//	 * Pop a lock, lock state from their respective stacks and return the lock state.
-//	 * @return
-//	 */
-//	protected void popLock() {
-//		lockStack[--lockStateStackSize] = null;
-//		lockStateStack[lockStateStackSize] = null;
-//	}
-//	
-//	protected LockState lockStackTop() {
-//		return lockStateStack[lockStateStackSize];
-//	}
-//	
-//	/**
-//	 * Bound on the number of tries to find the lock state in the stack.
-//	 */
-//	private static final int LOCK_STATE_CACHE_BOUND = 4;
-//
-//	/**
-//	 * Lookup a lock state if it's in the top bit of the stack.
-//	 * @param lock
-//	 * @return
-//	 */
-//	protected LockState getLockState(final Object lock) {
-//		final int bound = lockStateStackSize > LOCK_STATE_CACHE_BOUND ? lockStateStackSize - LOCK_STATE_CACHE_BOUND : 0;
-//		for (int i = lockStateStackSize - 1; i > bound; i--) {
-//			if (lockStack[i] == lock) return lockStateStack[i];
-//		}
-//		return null;
-//	}
-	
+				Config.lockCacheSizeOption.get(), LOCK_HITS, LOCK_MISSES);	
 }

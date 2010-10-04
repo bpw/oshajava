@@ -24,11 +24,25 @@ public class ColdStorage {
 	 * @param o
 	 * @throws IOException
 	 */
-	public static void store(String path, Serializable o) throws IOException {
-		ObjectFile f = new ObjectFile(path);
-		final FileOutputStream out = new FileOutputStream(f);
+	public static void store(File path, Serializable o) throws IOException {
+		if (!path.exists()) {
+			File parent = new File(path.getParent());
+			parent.mkdirs();
+			path.createNewFile();
+		}
+		final FileOutputStream out = new FileOutputStream(path, false);
 		store(out, o);
 		out.close();
+	}
+	
+	/**
+	 * Dump one object to one file.
+	 * @param path
+	 * @param o
+	 * @throws IOException
+	 */
+	public static void store(String path, Serializable o) throws IOException {
+		store(new File(path), o);
 	}
 	
 	/**
@@ -38,11 +52,7 @@ public class ColdStorage {
 	 * @throws IOException
 	 */
 	public static void store(URI uri, Serializable o) throws IOException {
-		ObjectFile f = new ObjectFile(uri);
-		f.createNewFile();
-		final FileOutputStream out = new FileOutputStream(f);
-		store(out, o);
-		out.close();
+		store(new File(uri.getPath()).getAbsoluteFile(), o);
 	}
 	
 	/**
@@ -63,11 +73,22 @@ public class ColdStorage {
 	 * @throws IOException
 	 * @throws ClassNotFoundException
 	 */
-	public static Object load(String file) throws IOException, ClassNotFoundException {
-		final FileInputStream in = new FileInputStream(new File(file));
+	public static Object load(File file) throws IOException, ClassNotFoundException {
+		final FileInputStream in = new FileInputStream(file);
 		final Object o = load(in);
 		in.close();
 		return o;
+	}
+	
+	/**
+	 * Load one object from one file.
+	 * @param file
+	 * @return
+	 * @throws IOException
+	 * @throws ClassNotFoundException
+	 */
+	public static Object load(String file) throws IOException, ClassNotFoundException {
+		return load(new File(file));
 	}
 	
 	/**
@@ -77,11 +98,8 @@ public class ColdStorage {
 	 * @throws IOException
 	 * @throws ClassNotFoundException
 	 */
-	public static Object load(URI file) throws IOException, ClassNotFoundException {
-		final FileInputStream in = new FileInputStream(new File(file));
-		final Object o = load(in);
-		in.close();
-		return o;
+	public static Object load(URI uri) throws IOException, ClassNotFoundException {
+		return load(new File(uri.getPath()).getAbsoluteFile());
 	}
 	
 	/**
@@ -94,25 +112,6 @@ public class ColdStorage {
 	public static Object load(InputStream stream) throws IOException, ClassNotFoundException {
 		final ObjectInputStream in = new ObjectInputStream(stream);
 		return in.readObject();
-	}
-	
-	static class ObjectFile extends File {
-
-		public ObjectFile(String path) throws IOException {
-			super(path);
-			create();
-		}
-		
-		public ObjectFile(URI uri) throws IOException {
-			super(uri);
-			create();
-		}
-		
-		public void create() throws IOException {
-			File parent = new File(getParent());
-			parent.mkdirs();
-			createNewFile();
-		}
 	}
 	
 }
