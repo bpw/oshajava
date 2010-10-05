@@ -369,7 +369,7 @@ public class ClassInstrumentor extends ClassAdapter {
 		    					if ((access & Opcodes.ACC_SYNTHETIC) != 0) {
 		    						// synthetic method.
 			    					Assert.warn("SYNTHETIC method %s missing from module map for class %s (%s).  Using null module.", 
-			    							method, method.getInternalName(), classType);
+			    							method, classType.getInternalName(), classType);
 		    					} else {
 			    					// If a particular method is missing from the module map, we need to warn! (Maybe fail.)
 		    						if (Config.noSpecOption.get().test(classType.getSourceName()) != StringMatchResult.ACCEPT) {
