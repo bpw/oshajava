@@ -199,7 +199,7 @@ public class ClassInstrumentor extends ClassAdapter {
 	 * @param desc
 	 */
 	private void addShadowField(FieldDescriptor fd) {
-		if (Filter.shouldInstrument(fd)) {
+		if (Filter.shouldInstrument(fd) && !(fd.isStatic() ? staticShadowedFields : instanceShadowedFields).contains(fd)) {
 		    
 		    int newAccess;
 		    if ((classAccess & Opcodes.ACC_INTERFACE) != 0) {
@@ -293,17 +293,19 @@ public class ClassInstrumentor extends ClassAdapter {
 
 		// TODO Fix frames so we can actually support Java 6 class file format in full.
 		super.visit((version == Opcodes.V1_6 ? Opcodes.V1_5 : version), access, name, signature, superName, interfaces);
-		
-		List<FieldDescriptor> superFields = null;
-		try {
-			superFields = FieldCollector.collect(superType, loader);
-		} catch (IOException e) {
-			Assert.fail(e);
-		}
-		
-		for (FieldDescriptor fd : superFields) {
-			if (!Filter.shouldInstrument(superType) && Filter.shouldInstrument(fd)) {
-				addShadowField(fd);
+		{
+			List<FieldDescriptor> superFields = null;
+			try {
+				superFields = FieldCollector.collect(superType, loader);
+			} catch (IOException e) {
+				Assert.fail(e);
+			}
+
+			for (FieldDescriptor fd : superFields) {
+				FieldDescriptor myFd = FieldDescriptor.of(classType, fd.getFieldName(), fd.getFieldType(), fd.getAccessFlags());
+				if (!Filter.shouldInstrument(superType) && Filter.shouldInstrument(myFd)) {
+					addShadowField(myFd);
+				}
 			}
 		}
 		
