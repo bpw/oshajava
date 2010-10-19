@@ -776,8 +776,9 @@ public class MethodInstrumentor extends AdviceAdapter {
 	@Override
 	public void visitMethodInsn(int opcode, String owner, String name, String desc) {
 		MethodDescriptor invokedMethod = MethodDescriptor.of(TypeDescriptor.ofClass(owner), name, desc, null);
-	    if (isConstructor && !methodEntered && opcode == Opcodes.INVOKESPECIAL && name.equals("<init>")) {
-			// Call to another constructor at the beginning of this constructor (i.e., this is not Object).
+	    if (isConstructor && !methodEntered && opcode == Opcodes.INVOKESPECIAL && name.equals("<init>")
+	    		&& ( method.getClassType().getInternalName().equals(owner) || method.getClassType().getSuperType().getInternalName().equals(owner))) {
+			// Call to this() or super() at the beginning of this constructor (i.e., this is not Object).
 			calledOtherConstructor = true;
 			
 			// Patch calls to super/this constructors that should not be or is not instrumented.
