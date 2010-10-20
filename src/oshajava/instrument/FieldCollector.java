@@ -16,8 +16,7 @@ import oshajava.support.org.objectweb.asm.ClassReader;
 import oshajava.support.org.objectweb.asm.ClassVisitor;
 import oshajava.support.org.objectweb.asm.FieldVisitor;
 import oshajava.support.org.objectweb.asm.MethodVisitor;
-
-import com.sun.xml.internal.ws.org.objectweb.asm.Opcodes;
+import oshajava.support.org.objectweb.asm.Opcodes;
 
 /**
  * Collects the fields of a class, recursively walking up the inheritance chain.
@@ -68,7 +67,7 @@ public class FieldCollector implements ClassVisitor {
 
 	public FieldVisitor visitField(int access, String name, String desc,
 			String signature, Object value) {
-		if ((access & Opcodes.ACC_PRIVATE) == 0) {
+		if ((access & (Opcodes.ACC_PUBLIC | Opcodes.ACC_PROTECTED)) != 0 && (access & Opcodes.ACC_PRIVATE) == 0) {
 			fields.add(FieldDescriptor.of(type, name, TypeDescriptor.fromDescriptorString(desc), access));
 		}
 		return null;
