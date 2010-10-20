@@ -49,6 +49,9 @@ public class SpecProcessor extends AbstractProcessor {
 	public static final String DEFAULT_ANN_OPTION = "oshajava.annotation.default",
 		DEBUG_OPTION = "oshajava.verbose",
 		HELP_OPTION = "oshajava.help";
+	public static final String DEFAULT_ANN_ENV_VAR = DEFAULT_ANN_OPTION.replace('.','_').toUpperCase(),
+		DEBUG_ENV_VAR = "OSHAJAVA_VERBOSE",
+		HELP_ENV_VAR = "OSHAJAVA_HELP";
 	private static final String INLINE_ANN = "inline", NONCOMM_ANN = "noncomm";
 	
 	public static final String[][] OPTIONS = {
@@ -99,7 +102,10 @@ public class SpecProcessor extends AbstractProcessor {
 		
 		// Set the default annotation to @Inline or @NonComm.
 		// e.g. -Aoshajava.annotation.default=noncomm
-		final String defaultAnn = env.getOptions().get(DEFAULT_ANN_OPTION);
+		String defaultAnn = env.getOptions().get(DEFAULT_ANN_OPTION);
+		if (defaultAnn == null) {
+			defaultAnn = System.getenv(DEFAULT_ANN_ENV_VAR);
+		}
 		if (defaultAnn == null) {
 			// Do nothing. MethodSpec.DEFAULT is preset to the standard default.
 		} else if (defaultAnn.toLowerCase().equals(NONCOMM_ANN)) {
@@ -110,10 +116,8 @@ public class SpecProcessor extends AbstractProcessor {
 			throw new IllegalArgumentException(DEFAULT_ANN_OPTION + "=" + defaultAnn);
 		}
 		note("Default oshajava annotation set to " + (MethodSpec.DEFAULT == MethodSpec.NONCOMM ? "@NonComm" : "@Inline") + ".");
-		verbose = env.getOptions().containsKey(DEBUG_OPTION);
-		if (env.getOptions().containsKey(HELP_OPTION)) {
-			justHelp = true;
-		}
+		verbose = env.getOptions().containsKey(DEBUG_OPTION) || System.getenv(DEBUG_ENV_VAR) != null;
+		justHelp = env.getOptions().containsKey(HELP_OPTION) || System.getenv(HELP_ENV_VAR) != null;
 	}
 
 	/**
@@ -166,19 +170,35 @@ public class SpecProcessor extends AbstractProcessor {
 				moduleScanner.traverse(e);
 			}
 			// Second, establish groups.
-			for (final Element e : processedModules.keySet()) {
+			for (final Element e : elements) {
 				groupScanner.traverse(e);
 			}
 			// TODO: Incremental: 
 			// for modulemaps, for each class, remove from modules all groups previously declared in this class that are no longer declared in this class 
 			// (or that now belong to a diff module).
 			// Third, establish readers and writers in groups, noncomm, and inline.
-			for (final Element e : processedModules.keySet()) {
+			for (final Element e : elements) {
 				groupMembershipScanner.traverse(e);
 			}
 		}
 		// Let other processors see the annotations.
 		return false;
+	}
+	
+	private void assignModule(Element e, Module m) {
+		Assert.assertTrue(e != null && m != null);
+		Assert.assertTrue(!processedModules.containsKey(e), "Element %s has already been assigned to a module!", e.getSimpleName());
+		processedModules.put(e, m);
+	}
+	
+	private Module getAssignedModule(Element e) {
+		Assert.assertTrue(e != null);
+		Assert.assertTrue(processedModules.containsKey(e), "Element %s has not been assigned to a module!", e.getSimpleName());
+		return uncheckedGetAssignedModule(e);
+	}
+	
+	private Module uncheckedGetAssignedModule(Element e) {
+		return processedModules.get(e);
 	}
 	
 	abstract class Traversal {
@@ -297,12 +317,12 @@ public class SpecProcessor extends AbstractProcessor {
 
 		@Override
 		protected void setLabel(Element e, Module r) {
-			processedModules.put(e, r);
+			assignModule(e, r);
 			if (e instanceof ExecutableElement) {
 				TypeElement cls = (TypeElement)e.getEnclosingElement();
 				try {
 					maps.getOrCreate(CanonicalName.of(cls, processingEnv.getElementUtils())).put(
-							MethodDescriptor.of((ExecutableElement)e, processingEnv.getElementUtils()), processedModules.get(e).getName());
+							MethodDescriptor.of((ExecutableElement)e, processingEnv.getElementUtils()), getAssignedModule(e).getName());
 				} catch (IOException ioe) {
 					error("Could not write spec info to filesystem.");
 					throw new RuntimeException(ioe);
@@ -312,7 +332,7 @@ public class SpecProcessor extends AbstractProcessor {
 
 		@Override
 		protected Module getLabel(Element e) {
-			return e == null ? null : processedModules.get(e);
+			return e == null ? null : uncheckedGetAssignedModule(e);
 		}
 
 		@Override
@@ -344,7 +364,7 @@ public class SpecProcessor extends AbstractProcessor {
 
 		@Override
 		protected void handle(Element e) {
-			final Module module = processedModules.get(e);
+			final Module module = getAssignedModule(e);
 			{
 				final oshajava.annotation.Group groupAnn = e.getAnnotation(oshajava.annotation.Group.class);
 				if (groupAnn != null) {
@@ -405,7 +425,7 @@ public class SpecProcessor extends AbstractProcessor {
 			Writer writer = e.getAnnotation(Writer.class);
 			Inline inline = e.getAnnotation(Inline.class);
 			NonComm noncomm = e.getAnnotation(NonComm.class);
-			final Module module = processedModules.get(e);
+			final Module module = getAssignedModule(e);
 			MethodSpec ms = null;
 			try {
 				if (inline != null) {
@@ -484,9 +504,9 @@ public class SpecProcessor extends AbstractProcessor {
 			if (e instanceof ExecutableElement) {
 				final ExecutableElement m = (ExecutableElement)e;
 				// Get the right module.
-				final Module module = processedModules.get(m);
+				final Module module = getAssignedModule(m);
 				MethodDescriptor sig = MethodDescriptor.of(m, processingEnv.getElementUtils());
-				Assert.assertTrue(module != null, "null module for method element %s", sig);
+//				Assert.assertTrue(module != null, "null module for method element %s", sig);
 				if (verbose) {
 //					System.out.println(sig + ": " + r);
 				}
