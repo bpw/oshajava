@@ -190,8 +190,8 @@ public class Config {
 //		Util.logf("oshajava %s", oshajavaRevision.get());
 		configure(agentArgs == null ? new String[0] : agentArgs.replace('#', ' ').split(","));
 		if (visualizeOption.get()) {
-			@SuppressWarnings("unused")
-			Object _ = StackCommMonitor.def; // Initialize real-time visualization system.
+//			@SuppressWarnings("unused")
+//			Object _ = StackCommMonitor.def; // Initialize real-time visualization system.
 		}
 		if( !CommandLine.javaArgs.get().replaceAll(" ", "").isEmpty()) {
 			Util.logf("remaining args are \"%s\"", CommandLine.javaArgs.get());

@@ -194,9 +194,9 @@ public class Stack {
 				}
 			}
 			// Real-time visualizer
-			if (StackCommMonitor.VISUALIZE) {
-				StackCommMonitor.def.addCommunicationAndFlush(writer, this);
-			}
+//			if (StackCommMonitor.VISUALIZE) {
+//				StackCommMonitor.def.addCommunicationAndFlush(writer, this);
+//			}
 			if (walkStacks(writer, this, 0)) {
 				synchronized (writerMemoTable) {
 					writerMemoTable.add(writer);
