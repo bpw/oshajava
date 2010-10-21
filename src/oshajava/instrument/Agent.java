@@ -22,8 +22,6 @@ import oshajava.support.acme.util.option.Option;
 import oshajava.support.org.objectweb.asm.ClassReader;
 import oshajava.support.org.objectweb.asm.ClassVisitor;
 import oshajava.support.org.objectweb.asm.ClassWriter;
-import oshajava.support.org.objectweb.asm.commons.Remapper;
-import oshajava.support.org.objectweb.asm.commons.RemappingClassAdapter;
 import oshajava.support.org.objectweb.asm.util.CheckClassAdapter;
 import oshajava.util.count.ConcurrentTimer;
 

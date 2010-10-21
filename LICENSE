@@ -1,7 +1,6 @@
-All other code in this distribution is licensed under the New BSD
-License, below, unless otherwise indicated (as in code in the libs
-directory).
-
+Code in the libs directory is third-party code licensed as stated in 
+the code.  All code in this distribution outside the libs directory is
+licensed as follows.  
 
 Copyright (c) 2010, Benjamin P. Wood and Adrian Sampson
 All rights reserved.

@@ -17,9 +17,9 @@ class C {
 * Separate instrumentation parts into different visitors for simpler
   selection via options.  This may not be easy/possible.
 
-* Incremental compilation.
+*** Incremental compilation.
 
-* Test Eclipse support for annotation processors.
+** Test Eclipse support for annotation processors.
 
 * Improve GC for shadow stores (WCIHM)
   * Thread on the side?
@@ -33,10 +33,6 @@ class C {
 * @Accessor, shorthand for @Reader and @Writer.
 
 * Fix Volatile shadows (REf)
-
-* Implement added options.
-
-* Clean up.
 
 * JDK rewriting
 

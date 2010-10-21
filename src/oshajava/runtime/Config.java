@@ -4,7 +4,6 @@ import java.lang.instrument.Instrumentation;
 
 import oshajava.instrument.Filter;
 import oshajava.instrument.Agent;
-import oshajava.rtviz.StackCommMonitor;
 import oshajava.support.acme.util.Assert;
 import oshajava.support.acme.util.Debug;
 import oshajava.support.acme.util.StringMatchResult;

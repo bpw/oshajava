@@ -9,7 +9,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import oshajava.rtviz.StackCommMonitor;
 import oshajava.spec.ModuleSpec;
 import oshajava.spec.Spec;
 import oshajava.spec.names.MethodDescriptor;
