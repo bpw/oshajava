@@ -1,5 +1,5 @@
 Contents:
-* LICENSE   - license for the OshaJava distribution
+* LICENSE   - license for the OshaJava distribution (all code outside libs/)
 * README    - this file
 * build.xml - ant build file
 * libs      - third party libs used by OshaJava, renamed for
@@ -8,14 +8,13 @@ Contents:
 * todo      - to-do lists
 
 Required:
-* Java 1.6 or higher
+* JDK/JRE 1.6 or higher
 * ant
 * sh-compatible shell
  
 Build:
 1. Run ant in the top-level directory.  
-2. Source setup.sh in any shell where you want to use oshajava.  It
-   sets some environment variables and puts a few utilities on your
-   path.
+2. Source setup.sh in any shell where you want to use oshajava.  It sets some
+   environment variables and puts a few utilities on your path.
 
 See http://bitbucket.org/bpw/oshajava for more documentation.
