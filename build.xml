@@ -45,7 +45,8 @@
 		<javac srcdir="${asm.src.dir}" destdir="${classes.dir}" />
 		<javac srcdir="${acme.src.dir}" destdir="${classes.dir}" />
 		<javac srcdir="${src.dir}" destdir="${classes.dir}">
-		   <classpath path=".:libs/prefuse.jar"/>
+			<exclude name="**/oshajava/rtviz/*" />
+		   <!-- <classpath path=".:libs/prefuse.jar"/> -->
 		</javac>
 	</target>
 		
@@ -57,7 +58,7 @@
 			</manifest>
 			<service type="javax.annotation.processing.Processor" provider="${processor.class}" />
 			<fileset dir="${classes.dir}" includes="**/*.class" />
-			<zipfileset src="libs/prefuse.jar" />
+			<!-- <zipfileset src="libs/prefuse.jar" /> -->
 			<!-- <indexjars refid="libs.classpath" /> -->
 		</jar>
 	</target>

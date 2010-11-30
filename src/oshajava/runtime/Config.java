@@ -158,7 +158,7 @@ public class Config {
 		
 		cl.add(profileOption);
 		cl.add(recordOption);
-		cl.add(visualizeOption);
+//		cl.add(visualizeOption);
 		cl.add(summaryOption);
 		cl.add(createOption);
 		cl.add(profileExtOption);
