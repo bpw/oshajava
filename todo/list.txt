@@ -32,8 +32,6 @@ class C {
 
 * @Accessor, shorthand for @Reader and @Writer.
 
-* Fix Volatile shadows (REf)
-
 * JDK rewriting
 
 * Update to ASM 3.3

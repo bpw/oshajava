@@ -13,20 +13,17 @@ import oshajava.support.acme.util.option.CommandLineOption.Kind;
 public class Filter {
 	public static final String DEBUG_KEY = "filter";
 	
-    // TODO
     public static final CommandLineOption<StringMatcher> instrumentClassesOption =
-    	CommandLine.makeStringMatcher("classes", StringMatchResult.ACCEPT, Kind.EXPERIMENTAL, 
+    	CommandLine.makeStringMatcher("classes", StringMatchResult.ACCEPT, Kind.STABLE, 
     			"Only track memory operations on fields and in methods in matching classes (by fully qualified name).", 
     			"-^oshajava\\..*", "-^java\\..*", "-^com.sun\\..*", "-^sun\\..*");
 
-    // TODO
     public static final CommandLineOption<StringMatcher> instrumentFieldsOption =
-    	CommandLine.makeStringMatcher("fields", StringMatchResult.ACCEPT, Kind.EXPERIMENTAL, 
+    	CommandLine.makeStringMatcher("fields", StringMatchResult.ACCEPT, Kind.STABLE, 
     			"Only track memory operations on matching fields (by fully qulified name).", "-.*this\\$.*");
 
-    // TODO
     public static final CommandLineOption<StringMatcher> instrumentMethodsOption =
-    	CommandLine.makeStringMatcher("methods", StringMatchResult.ACCEPT, Kind.EXPERIMENTAL, 
+    	CommandLine.makeStringMatcher("methods", StringMatchResult.ACCEPT, Kind.STABLE, 
     			"Only track memory operations in matching methods (by fully qulified name).");
     
 	/**

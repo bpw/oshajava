@@ -80,9 +80,8 @@ public class Agent implements ClassFileTransformer {
 		CommandLine.makeBoolean("ignoreMissingMethods", false, Kind.DEPRECATED, "Ignore and inline methods missing from their modules.  (See -" + 
 				Config.noSpecOption.getId() + " and -" + Config.noSpecActionOption.getId() + " instead.)");
 	
-    // FIXME see RuntimeMonitor.Ref
 	public static final CommandLineOption<Boolean> volatileShadowOption =
-		CommandLine.makeBoolean("volatileShadows", false, Kind.EXPERIMENTAL, "Make shadow fields volatile");
+		CommandLine.makeBoolean("volatileShadows", false, Kind.STABLE, "Make all shadow fields volatile.  (By default shadow fields inherit the volatile status of the fields they shadow.  Array element shadows are never volatile.)");
 
     public static final CommandLineOption<Boolean> ignoreFinalFieldsOption =
     	CommandLine.makeBoolean("ignoreFinalFields", false, Kind.EXPERIMENTAL, "Turn off tracking for all final fields.");

@@ -51,39 +51,39 @@ public class Config {
 
 	public enum Granularity { FINE, COARSE }; // TODO add NONE level.
 	public static final CommandLineOption<Granularity> arrayTrackingOption =
-		CommandLine.makeEnumChoice("arrayTracking", Granularity.FINE, Kind.STABLE, "Set array tracking granularity.", Granularity.class);
+		CommandLine.makeEnumChoice("arrayTracking", Granularity.FINE, Kind.STABLE, "Set array tracking granularity. Default: " + Granularity.FINE, Granularity.class);
 	
 	public static final CommandLineOption<Granularity> objectTrackingOption = 
 		CommandLine.makeEnumChoice("objectTracking", Granularity.FINE, Kind.EXPERIMENTAL, 
-				"Set object tracking granularity. (COARSE is not fully implemented.)", Granularity.class);
+				"Set object tracking granularity. Default: " + Granularity.FINE + " (COARSE is not fully implemented.)", Granularity.class);
 	
 	public static final CommandLineOption<Boolean> lockTrackingOption =
-		CommandLine.makeBoolean("lockTracking", false, Kind.EXPERIMENTAL, "Turn on tracking of synchronization edges.");
+		CommandLine.makeBoolean("lockTracking", false, Kind.STABLE, "Treat acquire/release/wait synchronization as communication.");
 	
 	public static final CommandLineOption<Boolean> noInstrumentOption =
 		CommandLine.makeBoolean("noTracking", false, Kind.STABLE, "Turn off all tracking.");
 	
 	public enum ProfileLevel { NONE, PERF, DEEP }
 	public static final CommandLineOption<ProfileLevel> profileOption =
-		CommandLine.makeEnumChoice("profile", ProfileLevel.NONE, Kind.STABLE, "Report tool profiling information. " + 
+		CommandLine.makeEnumChoice("profile", ProfileLevel.NONE, Kind.STABLE, "Report tool profiling information. Default: " + ProfileLevel.NONE + ". " + 
 				"PERF reports timing and memory use, causing no additional overhead. " + 
 				"DEEP reports many internal counters, causing significant performance overhead.", ProfileLevel.class);
 	
 	public static final CommandLineOption<Integer> arrayCacheSizeOption =
-		CommandLine.makeInteger("arrayCacheSize", 16, Kind.STABLE, "Set the array state (or array state array) cache size.");
+		CommandLine.makeInteger("arrayCacheSize", 16, Kind.STABLE, "Set the array state (or array state array) cache size. Default: " + 16);
 
 	public static final CommandLineOption<Integer> lockCacheSizeOption =
-		CommandLine.makeInteger("lockCacheSize", 4, Kind.STABLE, "Set the lock state cache size.");
+		CommandLine.makeInteger("lockCacheSize", 4, Kind.STABLE, "Set the lock state cache size. Default: " + 4);
 	
 	public static final CommandLineOption<Boolean> fudgeExceptionTracesOption =
 		CommandLine.makeBoolean("fudgeExceptionStackTraces", true, Kind.STABLE, "Make communication exceptions look like they occur directly in user code.");
 
     public static final CommandLineOption<Boolean> stackTracesOption =
-        CommandLine.makeBoolean("traces", false, Kind.STABLE, "Store the full (pre-inlined) stack trace on every write for exception reports.");
+        CommandLine.makeBoolean("traces", false, Kind.STABLE, "Store the full (pre-inlined) stack trace on every write for exception reports. (Expensive.)");
     
     public enum ErrorAction { HALT, THROW, WARN, NONE }
     public static final CommandLineOption<ErrorAction> errorActionOption =
-        CommandLine.makeEnumChoice("errorAction", ErrorAction.HALT, Kind.STABLE, "What to do when illegal communication occurs.", ErrorAction.class);
+        CommandLine.makeEnumChoice("errorAction", ErrorAction.HALT, Kind.STABLE, "What to do when illegal communication occurs. Default: " + ErrorAction.HALT, ErrorAction.class);
     
     // TODO
     public static final CommandLineOption<StringMatcher> noSpecOption =
@@ -169,7 +169,7 @@ public class Config {
 		cl.add(Agent.remapOption);
 		cl.add(Agent.bytecodeDumpOption);
 		cl.add(Agent.bytecodeDumpDirOption);
-		cl.add(Agent.framesOption);
+//		cl.add(Agent.framesOption);
 		cl.add(Agent.preVerifyOption);
 		cl.add(Agent.verifyOption);
 		
