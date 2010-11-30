@@ -99,6 +99,8 @@ public class RuntimeMonitor {
 	static class Ref<T> {
 		T contents; // FIXME make volatile if volatileShadows option is set...
 	}
+	
+	private static final Object haltLock = new Object();
 
 	/*******************************************************************/
 
@@ -503,7 +505,10 @@ public class RuntimeMonitor {
 	private static void error(IllegalCommunicationException ice) {
 		switch (Config.errorActionOption.get()) {
 		case HALT:
-			Assert.fail(ice);
+			// only start one halt at a time...
+			synchronized (haltLock) {
+				Assert.fail(ice);
+			}
 			break;
 		case THROW:
 			throw ice;
