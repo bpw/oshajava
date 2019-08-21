@@ -1,7 +1,7 @@
 **Updates, 20 August 2019:** Due to Bitbucket's pending complete
 termination of Mercurial repository hosting, this project, formerly
 archived at <https://bitbucket.org/bpw/oshajava>, has moved to
-<https://gitlab.com/bpw/oshajava>. The former wiki has been rolled
+<https://gitlab.com/atlas-lab/oshajava>. The former wiki has been rolled
 into this file.
 
 OshaJava
