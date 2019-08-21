@@ -188,7 +188,7 @@ call `produce` and many consumer threads call `consume`.
 
 pipeline/ItemProcessingPipeline.java:
 
-    #!java
+``` java
     package pipeline;
     import buffer.BoundedBuffer;
     class ItemProcessingPipeline {
@@ -205,9 +205,11 @@ pipeline/ItemProcessingPipeline.java:
         }
     }
 
+```
+
 buffer/BoundedBuffer.java:
 
-    #!java
+``` java
     package buffer;
     public class BoundedBuffer {
         Item[] buffer = new Item[10];
@@ -228,6 +230,7 @@ buffer/BoundedBuffer.java:
             return buffer[...];
         }
     }
+```
 
 When writes by one thread in `enqueue` communicate to reads in another
 thread in `dequeue`, it makes sense to say that `enqueue` is
@@ -274,10 +277,10 @@ using the `@Module` annotation.
 
 To assign method `foo` to module `bar.Qux`, we annotate it as follows:
 
-    #!java
-
+``` java
     @Module("bar.Qux")
     void foo() { ... }
+```
 
 Important things to remember about module annotations:
 
@@ -302,8 +305,7 @@ will belong to this module as well unless they are annotated otherwise.
 For example, the following class is annotated with `@Module` annotations
 and each method is commented with the module it belongs to as a result.
 
-    #!java
-
+``` java
     @Module("A")
     class C {
         void f() { ... }  // belongs to module A
@@ -320,14 +322,16 @@ and each method is commented with the module it belongs to as a result.
             void i() { ... }  // belongs to module B
         }
     }
+```
 
 Packages can also be annotated by placing the annotation in a file
 `package-info.java` in the package source location:
 
-    #!java
+``` java
     @Module("A")
     package p;
     import oshajava.annotation.Module;
+```
 
 When is Communication Allowed?
 ------------------------------
@@ -378,7 +382,7 @@ the groups in which it is a writer (`@Writer({...})`). For example, we
 might annotate the bounded buffer methods from the code above as
 follows:
 
-    #!java
+``` java
     package buffer;
     @Group(id="BufferAndSize")
     public class BoundedBuffer {
@@ -400,6 +404,7 @@ follows:
             return buffer[...];
         }
     }
+```
 
 The `BufferAndSize` group belongs to the module `buffer.Default` (recall
 that by default each package is a module). Both `enqueue` and `dequeue`
@@ -504,7 +509,7 @@ annotated producers-consumers program:
 
 pipeline/ItemProcessingPipeline.java:
 
-    #!java
+``` java
     package pipeline;
     import buffer.BoundedBuffer;
     @Group(id="Pipe")
@@ -523,10 +528,11 @@ pipeline/ItemProcessingPipeline.java:
             ...;  ... = pipe.dequeue();  ...
         }
     }
+```
 
 buffer/BoundedBuffer.java:
 
-    #!java
+``` java
     package buffer;
     @Group(id="BufferAndSize")
     @InterfaceGroup(id="BufferInterface")
@@ -553,6 +559,7 @@ buffer/BoundedBuffer.java:
             return buffer[...];
         }
     }
+```
 
 Specification Checking with Encapsulation
 -----------------------------------------
@@ -598,6 +605,7 @@ Since only one annotation of a given type is allowed, it is necessary to
 use an extra annotation when declaring more than one group or more than
 one interface group on a given source element:
 
-    #!java
+``` java
     @Groups(comm={@Group("A"), @Group("B")}, intfc={@InterfaceGroup("C"), @InterfaceGroup("D")})
     class E { ... }
+```
